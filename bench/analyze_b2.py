@@ -1,16 +1,27 @@
-"""Combine the per-participant logs of bench/run_b2.sh into bench/results/b2_audio.json.
+"""Combine one run of bench/run_b2.sh into bench/results/b2_audio.json.
 
-Playout latency is the time from the end of an audio frame's capture at the talker
-(the tag's timestamp) to the moment the receiver's sound card starts playing it.
-Video latency is measured from the sender's sendto() to the receiver storing (legacy)
-or completing (v2) the frame. All processes share CLOCK_MONOTONIC.
+Both ends are simulated (see bench/run_b2.sh): tagged synthetic microphones and
+speakers that log the tags they play; the original's speaker is a stand-in blocking
+write. Capture-to-playout latency is the time from the end of an audio chunk's capture
+at the talker (the tag's timestamp) to the moment the receiver's simulated speaker
+starts playing it. Video latency is measured from the sender's sendto() to the
+receiver storing (legacy) or completing (v2) the frame. All processes share
+CLOCK_MONOTONIC.
+
+Each (system, participants) group summarises its repeats as the median, minimum and
+maximum of per-run figures. Only the files of the run in RUNDIR are read; a run whose
+processes failed has no .meta.json and is listed under failed_runs.
+
+Usage: analyze_b2.py RUNDIR OUT.json [--build BUILD.json] [--command CMD]
 """
 
 from __future__ import annotations
 
+import argparse
 import bisect
 import itertools
 import json
+import statistics
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -18,7 +29,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common import RESULTS, environment, summary, write_json
+from common import ROOT, environment, spread, summary, write_json
 
 STALL = 0.5  # a gap between two video updates from one sender longer than this is a stall
 
@@ -80,12 +91,12 @@ def analyze_run(tag: str, d: Path) -> dict[str, Any]:
             sender, idx, t = str(e[0]), int(e[1]), float(e[2])
             if sender == me or not lo <= t <= hi:
                 continue
-            times = sends.get(sender, {}).get(idx)
-            if not times:
+            sent_at = sends.get(sender, {}).get(idx)
+            if not sent_at:
                 continue
-            j = bisect.bisect_right(times, t) - 1
+            j = bisect.bisect_right(sent_at, t) - 1
             if j >= 0:
-                updates[sender].append((t, t - times[j]))
+                updates[sender].append((t, t - sent_at[j]))
         vlat: list[float] = []
         worst_gap = 0.0
         stalled = 0.0
@@ -142,11 +153,11 @@ def analyze_run(tag: str, d: Path) -> dict[str, Any]:
         receivers.append(
             {
                 "participant": me,
-                "audio_latency_ms": summary(lat),
-                "audio_latency_first_5s_ms": summary(first5)["mean"],
-                "audio_latency_last_5s_ms": summary(last5)["mean"],
+                "capture_to_playout_ms": summary(lat),
+                "capture_to_playout_first_5s_ms": summary(first5)["mean"],
+                "capture_to_playout_last_5s_ms": summary(last5)["mean"],
                 "audio_delivery_by_talker": delivery,
-                "audio_latency_series": _series([(x[2], x[3]) for x in window], lo),
+                "capture_to_playout_series": _series([(x[2], x[3]) for x in window], lo),
                 "video_latency_series": _series(
                     [(t, lat_s * 1000) for ups in updates.values() for t, lat_s in ups], lo
                 ),
@@ -157,10 +168,12 @@ def analyze_run(tag: str, d: Path) -> dict[str, Any]:
             }
         )
     return {
+        "tag": tag,
         "system": system,
         "participants": n,
+        "repeat": meta.get("repeat"),
         "window_seconds": round(seconds, 1),
-        "audio_latency_ms": summary(all_audio_latency),
+        "capture_to_playout_ms": summary(all_audio_latency),
         "video_latency_ms": summary(x * 1000 for x in all_video_latency),
         "downstream_audio_kbit_per_s_mean": sum(r["downstream_audio"]["kbit_per_s"] for r in receivers)
         / len(receivers),
@@ -169,26 +182,107 @@ def analyze_run(tag: str, d: Path) -> dict[str, Any]:
     }
 
 
+def aggregate(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    """The repeats of one system and call size: median, minimum and maximum of per-run figures."""
+
+    def per_run(f: Any) -> dict[str, Any]:
+        return spread(f(r) for r in runs)
+
+    def delivery(r: dict[str, Any]) -> list[float]:
+        return [x for rc in r["receivers"] for x in rc["audio_delivery_by_talker"].values() if x is not None]
+
+    def video_ratio(r: dict[str, Any]) -> float | None:
+        expected = sum(rc["video"]["frames_expected"] for rc in r["receivers"])
+        got = sum(rc["video"]["frames_received"] for rc in r["receivers"])
+        return got / expected if expected else None
+
+    def growth(r: dict[str, Any]) -> float | None:
+        g = [
+            rc["capture_to_playout_last_5s_ms"] - rc["capture_to_playout_first_5s_ms"]
+            for rc in r["receivers"]
+            if rc["capture_to_playout_last_5s_ms"] is not None
+            and rc["capture_to_playout_first_5s_ms"] is not None
+        ]
+        return statistics.median(g) if g else None
+
+    return {
+        "system": runs[0]["system"],
+        "participants": runs[0]["participants"],
+        "runs": len(runs),
+        "window_seconds": per_run(lambda r: r["window_seconds"]),
+        "capture_to_playout_ms_p50": per_run(lambda r: r["capture_to_playout_ms"]["p50"]),
+        "capture_to_playout_ms_p95": per_run(lambda r: r["capture_to_playout_ms"]["p95"]),
+        "capture_to_playout_ms_p99": per_run(lambda r: r["capture_to_playout_ms"]["p99"]),
+        "capture_to_playout_growth_ms": per_run(growth),
+        "audio_delivery_min_pair": per_run(lambda r: min(delivery(r), default=None)),
+        "audio_delivery_max_pair": per_run(lambda r: max(delivery(r), default=None)),
+        "audio_delivery_median_pair": per_run(
+            lambda r: statistics.median(delivery(r)) if delivery(r) else None
+        ),
+        "video_delivery_ratio": per_run(video_ratio),
+        "video_latency_ms_p50": per_run(lambda r: r["video_latency_ms"]["p50"]),
+        "video_stalled_fraction_max": per_run(
+            lambda r: max(rc["video"]["stalled_fraction"] for rc in r["receivers"])
+        ),
+        "downstream_audio_kbit_per_s_mean": per_run(lambda r: r["downstream_audio_kbit_per_s_mean"]),
+        "tags": [r["tag"] for r in runs],
+    }
+
+
 def main() -> None:
-    d = Path(sys.argv[1])
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else RESULTS / "b2_audio.json"
-    runs = [analyze_run(m.name.removesuffix(".meta.json"), d) for m in sorted(d.glob("*.meta.json"))]
-    runs.sort(key=lambda r: (r["system"] != "legacy", r["participants"]))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("rundir", type=Path)
+    ap.add_argument("out", type=Path)
+    ap.add_argument("--build", type=Path, help="the run's build record")
+    ap.add_argument("--command", default="sudo bench/run_b2.sh")
+    args = ap.parse_args()
+    d = args.rundir
+    run_id = d.name
+    runs = []
+    for m in sorted(d.glob("*.meta.json")):
+        meta = json.loads(m.read_text())
+        if meta.get("run_id") != run_id:
+            sys.exit(f"{m}: from run {meta.get('run_id')!r}, not {run_id}")
+        runs.append(analyze_run(m.name.removesuffix(".meta.json"), d))
+    failed = sorted(
+        f.name.removesuffix(".status") for f in d.glob("*.status") if f.read_text().strip() != "0"
+    )
+    runs.sort(key=lambda r: (r["system"] != "legacy", r["participants"], r["repeat"] or 0))
+    groups: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
+    for r in runs:
+        groups[(r["system"], r["participants"])].append(r)
+    aggregated = [
+        aggregate(g) for _, g in sorted(groups.items(), key=lambda kv: (kv[0][0] != "legacy", kv[0][1]))
+    ]
     write_json(
-        out,
+        args.out,
         {
             "benchmark": "B2 multi-talker audio",
-            "command": "sudo bench/run_b2.sh",
-            "setup": "everybody talks (tagged tone) and sends video (corpus, 15.625 fps); one network "
-            "namespace, loopback; legacy speaker: fake PyAudio stream that accepts one 1024-sample chunk at "
-            "a time and plays it in real time, so write() blocks for a chunk's duration when the receiver "
-            "is behind",
+            "run_id": run_id,
+            "command": args.command,
+            "raw_files": str(d.relative_to(ROOT)) if d.is_relative_to(ROOT) else str(d),
+            "setup": "simulated call: everybody talks (a tagged synthetic tone) and sends video (corpus "
+            "frames, 15.625 fps); one network namespace, loopback. Speakers are simulated: v2's pulls one "
+            "20 ms frame every 20 ms like a sound card; the original's is a stand-in for a blocking PyAudio "
+            "write with room for one 1024-sample chunk, so write() blocks for a chunk's duration when the "
+            "receiver is behind. The original's latency depends on that stand-in.",
+            "latency": "capture-to-playout: end of capture at the talker to the start of playout at the "
+            "receiver's simulated speaker",
             "stall_threshold_s": STALL,
+            "groups": aggregated,
+            "failed_runs": failed,
             "runs": runs,
-            "environment": environment(),
+            "environment": environment(args.build),
         },
     )
-    print(f"wrote {out} ({len(runs)} runs)")
+    print(f"wrote {args.out} ({len(runs)} runs, {len(failed)} failed)")
+    for a in aggregated:
+        p50 = a["capture_to_playout_ms_p50"]
+        dmin = a["audio_delivery_min_pair"]
+        print(
+            f"{a['system']:7s} {a['participants']} x{a['runs']}: capture-to-playout p50 median "
+            f"{p50['median']} [{p50['min']}, {p50['max']}] ms; worst talker delivery median {dmin['median']}"
+        )
 
 
 if __name__ == "__main__":
