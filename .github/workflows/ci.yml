@@ -70,9 +70,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: build
         run: docker build -t confserver:ci -f server/Dockerfile server
-      - name: smoke test
+      - name: smoke test (flags after the image name are appended; HEALTHCHECK completes a hello)
         run: |
-          docker run -d --name confserver -p 6100:6100/tcp -p 127.0.0.1:6101:6101 confserver:ci
-          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:6101/metrics > /dev/null && break; sleep 0.5; done
+          docker run -d --name confserver --health-interval 1s \
+            -p 127.0.0.1:6100:6100/tcp -p 127.0.0.1:6100:6100/udp -p 127.0.0.1:6101:6101 \
+            confserver:ci -log-format json -p2p=false
+          for i in $(seq 1 30); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' confserver)" = healthy ] && break
+            sleep 1
+          done
+          docker inspect -f '{{.State.Health.Status}}' confserver | grep -qx healthy
           curl -fsS http://127.0.0.1:6101/metrics | grep -q '^confserver_rooms'
+          docker logs confserver 2>&1 | head -n 1 | grep -q '^{'
           docker rm -f confserver

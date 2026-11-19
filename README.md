@@ -218,8 +218,19 @@ With Docker (a static binary on an empty base image, running as a non-root user)
 
 ```sh
 docker build -t confserver -f server/Dockerfile server
-docker run --rm -p 6100:6100/tcp -p 6100:6100/udp -p 127.0.0.1:6101:6101 confserver
+docker run --rm -p 127.0.0.1:6100:6100/tcp -p 127.0.0.1:6100:6100/udp \
+  -p 127.0.0.1:6101:6101 confserver                       # reachable from this host only
+docker run --rm -p 192.0.2.10:6100:6100/tcp -p 192.0.2.10:6100:6100/udp \
+  -p 127.0.0.1:6101:6101 confserver -p2p=false            # serve a LAN on 192.0.2.10
 ```
+
+Inside the container the server listens on all interfaces, so the `-p` options decide
+who can reach it; the server has no authentication or encryption, so publish it on a
+LAN address only on a network you trust. Flags after the image name are appended to
+the server's own (`-p2p=false`, `-log-format json`, ...). The image's `HEALTHCHECK`
+runs `confserver -healthcheck 127.0.0.1:6100`, which connects to the control port and
+completes a `hello`, so a dead control plane shows as unhealthy even while `/metrics`
+still answers.
 
 ### Client (Python 3.11+, [uv](https://docs.astral.sh/uv/))
 

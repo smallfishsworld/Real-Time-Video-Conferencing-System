@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
+	"net"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/app"
 )
 
 func TestHelpIsNotAnError(t *testing.T) {
@@ -37,5 +42,30 @@ func TestInvalidFlagsAreRejected(t *testing.T) {
 		if err == nil || errors.Is(err, flag.ErrHelp) || strings.Contains(err.Error(), "listen") {
 			t.Errorf("%v: got %v, want a validation error", args, err)
 		}
+	}
+}
+
+func TestHealthcheck(t *testing.T) {
+	cfg := app.DefaultConfig()
+	cfg.ControlAddr, cfg.MediaAddr, cfg.MetricsAddr = "127.0.0.1:0", "127.0.0.1:0", ""
+	srv, err := app.Start(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = srv.Shutdown(context.Background()) }()
+	if err := run([]string{"-healthcheck", srv.ControlAddr()}); err != nil {
+		t.Fatalf("healthcheck of a running server: %v", err)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0") // accepts, but never says welcome
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	start := time.Now()
+	if err := checkHealth(ln.Addr().String(), 300*time.Millisecond); err == nil {
+		t.Fatal("healthcheck passed against something that is not a server")
+	}
+	if time.Since(start) > 2*time.Second {
+		t.Fatal("healthcheck did not time out")
 	}
 }

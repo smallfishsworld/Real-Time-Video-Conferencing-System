@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/app"
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/client"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/room"
@@ -58,6 +59,8 @@ func run(args []string) error {
 	fs.IntVar(&cfg.Signaling.RequestBurst, "control-burst", cfg.Signaling.RequestBurst, "control frames a connection may send in a burst")
 	fs.DurationVar(&cfg.Signaling.HelloTimeout, "hello-timeout", cfg.Signaling.HelloTimeout, "time from connect to a successful hello")
 	fs.DurationVar(&cfg.Signaling.IdleTimeout, "idle-timeout", cfg.Signaling.IdleTimeout, "close a control connection after this long without a message")
+	healthcheck := fs.String("healthcheck", "", "check a running server instead of starting one: connect to this control "+
+		"address, complete hello and exit 0 (for Docker HEALTHCHECK)")
 	logLevel := fs.String("log-level", "info", "debug, info, warn or error")
 	logFormat := fs.String("log-format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {
@@ -65,6 +68,9 @@ func run(args []string) error {
 	}
 	if fs.NArg() > 0 {
 		return fmt.Errorf("unexpected arguments: %v", fs.Args())
+	}
+	if *healthcheck != "" {
+		return checkHealth(*healthcheck, 3*time.Second)
 	}
 	if err := validate(&cfg, *ingressKbps, *burstKiB, *rtxKbps, *logFormat); err != nil {
 		return err
@@ -107,6 +113,18 @@ func run(args []string) error {
 		return serveErr
 	}
 	return err
+}
+
+// checkHealth connects to a server's control address and completes hello: the server
+// accepts connections and its registry answers.
+func checkHealth(addr string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	c, err := client.Dial(ctx, addr, "healthcheck")
+	if err != nil {
+		return fmt.Errorf("healthcheck %s: %w", addr, err)
+	}
+	return c.Close()
 }
 
 // validate rejects values that would leave the server misconfigured.
