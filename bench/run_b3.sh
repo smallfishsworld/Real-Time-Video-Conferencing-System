@@ -225,11 +225,28 @@ fi
 require_root
 trap cleanup_netns EXIT # only this run's namespaces
 trap 'exit 130' INT TERM
-prepare
-mkdir -p "$RUNDIR"
-log "run $CS305_RUN_ID: raw files in $RUNDIR"
-"$0" --gso-check >"$RUNDIR/lo_gso_check.json"
-{
+if [ -f "$RUNDIR/settings.json" ]; then
+  # Resuming a run (CS305_RUN_ID and CS305_INVOCATION set to the stopped run's): the
+  # same binaries and settings, and the points with a .status file are not repeated.
+  "$PY" -c 'import json, sys; sys.exit(json.load(open(sys.argv[1]))["command"] != sys.argv[2])' \
+    "$RUNDIR/settings.json" "sudo $COMMAND" || {
+    echo "run $CS305_RUN_ID was started with other settings" >&2
+    exit 1
+  }
+  [ -x "$CONFSERVER" ] && [ -x "$LOADGEN" ] || {
+    echo "the binaries of run $CS305_RUN_ID are gone" >&2
+    exit 1
+  }
+  log "resuming run $CS305_RUN_ID"
+  resume=1
+else
+  prepare
+  mkdir -p "$RUNDIR"
+  log "run $CS305_RUN_ID: raw files in $RUNDIR"
+  "$0" --gso-check >"$RUNDIR/lo_gso_check.json"
+  resume=0
+fi
+[ "$resume" = 1 ] || {
   printf '{"run_id": "%s", "command": "sudo %s",\n' "$CS305_RUN_ID" "$(printf '%s' "$COMMAND" | sed 's/"/\\"/g')"
   printf ' "wires": "%s", "variants": "%s", "sizes": "%s", "legacy_sizes": "%s", "repeats": %s,\n' \
     "$WIRES" "$VARIANTS" "$SIZES" "$LEGACY_SIZES" "$REPEATS"
