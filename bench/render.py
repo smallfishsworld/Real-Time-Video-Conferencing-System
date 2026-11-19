@@ -1004,6 +1004,8 @@ def _churn_cell(summary: dict[str, Any] | None, key: str) -> str:
         return "not measured"
     s = summary["delivered"] if key == "delivered" else summary["latency_ms"][key]
     fmt = (lambda v: f"{v:.0f}") if key == "delivered" else _ms
+    if fmt(s["min"]) == fmt(s["max"]):
+        return fmt(s["median"])
     return f"{fmt(s['median'])} ({fmt(s['min'])}-{fmt(s['max'])})"
 
 
