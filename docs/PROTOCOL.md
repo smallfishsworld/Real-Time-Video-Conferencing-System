@@ -1,4 +1,4 @@
-# Wire protocol (version 1)
+# Wire protocol (control version 1, media registration version 2)
 
 This document is the contract between the Go server (`server/`) and the Python client
 (`client/`). Both sides are tested against the shared golden vectors in
@@ -42,7 +42,9 @@ Each message is a 4-byte unsigned length `L` followed by `L` bytes of UTF-8 JSON
 
 A client request may carry an integer `seq`. The server copies it into the direct reply
 (success or `error`) so that the client can match replies to requests. Messages the
-server sends on its own (events) carry no `seq`.
+server sends on its own (events) carry no `seq`. For `chat` and `media_state` the reply
+is the requester's own copy of the event the request causes (`chat` or `roster`): that
+copy carries `seq`, and the copies other members get do not.
 
 The first message on a connection must be `hello`. Until it has been accepted every
 other request gets `error` with code `not_hello`.
@@ -57,8 +59,8 @@ other request gets `error` with code `not_hello`.
 | `join_room`   | `room_id` (int) | `joined` |
 | `leave_room`  | none | `left` |
 | `cancel_room` | none (host only) | `room_closed` with `reason: "cancelled"` |
-| `chat`        | `text` (string, 1..2000 characters) | the `chat` event, sent to every member including the sender |
-| `media_state` | `video` (bool), `audio` (bool) | `roster` event to the room |
+| `chat`        | `text` (string, 1..2000 characters) | the `chat` event, sent to every member; the sender's copy carries `seq` |
+| `media_state` | `video` (bool), `audio` (bool) | the `roster` event, sent to every member; the requester's copy carries `seq` |
 | `ping`        | none | `pong` |
 
 ### 1.4 Server to client
@@ -149,17 +151,39 @@ path (IPv4 or IPv6).
 ### 2.2 REGISTER and REGISTER_ACK
 
 After `joined`, the client sends `REGISTER` from the UDP socket it will use for media,
-every 200 ms until it receives a matching `REGISTER_ACK`, and then every 5 s as a
-keepalive (this also keeps NAT bindings open). The server binds the source address of a
-valid `REGISTER` to the participant. A later `REGISTER` from a different address moves the
-binding (the token proves ownership).
+every 200 ms until it receives a final `REGISTER_ACK`, and then every 5 s as a
+keepalive (this also keeps NAT bindings open).
+
+The server binds an address only after a return-routability check, as STUN and ICE do,
+so that a token holder cannot point a room's downstream at an address that never asked
+for it:
+
+1. A `REGISTER` from an address that is not the member's current binding (the first
+   one, or one after a NAT rebinding) is answered with a challenge: a `REGISTER_ACK`
+   with the challenge flag set and an 8-byte nonce. The nonce is an HMAC of the token,
+   the address and a 30 s epoch under a key the server picks at startup; it is valid
+   in its epoch and the next one. Nothing is bound yet.
+2. The client sends `REGISTER` again from the same address, with the nonce flag set and
+   the nonce echoed. The server queues the binding change; when it has taken effect it
+   sends the final `REGISTER_ACK` (challenge flag clear). A later move goes through
+   the same two steps.
+3. A `REGISTER` from the bound address is a keepalive and is answered at once with a
+   final `REGISTER_ACK`. A binding that gets no keepalive for 15 s
+   (`-binding-timeout`) is dropped: the server stops sending to it, the roster shows
+   the member as not registered, and the next `REGISTER` starts again at step 1.
+
+A client should answer every challenge it receives, at any time, by echoing its nonce
+from the socket it arrived on. The server ignores `REGISTER`s with unknown tokens, and
+limits `REGISTER`s per member (10/s, burst 20), per source address (20/s, burst 40),
+and for the whole server (`-max-registers-per-sec`, default 2000), and binding changes
+per member (1/s, burst 4).
 
 ```
-REGISTER (28 bytes)
+REGISTER (36 bytes)
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  type = 0x01  |  version = 1  |        reserved (0)           |
+|  type = 0x01  |  version = 2  |     flags     | reserved (0)  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                 transaction id (64 bits, random)              |
 |                                                               |
@@ -169,20 +193,29 @@ REGISTER (28 bytes)
 |                                                               |
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-REGISTER_ACK (18 bytes for IPv4, 30 bytes for IPv6)
+|          echoed nonce (64 bits; zero unless flags bit 0)      |
+|                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  type = 0x02  |  version = 1  | family (4|6)  | reserved (0)  |
+flags: bit 0 = the packet echoes a challenge's nonce; other bits must be 0.
+
+REGISTER_ACK (26 bytes for IPv4, 38 bytes for IPv6)
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  type = 0x02  |  version = 2  | family (4|6)  |     flags     |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                 transaction id (echoed)                       |
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |        observed port          |  observed address (4 or 16    |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  bytes) ...                   |
+|  ... nonce (64 bits; zero in a final ACK)                     |
+flags: bit 0 = challenge (nothing bound yet; echo the nonce); other bits must be 0.
 ```
 
 The ACK reports the address the server saw (like a STUN binding response), which the
-client can log; the server only answers REGISTERs with a valid token.
+client can log. Version 1 packets (28-byte `REGISTER`, no nonce) are rejected, so an
+old client fails to register instead of taking a challenge for a binding. The check
+stops an off-path sender from binding a victim's address; a token holder that can
+spoof its source can still keep an existing binding alive with spoofed keepalives.
 
 ### 2.3 RTP fixed header (RFC 3550)
 
@@ -315,8 +348,9 @@ For each RTP packet the server checks, in order, and drops with a counted reason
 1. the SSRC belongs to a current participant (`unknown_ssrc`);
 2. the source address equals that participant's registered address (`addr_mismatch`);
 3. the room is in relay mode, or within the relay grace period (`p2p_mode`);
-4. the participant's ingress token bucket has room (`rate_limited`, default 8 Mbit/s,
-   256 KiB burst);
+4. the sender's ingress token bucket has room (`ingress_limited`, default 8 Mbit/s,
+   256 KiB burst, counting 28 bytes of IP/UDP header per packet; the bucket belongs to
+   the client, so leaving and rejoining a room does not refill it);
 5. the payload type fits the SSRC's kind (`bad_payload`).
 
 Then video and its parity packets are forwarded to every other registered member, and
@@ -348,13 +382,15 @@ reasons of section 2.8, unless:
 1. the packet-sender SSRC is one of the requester's own SSRCs and the datagram comes
    from its registered address (`unknown_ssrc`, `addr_mismatch`);
 2. the room is relaying (`p2p_mode`) and the request fits the requester's ingress
-   bucket (`rate_limited`);
+   bucket (`nack_limited`);
 3. the media SSRC is the video stream of another member of the same room
    (`bad_payload`).
 
 Packets no longer in the buffer are skipped and counted (`video_rtx_misses_total`).
-The retransmitted bytes count against a second token bucket of the requester (8 Mbit/s,
-256 KiB burst by default), so a receiver cannot make the server send more than that.
+The retransmitted bytes count against a second token bucket of the requester
+(`-max-rtx-kbps`, default 8 Mbit/s, 256 KiB burst; it stays finite when the ingress
+limit is off), so a receiver cannot make the server send more than that; packets over
+it are dropped as `rtx_budget`.
 
 The client requests a missing packet 5 ms after a later one arrives (so that
 reordering and FEC get the first chance), repeats the request every 30 ms, at most
