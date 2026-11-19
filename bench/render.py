@@ -41,6 +41,7 @@ from matplotlib.ticker import FuncFormatter, LogLocator, MultipleLocator, NullFo
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "bench" / "results"
 PLOTS = RESULTS / "plots"
+WRITTEN: list[Path] = []  # the plots this invocation wrote
 
 # --- theme ---------------------------------------------------------------------------
 # Chart chrome and the first four categorical slots of a validated colour-blind-safe
@@ -322,7 +323,9 @@ def grouped_columns(
 def save(fig: Figure, name: str, theme: Theme) -> None:
     PLOTS.mkdir(parents=True, exist_ok=True)
     suffix = "" if theme.name == "light" else "_dark"
-    fig.savefig(PLOTS / f"{name}{suffix}.png", facecolor=theme.surface)
+    path = PLOTS / f"{name}{suffix}.png"
+    fig.savefig(path, facecolor=theme.surface)
+    WRITTEN.append(path)
     plt.close(fig)
 
 
@@ -1141,7 +1144,7 @@ def main() -> None:
     )
     for doc in (ROOT / "README.md", ROOT / "docs" / "BENCHMARKS.md"):
         replace_blocks(doc, blocks)
-    print(f"wrote {len(list(PLOTS.glob('*.png')))} plots and {len(blocks)} tables")
+    print(f"wrote {len(WRITTEN)} plots and {len(blocks)} tables")
     sys.exit(0)
 
 
