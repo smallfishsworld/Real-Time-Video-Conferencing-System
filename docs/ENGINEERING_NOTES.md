@@ -177,18 +177,20 @@ address and port are command-line flags.
 
 ### 2.9 The price of MTU-safe packets: server CPU (B3)
 
-**Measured.** Before the work in section 2.10 (commit 8e80e8d,
-`bench/results/b3_capacity_unbatched.json`), on loopback with Linux's default 64 KiB
-MTU, the original relay passed every size up to 448 participants (rooms of four, 15 fps)
-with its process at 0.37 of a CPU, while v2 passed up to 160 and failed at 192 with its
-server at 0.94 of the CPU it was pinned to. At 16 participants v2 used 0.595
-CPU-seconds per participant-minute against 0.147 for the original.
+**Measured.** In B3 (`bench/results/b3_capacity.json`: loopback with Linux's default
+64 KiB MTU, rooms of four at 15 fps, three repeats), the original relay passed at 448
+participants, the most its port scheme allows, with its process at 0.39 of a CPU. v2
+with one system call per datagram (`-udp-batch=1`, as before section 2.10) passed up to
+160, 176 and 192 participants in the three repeats, with its server at 0.78 of the CPU
+it was pinned to at 160 participants and 0.96 at 208. At 16 participants it used 0.597
+CPU-seconds per participant-minute against 0.158 for the original.
 
 **Why.** v2 sends 18.8 times as many packets for the same media (609 296 against
-32 340 in the same fixed-load run): about 26 fragments and 7 parity packets per frame
+32 340 in each fixed-load run): about 26 fragments and 7 parity packets per frame
 and 75 audio packets per second, against one datagram per frame or audio chunk, and on
-a 64 KiB-MTU loopback the original's 31 kB datagram is never fragmented. The server
-pays one `recvfrom` per incoming packet and one `sendto` per copy.
+a 64 KiB-MTU loopback the original's 31 kB datagram is never fragmented. With
+`-udp-batch=1` the server pays one `recvfrom` per incoming packet and one `sendto` per
+copy.
 
 **Trade-off.** MTU-safe fragments are what make FEC and retransmission (section 2.11)
 possible and keep the original's IP-fragmentation failure modes (section 2.3) away, so
@@ -197,30 +199,34 @@ they stay. Section 2.10 is what profiling then recovered of the CPU price.
 ### 2.10 Profile first: the cost was packets, not system calls (B3)
 
 **Measured.** A CPU profile of the server under the B3 load at 128 participants
-(`bench/profile_b3.sh`, server pinned to one CPU, `bench/results/pprof_v2*.txt`) put
-84 % of its samples in `Syscall6`: 78 % in forwarding (one `sendto` per copy) and 11 %
-in reading (one `recvfrom` per datagram). On one binary, switching the mechanisms on in
-turn:
+(`bench/profile_b3.sh`, server pinned to one CPU, `bench/results/pprof_v2-*.txt`, built
+at 4fe5eca) put 84.6 % of its samples under `Syscall6`, 75.9 % in forwarding (one
+`sendto` per copy) and 13.4 % in reading (one `recvfrom` per datagram). On one binary,
+switching the mechanisms on in turn (one 15 s profile each):
 
 | Server flags | Server CPU (of one core) | Datagrams per read call | Copies per send call | Datagrams per message |
 |---|---|---|---|---|
-| `-udp-batch 1` (as before) | 0.68 | 1.0 | 1.0 | 1.00 |
-| `-udp-gso=false` (`recvmmsg` + `sendmmsg`) | 0.65 | 22.7 | 90.3 | 1.00 |
-| default (`recvmmsg` + `sendmmsg` + UDP GSO) | 0.48 | 19.2 | 81.8 | 10.08 |
+| `-udp-batch=1` (one call per datagram) | 0.698 | 1.0 | 1.0 | 1.0 |
+| `-udp-gso=false` (`recvmmsg` + `sendmmsg`) | 0.645 | 23.0 | 95.0 | 1.0 |
+| default (`recvmmsg` + `sendmmsg` + UDP GSO) | 0.522 | 18.9 | 80.6 | 10.1 |
 
-Cutting system calls 20- to 90-fold saved 4 % of the CPU; cutting the number of packets
-that go through the IP stack 10-fold saved 29 %. In B3 (`bench/results/b3_capacity.json`,
-`b3_capacity_nogso*.json`, `b3_capacity_nobatch*.json`; each ablation swept twice):
+Making 18.6 times fewer system calls saved 7.6 % of the CPU; sending 7.05 times fewer
+messages down the UDP/IP send path saved a further 19.0 %, 25.1 % in all. The B3 sweeps
+(`bench/results/b3_capacity.json`, three repeats per size) agree:
 
-| Server flags | Participants sustained | Server CPU at 160 participants | CPU-seconds per participant-minute (16 participants) |
+| Server flags | Largest size passed, per repeat | Server CPU at 128 participants | CPU-seconds per participant-minute (16 participants) |
 |---|---|---|---|
-| `-udp-batch 1` | 192, 192 | 0.80, 0.76 | 0.552, 0.611 |
-| `-udp-gso=false` | 160, 192 | 0.73, 0.73 | 0.529, 0.520 |
-| default | 256 | 0.58 | 0.464 |
+| `-udp-batch=1` | 160, 176, 192 | 0.680 (0.664-0.685) | 0.597 (0.572-0.613) |
+| `-udp-gso=false` | 192, 192, 192 | 0.628 (0.607-0.657) | 0.565 (0.552-0.570) |
+| default | 304, 304, 272 | 0.508 (0.496-0.535) | 0.503 (0.479-0.503) |
 
-Capacity rose from 192 to 256 participants (from 160 at commit 8e80e8d, before
-batching existed) and the CPU per participant-minute at the fixed load fell by 16-24 %.
-Batching without GSO is within the run-to-run spread of the repeated rows.
+(medians of three runs, range in brackets). Every repeat passed up to 160, 192 and 272
+participants respectively; at 128 participants the CPU fell by 7.6 % with batching and
+by a further 19.1 % with GSO (25.3 % in all), and at 16 participants, where reads are
+small, by 5.3 % and 11.1 % (15.8 %). These are loopback numbers: the namespace's lo
+splits every GSO message into datagrams before the receive path (`gso_max_segs 1`), and
+the receivers' receive path is charged to the server's CPU for every variant
+(`docs/BENCHMARKS.md`, B3).
 
 **Why.** The time under `Syscall6` is the kernel's network stack, not the price of
 entering it: every datagram still gets a route lookup, an skb, the netfilter hooks and,
@@ -244,8 +250,8 @@ is switched off.
 fragments; receivers never depended on the order. GSO only merges what one read
 returned, so it helps less at light load (small reads) than near saturation. On
 loopback the receive work of a datagram runs inside whichever system call on that CPU
-triggers the softirq, so the profile's split between forwarding and mixing is
-approximate (the mixers' share rose from 8 % to 21 % of a smaller total); the
+triggers the softirq, so the profile's split between forwarding, reading and mixing is
+approximate (the mixers' share was 5.4, 10.1 and 8.2 % in the three profiles); the
 whole-process CPU time is the reliable number. The mixer still sends one `sendto` per
 receiver and tick.
 

@@ -336,216 +336,208 @@ interface, the server pinned to CPU 1 and the load generator to CPUs 2 and 3 wit
 frames at 15 fps and 256 kbit/s of audio, in each system's own wire format (v2: RTP
 fragments with FEC k = 4 and audio k = 2 after a REGISTER; original: pickled datagrams,
 byte-identical to CPython's, from one 127.1.x.y address per participant, using the
-original port scheme). Each point: 5 s warm-up, 20 s measurement window, 1 s grace.
-Participant counts are swept upwards until two consecutive sizes fail.
+original port scheme). Each point: a fresh server, 5 s warm-up, 20 s measurement
+window, 1 s grace.
+
+Four systems: v2 as shipped (`recvmmsg`/`sendmmsg` batching plus UDP GSO), the same
+binary with `-udp-gso=false` (batching only) and with `-udp-batch=1` (one system call
+per datagram), and the original relay. The v2 variants are swept over 128-320
+participants in steps of 16; within one repeat a variant stops after two consecutive
+failing sizes. The original is run at 448
+participants only, the most its port scheme allows (UDP port 20000 + 100 x ID); it
+passed every size from 8 to 448 in both v1 sweeps (MTU 65 536 and 1500). Three repeats, interleaved by
+repeat, size and system. A separate fixed-load run of 60 s at 16 participants, three
+times per system, gives CPU time per participant-minute.
+
+**Loopback and UDP GSO.** Loopback has no NIC. A UDP GSO message sent to lo would go up
+the receivers' IP stack whole and be split only at the receiving socket, a receive path
+no real network offers, and on loopback that receive work runs in softirq on the
+sending CPU, so it is charged to the server. The namespace's lo therefore has
+`gso_max_segs 1`: the kernel splits every GSO message into datagrams before lo, as it
+does in front of a NIC without UDP segmentation offload, and every variant's datagrams
+take the same receive path (`bench/lib/gso_split.py` checks this at the start of each
+run; `lo_gso_check.json`). The receivers' receive path is still charged to the server's
+CPU for every variant, because that is where loopback runs it; the share of the server
+core's busy time spent in softirq is recorded per point (`server_core_softirq_share`).
+So B3's CPU numbers are loopback numbers: on a real network the server would pay for
+its own receive path and not for its receivers'. The v1 results were made with lo's
+default (whole GSO messages), which flattered GSO.
 
 **Metrics.** Frame delivery: frames received complete by every other member of the
 sender's room / (frames sent in the window x 3). The load generator does not repair
 frames with FEC, so v2's delivery is a lower bound. Latency: send to complete receipt.
-A size passes with delivery >= 99 % and p99 latency < 100 ms. Server CPU: utime + stime
-of the server process from `/proc/<pid>/stat` over the window, divided by the window
-(1.0 = the one CPU it is pinned to); CPU seconds per participant-minute come from a
-separate 60 s run at 16 participants. Load generator CPU is recorded the same way, to
-show that it was not the bottleneck.
+A size passes with delivery >= 99 % and p99 latency < 100 ms; a repeat's capacity is its
+largest passing size. Server CPU: utime + stime of the server process from
+`/proc/<pid>/stat` over the window, divided by the window (1.0 = the one CPU it is
+pinned to); the load generator's CPU is recorded the same way, to show that it was not
+the bottleneck. The batching counters come from the server's `/metrics` after each
+point: datagrams per read call, video datagrams per send call and per GSO message.
 
-The loopback interface's MTU matters for the original, which sends each frame as one
-31 kB datagram: with Linux's default loopback MTU of 65 536 that datagram is never
-fragmented, so the original sends 26 times fewer packets than v2, which keeps every
-packet under 1232 bytes for real networks. The second set of runs uses MTU 1500, where
-the kernel fragments the original's datagrams as it would on Ethernet.
+The loopback interface's MTU is the Linux default, 65 536. The original sends each
+frame as one 31 kB datagram, which is never fragmented on that MTU; v2 keeps every
+packet under 1232 bytes for real networks, so it sends far more packets (counted
+below). `MTU=1500 bench/run_b3.sh` repeats the experiment at Ethernet MTU, where the
+kernel fragments the original's datagrams; it was not re-run in this round (the v1
+result is in `bench/results/v1/b3_capacity_mtu1500.json`).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b3_delivery_dark.png">
-  <img alt="Line charts of frame delivery against participants, at loopback MTU 65536 and 1500" src="../bench/results/plots/b3_delivery.png" width="800">
+  <img alt="Line charts of frame delivery against participants, loopback MTU 65536" src="../bench/results/plots/b3_delivery.png" width="800">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b3_p99_latency_dark.png">
-  <img alt="Line charts of p99 frame latency against participants, at loopback MTU 65536 and 1500" src="../bench/results/plots/b3_p99_latency.png" width="800">
+  <img alt="Line charts of p99 frame latency against participants, loopback MTU 65536" src="../bench/results/plots/b3_p99_latency.png" width="800">
 </picture>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b3_server_cpu_dark.png">
-  <img alt="Line charts of server CPU utilisation against participants, at loopback MTU 65536 and 1500" src="../bench/results/plots/b3_server_cpu.png" width="800">
+  <img alt="Line charts of server CPU utilisation against participants, loopback MTU 65536" src="../bench/results/plots/b3_server_cpu.png" width="800">
 </picture>
 
 <!-- BEGIN GENERATED b3 -->
-| Loopback MTU | System | Built from | Capacity (participants) | First failing | CPU s per participant-minute (fixed run) | Server CPU in fixed run | Load generator CPU in fixed run |
-|---|---|---|---|---|---|---|---|
-| MTU 65536 (Linux default) | legacy (original) | `25e0e63` | >= 448 (largest size swept: 448) | none | 0.138 (N=16) | 0.037 | 0.14 |
-| MTU 65536 (Linux default) | v2 | `25e0e63` | 256 | 320 | 0.464 (N=16) | 0.124 | 0.22 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | `ff94edb` | 160 | 192 | 0.529 (N=16) | 0.141 | 0.23 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO (repeat) | `ff94edb` | 192 | 224 | 0.520 (N=16) | 0.139 | 0.22 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | `25e0e63` | 192 | 224 | 0.552 (N=16) | 0.147 | 0.27 |
-| MTU 65536 (Linux default) | v2, one system call per datagram (repeat) | `ff94edb` | 192 | 224 | 0.611 (N=16) | 0.163 | 0.30 |
-| MTU 65536 (Linux default) | v2 before batching existed | `8e80e8d` | 160 | 192 | 0.595 (N=16) | 0.159 | 0.26 |
-| MTU 1500 (Ethernet) | legacy (original) | `25e0e63` | >= 448 (largest size swept: 448) | none | 0.190 (N=16) | 0.051 | 0.16 |
-| MTU 1500 (Ethernet) | v2 | `25e0e63` | 256 | 320 | 0.437 (N=16) | 0.116 | 0.22 |
+| Loopback | System | Server flags | Largest size that passed, per repeat | Server CPU-s per participant-minute at 16 participants | Server CPU at 16 participants |
+|---|---|---|---|---|---|
+| MTU 65536 (Linux default) | legacy (original) |  | 448/448/448 (the only size run) | 0.158 (0.152-0.163) | 0.042 (0.041-0.044) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | (defaults) | 304/304/272 (first failing: 320/288/288) | 0.503 (0.479-0.503) | 0.134 (0.128-0.134) |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | `-udp-gso=false` | 192/192/192 (first failing: 208/208/208) | 0.565 (0.552-0.570) | 0.151 (0.147-0.152) |
+| MTU 65536 (Linux default) | v2, one system call per datagram | `-udp-batch=1` | 160/176/192 (first failing: 176/192/208) | 0.597 (0.572-0.613) | 0.159 (0.152-0.163) |
 
-| Loopback MTU | System | Participants | Offered upstream (Mbit/s) | Frame delivery | p50 / p99 latency (ms) | Audio delivery | Server CPU | Load generator CPU | Pass |
-|---|---|---|---|---|---|---|---|---|---|
-| MTU 65536 (Linux default) | legacy (original) | 8 | 32 | 100.00 % | 0.2 / 0.6 | 100.0 % | 0.02 | 0.08 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 16 | 64 | 100.00 % | 0.2 / 1.0 | 100.0 % | 0.04 | 0.14 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 32 | 128 | 99.97 % | 0.2 / 2.3 | 100.0 % | 0.07 | 0.23 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 48 | 191 | 100.00 % | 0.2 / 0.4 | 100.0 % | 0.08 | 0.28 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 64 | 255 | 100.00 % | 0.2 / 0.4 | 100.0 % | 0.09 | 0.31 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 96 | 383 | 100.00 % | 0.2 / 0.4 | 100.0 % | 0.12 | 0.35 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 128 | 510 | 99.86 % | 0.2 / 1.1 | 100.0 % | 0.14 | 0.40 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 160 | 638 | 100.00 % | 0.2 / 0.5 | 100.0 % | 0.16 | 0.44 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 192 | 765 | 100.00 % | 0.2 / 0.5 | 100.0 % | 0.18 | 0.47 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 224 | 893 | 100.00 % | 0.2 / 0.6 | 100.0 % | 0.20 | 0.51 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 256 | 1021 | 100.00 % | 0.2 / 0.6 | 100.0 % | 0.23 | 0.53 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 320 | 1276 | 100.00 % | 0.2 / 0.7 | 100.0 % | 0.28 | 0.64 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 384 | 1531 | 100.00 % | 0.2 / 0.9 | 100.0 % | 0.32 | 0.69 | yes |
-| MTU 65536 (Linux default) | legacy (original) | 448 | 1786 | 100.00 % | 0.2 / 1.1 | 100.0 % | 0.37 | 0.78 | yes |
-| MTU 65536 (Linux default) | v2 | 8 | 32 | 100.00 % | 0.3 / 0.8 | 100.0 % | 0.07 | 0.15 | yes |
-| MTU 65536 (Linux default) | v2 | 16 | 64 | 100.00 % | 0.3 / 0.7 | 100.0 % | 0.13 | 0.22 | yes |
-| MTU 65536 (Linux default) | v2 | 32 | 128 | 100.00 % | 0.3 / 0.7 | 100.0 % | 0.20 | 0.31 | yes |
-| MTU 65536 (Linux default) | v2 | 48 | 191 | 100.00 % | 0.3 / 0.7 | 100.0 % | 0.25 | 0.41 | yes |
-| MTU 65536 (Linux default) | v2 | 64 | 255 | 100.00 % | 0.3 / 0.9 | 100.0 % | 0.32 | 0.49 | yes |
-| MTU 65536 (Linux default) | v2 | 96 | 383 | 100.00 % | 0.3 / 1.4 | 100.0 % | 0.41 | 0.62 | yes |
-| MTU 65536 (Linux default) | v2 | 128 | 510 | 100.00 % | 0.4 / 1.2 | 100.0 % | 0.50 | 0.76 | yes |
-| MTU 65536 (Linux default) | v2 | 160 | 638 | 100.00 % | 0.4 / 4.3 | 100.0 % | 0.58 | 0.86 | yes |
-| MTU 65536 (Linux default) | v2 | 192 | 765 | 100.00 % | 0.4 / 2.3 | 100.0 % | 0.66 | 1.00 | yes |
-| MTU 65536 (Linux default) | v2 | 224 | 893 | 100.00 % | 0.5 / 5.2 | 100.0 % | 0.73 | 1.10 | yes |
-| MTU 65536 (Linux default) | v2 | 256 | 1021 | 100.00 % | 0.8 / 12.1 | 100.0 % | 0.82 | 1.17 | yes |
-| MTU 65536 (Linux default) | v2 | 320 | 1276 | 97.70 % | 5.7 / 29.5 | 98.8 % | 0.97 | 1.33 | no |
-| MTU 65536 (Linux default) | v2 | 384 | 1531 | 81.49 % | 13.3 / 30.3 | 97.1 % | 0.99 | 1.42 | no |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 128 | 510 | 99.98 % | 0.4 / 15.0 | 100.0 % | 0.61 | 0.85 | yes |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 160 | 638 | 99.53 % | 0.5 / 34.6 | 99.2 % | 0.73 | 1.00 | yes |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 192 | 765 | 98.39 % | 0.8 / 40.2 | 92.0 % | 0.86 | 1.17 | no |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 224 | 893 | 97.22 % | 10.9 / 35.5 | 61.9 % | 0.98 | 1.33 | no |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO (repeat) | 160 | 638 | 99.29 % | 0.5 / 38.0 | 99.2 % | 0.73 | 1.03 | yes |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO (repeat) | 192 | 765 | 99.72 % | 0.7 / 25.7 | 97.2 % | 0.86 | 1.21 | yes |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO (repeat) | 224 | 893 | 98.20 % | 9.3 / 30.8 | 68.9 % | 0.97 | 1.32 | no |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 96 | 383 | 100.00 % | 0.5 / 1.8 | 100.0 % | 0.59 | 0.93 | yes |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 128 | 510 | 100.00 % | 0.6 / 5.5 | 100.0 % | 0.69 | 1.10 | yes |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 160 | 638 | 99.93 % | 1.1 / 23.9 | 99.9 % | 0.80 | 1.23 | yes |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 192 | 765 | 99.56 % | 0.9 / 30.1 | 96.9 % | 0.91 | 1.35 | yes |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 224 | 893 | 86.42 % | 23.9 / 36.2 | 77.5 % | 0.99 | 1.44 | no |
-| MTU 65536 (Linux default) | v2, one system call per datagram (repeat) | 160 | 638 | 99.70 % | 0.7 / 20.1 | 99.9 % | 0.76 | 1.21 | yes |
-| MTU 65536 (Linux default) | v2, one system call per datagram (repeat) | 192 | 765 | 99.07 % | 0.7 / 33.8 | 98.0 % | 0.86 | 1.39 | yes |
-| MTU 65536 (Linux default) | v2, one system call per datagram (repeat) | 224 | 893 | 93.10 % | 18.8 / 37.2 | 89.7 % | 0.98 | 1.45 | no |
-| MTU 65536 (Linux default) | v2 before batching existed | 8 | 32 | 100.00 % | 0.4 / 1.5 | 100.0 % | 0.09 | 0.16 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 16 | 64 | 100.00 % | 0.4 / 0.9 | 100.0 % | 0.16 | 0.26 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 32 | 128 | 100.00 % | 0.4 / 1.1 | 100.0 % | 0.26 | 0.41 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 48 | 191 | 100.00 % | 0.4 / 1.1 | 100.0 % | 0.35 | 0.57 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 64 | 255 | 100.00 % | 0.4 / 1.3 | 100.0 % | 0.43 | 0.70 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 96 | 383 | 100.00 % | 0.5 / 14.2 | 99.9 % | 0.59 | 0.95 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 128 | 510 | 100.00 % | 0.8 / 19.8 | 99.9 % | 0.67 | 1.10 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 160 | 638 | 99.38 % | 8.2 / 36.2 | 97.2 % | 0.79 | 1.23 | yes |
-| MTU 65536 (Linux default) | v2 before batching existed | 192 | 765 | 96.89 % | 15.4 / 37.8 | 86.1 % | 0.94 | 1.37 | no |
-| MTU 65536 (Linux default) | v2 before batching existed | 224 | 893 | 87.41 % | 23.2 / 41.9 | 75.0 % | 0.98 | 1.43 | no |
-| MTU 1500 (Ethernet) | legacy (original) | 8 | 32 | 100.00 % | 0.3 / 0.8 | 100.0 % | 0.03 | 0.09 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 16 | 64 | 100.00 % | 0.3 / 0.6 | 100.0 % | 0.05 | 0.15 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 32 | 128 | 100.00 % | 0.3 / 0.6 | 100.0 % | 0.09 | 0.26 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 48 | 191 | 100.00 % | 0.3 / 0.7 | 100.0 % | 0.13 | 0.34 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 64 | 255 | 100.00 % | 0.3 / 0.7 | 100.0 % | 0.16 | 0.39 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 96 | 383 | 100.00 % | 0.3 / 1.0 | 100.0 % | 0.24 | 0.53 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 128 | 510 | 100.00 % | 0.3 / 0.8 | 100.0 % | 0.26 | 0.53 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 160 | 638 | 100.00 % | 0.3 / 0.8 | 100.0 % | 0.30 | 0.60 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 192 | 765 | 100.00 % | 0.3 / 1.0 | 100.0 % | 0.35 | 0.68 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 224 | 893 | 99.99 % | 0.3 / 1.3 | 100.0 % | 0.41 | 0.74 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 256 | 1021 | 100.00 % | 0.3 / 1.7 | 100.0 % | 0.45 | 0.79 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 320 | 1276 | 99.99 % | 0.3 / 1.3 | 100.0 % | 0.55 | 0.95 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 384 | 1531 | 99.99 % | 0.5 / 8.4 | 99.9 % | 0.62 | 0.96 | yes |
-| MTU 1500 (Ethernet) | legacy (original) | 448 | 1786 | 99.85 % | 1.3 / 14.5 | 99.9 % | 0.70 | 1.03 | yes |
-| MTU 1500 (Ethernet) | v2 | 8 | 32 | 100.00 % | 0.3 / 0.9 | 100.0 % | 0.07 | 0.14 | yes |
-| MTU 1500 (Ethernet) | v2 | 16 | 64 | 100.00 % | 0.3 / 0.6 | 100.0 % | 0.12 | 0.21 | yes |
-| MTU 1500 (Ethernet) | v2 | 32 | 128 | 100.00 % | 0.3 / 0.6 | 100.0 % | 0.19 | 0.30 | yes |
-| MTU 1500 (Ethernet) | v2 | 48 | 191 | 100.00 % | 0.3 / 0.8 | 100.0 % | 0.25 | 0.41 | yes |
-| MTU 1500 (Ethernet) | v2 | 64 | 255 | 100.00 % | 0.3 / 1.0 | 100.0 % | 0.31 | 0.48 | yes |
-| MTU 1500 (Ethernet) | v2 | 96 | 383 | 100.00 % | 0.3 / 1.0 | 100.0 % | 0.40 | 0.61 | yes |
-| MTU 1500 (Ethernet) | v2 | 128 | 510 | 100.00 % | 0.3 / 1.7 | 100.0 % | 0.49 | 0.74 | yes |
-| MTU 1500 (Ethernet) | v2 | 160 | 638 | 100.00 % | 0.4 / 1.2 | 100.0 % | 0.57 | 0.86 | yes |
-| MTU 1500 (Ethernet) | v2 | 192 | 765 | 99.92 % | 0.4 / 2.4 | 100.0 % | 0.63 | 0.97 | yes |
-| MTU 1500 (Ethernet) | v2 | 224 | 893 | 100.00 % | 0.6 / 7.7 | 100.0 % | 0.73 | 1.06 | yes |
-| MTU 1500 (Ethernet) | v2 | 256 | 1021 | 99.91 % | 0.7 / 8.7 | 100.0 % | 0.81 | 1.17 | yes |
-| MTU 1500 (Ethernet) | v2 | 320 | 1276 | 91.50 % | 11.0 / 40.1 | 100.3 % | 0.96 | 1.35 | no |
-| MTU 1500 (Ethernet) | v2 | 384 | 1531 | 93.35 % | 8.1 / 33.7 | 93.4 % | 0.98 | 1.47 | no |
+| Loopback | System | Participants | Runs passed | Frame delivery, median (lowest) | p99 latency, median (highest) | Server CPU | Softirq share of the server's core | Datagrams per read call | per send call | per GSO message |
+|---|---|---|---|---|---|---|---|---|---|---|
+| MTU 65536 (Linux default) | legacy (original) | 448 | 3/3 | 100.00 % (100.00 %) | 1.7 (7.0) ms | 0.39 (0.38-0.40) | 19 % (16-21) | n/a | n/a | n/a |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 128 | 3/3 | 100.00 % (100.00 %) | 2.2 (3.2) ms | 0.51 (0.50-0.53) | 20 % (20-21) | 19.4 (18.9-20.1) | 83.9 (81.6-89.2) | 10.1 (10.1-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 144 | 3/3 | 100.00 % (100.00 %) | 2.2 (3.4) ms | 0.54 (0.54-0.55) | 21 % (20-22) | 20.5 (20.5-20.9) | 85.9 (85.7-87.5) | 10.2 (10.1-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 160 | 3/3 | 100.00 % (100.00 %) | 2.8 (8.6) ms | 0.59 (0.57-0.61) | 20 % (17-21) | 20.7 (16.6-21.4) | 86.3 (71.9-91.1) | 10.1 (9.6-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 176 | 3/3 | 100.00 % (99.98 %) | 5.8 (6.5) ms | 0.62 | 21 % (20-21) | 21.4 (21.3-21.9) | 88.7 (88.6-92.6) | 10.2 (10.2-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 192 | 3/3 | 99.98 % (99.90 %) | 6.7 (29.2) ms | 0.67 (0.67-0.69) | 20 % (16-21) | 22.0 (18.3-22.2) | 88.0 (76.4-91.4) | 10.3 (9.8-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 208 | 3/3 | 100.00 % (99.95 %) | 14.8 (25.1) ms | 0.71 (0.70-0.73) | 20 % (18-20) | 24.0 (19.0-25.0) | 94.7 (79.3-107.2) | 10.4 (10.0-10.6) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 224 | 3/3 | 100.00 % (100.00 %) | 11.4 (17.6) ms | 0.74 (0.73-0.75) | 19 % (19-21) | 26.1 (25.1-26.1) | 107.7 (103.7-109.3) | 10.6 (10.6-10.7) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 240 | 3/3 | 99.81 % (99.73 %) | 17.7 (18.7) ms | 0.79 (0.78-0.80) | 18 % (18-19) | 26.2 (24.3-30.6) | 100.2 (98.3-123.8) | 10.6 (10.5-10.7) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 256 | 3/3 | 99.64 % (99.57 %) | 20.7 (21.8) ms | 0.84 (0.82-0.85) | 19 % (14-19) | 29.6 (28.3-30.1) | 111.2 (106.2-116.5) | 10.7 (10.7-10.9) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 272 | 3/3 | 99.57 % (99.28 %) | 20.7 (22.0) ms | 0.87 (0.86-0.87) | 18 % (15-18) | 38.5 (30.4-43.8) | 130.4 (113.1-152.9) | 10.9 (10.8-10.9) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 288 | 1/3 | 98.83 % (96.89 %) | 24.1 (35.2) ms | 0.90 (0.88-0.90) | 17 % (16-18) | 45.1 (39.5-47.1) | 151.2 (136.7-156.9) | 10.9 (10.8-10.9) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 304 | 2/3 | 99.07 % (97.70 %) | 35.0 (35.6) ms | 0.92 (0.92-0.94) | 18 % (16-19) | 46.4 (41.9-49.4) | 147.3 (137.6-150.4) | 10.9 |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 320 | 0/2 | 98.84 % (98.69 %) | 48.2 (60.6) ms | 0.96 | 18 % (18-19) | 50.8 (47.5-54.1) | 152.5 (146.1-159.0) | 11.0 (10.9-11.0) |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 128 | 3/3 | 100.00 % (100.00 %) | 6.4 (16.3) ms | 0.63 (0.61-0.66) | 25 % (24-25) | 22.0 (22.0-22.5) | 90.9 (90.3-91.2) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 144 | 3/3 | 100.00 % (100.00 %) | 6.1 (12.9) ms | 0.67 (0.66-0.68) | 25 % | 24.1 (22.4-24.5) | 95.1 (90.1-96.4) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 160 | 3/3 | 100.00 % (99.43 %) | 9.9 (29.9) ms | 0.73 (0.73-0.76) | 26 % (24-26) | 25.2 (25.0-25.8) | 97.9 (97.9-98.6) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 176 | 3/3 | 99.97 % (99.95 %) | 17.1 (17.6) ms | 0.81 (0.79-0.82) | 23 % (23-24) | 27.7 (26.6-32.6) | 101.9 (99.1-118.8) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 192 | 3/3 | 99.49 % (99.39 %) | 28.5 (30.8) ms | 0.86 (0.86-0.92) | 24 % | 33.1 (29.5-49.6) | 113.0 (104.8-160.0) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 208 | 0/3 | 98.93 % (97.67 %) | 32.6 (35.3) ms | 0.95 | 23 % (21-23) | 51.2 (48.7-51.4) | 150.4 (149.9-153.6) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 224 | 0/3 | 98.08 % (97.91 %) | 36.2 (43.6) ms | 0.98 (0.95-0.98) | 23 % (21-25) | 60.5 (43.3-60.7) | 165.7 (135.6-165.9) | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 128 | 3/3 | 100.00 % (99.90 %) | 6.3 (26.6) ms | 0.68 (0.66-0.69) | 27 % (27-28) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 144 | 3/3 | 100.00 % (99.97 %) | 13.3 (15.0) ms | 0.73 (0.72-0.75) | 27 % (26-28) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 160 | 3/3 | 100.00 % (99.93 %) | 8.8 (22.9) ms | 0.78 (0.77-0.79) | 25 % (25-27) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 176 | 2/3 | 99.07 % (98.55 %) | 38.2 (42.3) ms | 0.82 (0.82-0.85) | 25 % | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 192 | 1/3 | 98.53 % (97.07 %) | 36.5 (38.3) ms | 0.89 (0.88-0.91) | 24 % (23-24) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 208 | 0/2 | 97.58 % (97.38 %) | 34.0 (34.1) ms | 0.96 | 24 % (22-26) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 224 | 0/1 | 91.32 % (91.32 %) | 36.1 (36.1) ms | 0.99 | 22 % | 1.0 | 1.0 | 1.0 |
 <!-- END GENERATED b3 -->
 
-**Reading the results (loopback MTU 65 536).**
+**Reading the results.** Numbers from `b3_capacity.json` (run 20261119T110241Z-2243,
+built at 472e0e5); CPU figures are medians of three runs with the range in brackets.
 
-- The original relay passed every size up to 448 participants, the most its port
-  scheme allows in one sweep (UDP port 20000 + 100 x ID), with its server process at
-  0.37 of a CPU. v2 passed up to 256 participants (100.00 % delivery, p99 12.1 ms) and
-  failed at 320 (97.70 %, p99 29.5 ms) with its server at 0.97 of the CPU it is pinned
-  to: v2 is CPU-bound, the original was not.
-- At the fixed load of 16 participants v2 used 0.464 CPU-seconds per participant-minute
-  against 0.138 for the original. The reason is packet count, not bytes: in the same
-  66 s run the load generator sent 609 296 packets for the 16 v2 participants and
-  32 340 for the 16 original ones (`packets_sent` in the fixed-run JSON). v2 sends every
-  frame as about 26 MTU-sized fragments plus 7 parity packets, and audio as 50 frames
-  plus 25 parity packets per second, and the server forwards each video packet to three
-  receivers; on a 64 KiB-MTU loopback the original's 31 kB datagram crosses the kernel
-  once.
-- System-call batching and UDP GSO, compared on one binary with server flags (the rows
-  "v2, ..."; both ablations were swept twice). With one system call per datagram
-  (`-udp-batch 1`) v2 passed up to 192 participants in both sweeps, its server at 0.80
-  and 0.76 of the CPU at 160 participants. With `recvmmsg`/`sendmmsg` but no GSO
-  (`-udp-gso=false`) it passed up to 160 and 192, at 0.73 in both sweeps. With GSO, the
-  default, it passed up to 256, at 0.58. At 16 participants the default used 0.464
-  CPU-seconds per participant-minute, against 0.552 and 0.611 with `-udp-batch 1` and
-  0.529 and 0.520 without GSO. v2 at commit 8e80e8d, before batching existed, behaved
-  like the one-call-per-datagram rows (160 participants; 0.79 at 160; 0.595). Batching
-  alone saved a few percent, within the spread of the repeated sweeps; GSO, which cuts
-  the number of packets the IP stack handles rather than the number of system calls,
-  is what raised the capacity (the profiles below show why).
-- Run-to-run variation is visible in the original, whose code did not change: 0.147
-  CPU-seconds per participant-minute in the run at commit 8e80e8d and 0.138 in this one.
-  Differences of that size (about 7 %) are noise on this shared machine.
+- v2 is CPU-bound and the original is not. Every repeat of v2 as shipped passed up to
+  272 participants (delivery 99.57 %, lowest run 99.28 %; p99 20.7 ms); its repeats'
+  largest passing sizes were 304, 304 and 272, and they failed at 320, 288 and 288, with
+  the server process at 0.90 (288), 0.92 (304) and 0.96 (320) of the CPU it is pinned
+  to. Every failing point failed on delivery; no point reached the latency limit
+  (highest p99 60.6 ms). The original passed at 448 participants in all three repeats
+  (100 % delivery, p99 1.7 ms) with its server at 0.39 (0.38-0.40) of a CPU. 448 is the
+  most its port scheme allows (UDP port 20000 + 100 x ID) and the only size it was run
+  at in this round, so its capacity here is "at least 448".
+- The difference is packet count. In each 66 s fixed-load run with 16 participants the
+  load generator sent 609 296 packets for v2 and 32 340 for the original (18.8 times as
+  many; `packets_sent` of the fixed runs). v2 sends each frame as about 26 fragments of
+  at most 1200 bytes plus 7 parity packets, and audio as 50 frames plus 25 parity
+  packets a second, so that no packet is IP-fragmented on a real network; the original
+  sends one datagram per frame and per 1024-sample audio chunk, and on loopback's
+  64 KiB MTU its 31 kB frame datagram crosses the kernel once. At that load v2's server
+  used 0.503 (0.479-0.503) CPU-seconds per participant-minute and the original's 0.158
+  (0.152-0.163): 3.2 times as much for v2.
+- System-call batching and UDP GSO, compared on one binary with server flags. At 128
+  participants, where every variant passed every repeat, the server used 0.680
+  (0.664-0.685) of its CPU with one system call per datagram, 0.628 (0.607-0.657) with
+  `recvmmsg`/`sendmmsg` (7.6 % less) and 0.508 (0.496-0.535) with GSO as well (19.1 %
+  less than batching alone, 25.3 % less than one call per datagram). At the fixed load
+  of 16 participants the three used 0.597, 0.565 and 0.503 CPU-seconds per
+  participant-minute (5.3 % and 11.1 % less; 15.8 % in all). Capacity follows: every
+  repeat passed up to 160, 192 and 272 participants respectively (largest passing sizes
+  per repeat 160/176/192, 192/192/192 and 304/304/272). The profiles below show where
+  the saving comes from.
+- These are loopback numbers. The receivers' receive path runs in softirq on the
+  sending CPU and is charged to the server: 17-27 % of the server core's busy time was
+  softirq at the sweep points (medians per point, `server_core_softirq_share`). On a
+  real network the server would pay for its own receive path instead, and for none of
+  its receivers'.
+- The ranges are the spread of three runs. The original's code did not change between
+  its runs, yet its fixed-load CPU ranged over 0.152-0.163 CPU-seconds per
+  participant-minute, 7 %; differences of that size are noise on this shared machine.
 
-**Reading the results (loopback MTU 1500).**
-
-- v2 is unaffected, as its packets are all smaller than 1500 bytes: it passed up to 256
-  participants and failed at 320 again, at 0.437 CPU-seconds per participant-minute.
-- The original's frame datagrams are now split into 21 or 22 IP fragments each. Its server
-  process used 0.70 of a CPU at 448 participants (0.37 at MTU 65 536) and 0.190
-  CPU-seconds per participant-minute (0.138); it still passed every size up to 448, with
-  p99 latency rising to 14.5 ms at 448.
-- Where the fragmentation and reassembly time is charged: IP fragmentation runs in the
-  sending process's system call. On loopback the receive path of a packet, IP reassembly
-  included, normally runs in the softirq that the sender's system call raises on the
-  sender's CPU (or in that CPU's `ksoftirqd` thread when softirq work piles up, charged
-  to neither process). So the original's server is charged for fragmenting the three
-  copies it sends of each frame and for the receivers' reassembly of them, but not for
-  reassembling the frame it received, which is charged to the load generator. A real
-  server would reassemble its incoming datagrams itself, in softirq on the CPU that
-  handles the NIC's interrupts (usually not charged to the process either), and would
-  not pay for its receivers' reassembly. Read the MTU 1500 CPU figures as the cost of
-  the traffic the server sends, not as what a deployment would measure.
+**Ethernet MTU (v1 only).** `MTU=1500` was not re-run in this round. In the v1 sweep
+(`bench/results/v1/b3_capacity_mtu1500.json`: one run per point, lo passing whole GSO
+messages, so its v2 numbers are not comparable with the ones above) the original's
+frame datagrams were split into 21 or 22 IP fragments and it still passed every size up
+to 448: 99.85 % delivery and p99 14.5 ms at 448, with its server at 0.70 of a CPU (0.37
+at MTU 65 536 in the same set). On loopback, IP fragmentation runs in the sending
+process's system call and reassembly in the softirq on the sender's CPU, so that 0.70
+covers fragmenting the three copies of each frame the server sends and its receivers'
+reassembly of them, but not the reassembly of the frames it receives (charged to the
+load generator). A real server would pay for the reassembly of its own incoming frames
+and not for its receivers'.
 
 ### Where the v2 server's CPU goes
 
-CPU profiles of the server under the B3 load at 128 participants (`bench/profile_b3.sh`,
-15 s of `/debug/pprof/profile`, server pinned to one CPU), summarised by
-`bench/analyze_pprof.py`. The code-path columns are cumulative shares of the profiled
-CPU time (paths nest, so they do not add up); the system-call columns come from the
-server's own counters over the whole run. The profiles' samples cover less time than
-the process's CPU counters (5.58 s of samples in 15.16 s against a measured 0.48 of a
-CPU for the default build), so the shares are of profiled time.
+CPU profiles of the three v2 variants under the B3 load at 128 participants
+(`bench/profile_b3.sh`: the same namespace setup as B3, lo with `gso_max_segs 1`, the
+server pinned to CPU 1 and the load generator to CPUs 2-3; 15 s of
+`/debug/pprof/profile` per variant, all three in one hold of the lock), summarised by
+`bench/analyze_pprof.py`. Each profile has a provenance file next to it
+(`pprof_<variant>.json`: run ID, command, server flags, build record with binary
+hashes, the load generator's result and the server's counters). The code-path columns
+are cumulative shares of the profiled CPU time (paths nest, so they do not add up); the
+system-call columns come from the server's own counters over the whole run. A profile
+is a single 15 s window per variant, so read its CPU column next to the B3 sweeps at the
+same size, which have three repeats.
 
 <!-- BEGIN GENERATED b3_profile -->
-| Server | Server CPU | p99 latency | Forwarding | Reading | Audio mixers | of which mixer sends | All system calls | Datagrams per read call | Copies per send call | Datagrams per message | File |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| before batching (commit ef8982e) | 0.69 | 4.2 ms | 77.7 % | 10.9 % | 5.5 % | 3.6 % | 87.6 % | n/a | n/a | n/a | `pprof_v2.txt` |
-| `-udp-batch 1` | 0.68 | 5.6 ms | 74.7 % | 12.2 % | 7.7 % | 4.9 % | 86.6 % | 1.0 | 1.0 | 1.00 | `pprof_v2-unbatched.txt` |
-| `-udp-gso=false` | 0.65 | 6.4 ms | 79.1 % | 8.8 % | 6.7 % | 5.1 % | 92.5 % | 22.7 | 90.3 | 1.00 | `pprof_v2-sendmmsg.txt` |
-| default (batching + GSO) | 0.48 | 1.2 ms | 50.0 % | 19.4 % | 21.3 % | 13.4 % | 80.5 % | 19.2 | 81.8 | 10.08 | `pprof_v2-gso.txt` |
+| Server | Server CPU | p99 latency | Forwarding | Reading | Audio mixers | of which mixer sends | All system calls | Datagrams per read call | Copies per send call | Datagrams per message | Built from | Files |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `-udp-batch=1` | 0.698 | 4.9 ms | 75.9 % | 13.4 % | 5.4 % | 3.1 % | 84.6 % | 1.0 | 1.0 | 1.0 | `4fe5eca` | `pprof_v2-unbatched.{json,txt,pb.gz}` |
+| `-udp-gso=false` | 0.645 | 7.2 ms | 70.8 % | 9.1 % | 10.1 % | 5.8 % | 84.7 % | 23.0 | 95.0 | 1.0 | `4fe5eca` | `pprof_v2-sendmmsg.{json,txt,pb.gz}` |
+| defaults (batching + GSO) | 0.522 | 3.0 ms | 58.6 % | 19.9 % | 8.2 % | 4.0 % | 82.1 % | 18.9 | 80.6 | 10.1 | `4fe5eca` | `pprof_v2-gso.{json,txt,pb.gz}` |
 <!-- END GENERATED b3_profile -->
 
-- Before batching (and with `-udp-batch 1`) most of the time is under `Syscall6` in the
-  forwarding path: one `sendto` per copy.
-- `recvmmsg`/`sendmmsg` cut the read calls 23-fold and the send calls 90-fold but
-  saved little CPU (0.65 against 0.68): the time under `Syscall6` is the kernel's
-  per-packet network stack work, which batching does not reduce.
-- UDP GSO sends 10 datagrams per message on average, so the IP stack runs once per
-  message rather than per datagram: the server's CPU fell to 0.48 and forwarding's share
-  of the samples from 75 % to 50 %. The audio mixers' share rose (8 % to 21 %) because on
-  loopback a datagram's receive work is charged to whichever system call on that CPU
-  runs the softirq, so the split between forwarding and mixing is approximate; the
-  whole-process CPU is the reliable number.
+- With one system call per datagram (`-udp-batch=1`), 84.6 % of the profiled time is
+  under `Syscall6`, and the forwarding path (one `sendto` per copy) has 75.9 %.
+- `recvmmsg`/`sendmmsg` read 23.0 datagrams per call and send 95.0 per call, so the
+  server made 18.6 times fewer system calls (6 351 179 against 341 580 over each
+  server's run, counting one per audio and control datagram, which are still sent one
+  at a time). Its CPU fell only from 0.698 to 0.645 of a core, 7.6 %, and the time under
+  `Syscall6` stayed at 84.7 %: it is the kernel's per-packet work below the system call,
+  which batching does not reduce. The B3 sweeps at 128 participants agree: medians
+  0.680 and 0.628 (ranges 0.664-0.685 and 0.607-0.657, three repeats each), also 7.6 %.
+- With GSO as well, each sender's consecutive datagrams for one receiver go down the
+  UDP/IP send path as one message (10.1 datagrams per message): 7.05 times fewer
+  messages (4 652 553 against 659 489). The server's CPU fell to 0.522, 19.0 % below
+  `sendmmsg` alone and 25.1 % below one call per datagram; the sweeps give 0.508
+  (0.496-0.535), 19.1 % and 25.3 %. Of the 25.1 % of the one-call-per-datagram CPU that
+  batching and GSO save together in the profiles, 7.6 points come from batching and 17.5
+  from GSO.
+- What that saving is: lo here splits every GSO message into datagrams before the
+  receive path, so every datagram is still received one by one (and on loopback that
+  receive work is charged to the server); GSO saves the per-datagram work of the send
+  path above the device (UDP and IP headers, routing, netfilter), and segmentation
+  happens once per message. The v1 profiles, made with lo passing whole GSO messages,
+  gave GSO 0.48 of a core, partly because the receivers then skipped their per-datagram
+  receive work.
+- The server core's busy time (`server_core` in the provenance files) was 0.69, 0.61
+  and 0.84 of the core for the three profiles, against the server process's 0.70, 0.65
+  and 0.52. During the GSO profile something else also ran on CPU 1: the gap is far
+  more than the core's softirq time (1.38 s of 14.26 s busy), and the B3 points at 128
+  participants show no such gap (core 0.46-0.50, process 0.50-0.54). The process's own
+  CPU time is the measure used here.
 
 ## Go microbenchmarks
 
@@ -590,3 +582,11 @@ buffer adds 146 ns per packet (1 155 ns).
 | `udpio.BenchmarkSendFrame/sendmmsg` | 27516.0 | 1064 | 0 | 0 |
 | `udpio.BenchmarkSendFrame/sendmmsg+gso` | 7546.0 | 3880 | 0 | 0 |
 <!-- END GENERATED micro -->
+## Earlier result sets (v1)
+
+`bench/results/v1/` keeps the first results of every benchmark, made before this round
+of fixes (B1 and B2 with one run per point; B3, the profiles and the microbenchmarks
+with lo passing whole UDP GSO messages and one sweep per variant; the "after" runs of
+the churn and jitter measurements at earlier commits). The B3 results at MTU 1500
+(`b3_capacity_mtu1500.json`) exist only in that set. Apart from B3's paragraph on
+Ethernet MTU, which says so, nothing above is taken from that set.

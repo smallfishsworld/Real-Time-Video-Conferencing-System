@@ -70,28 +70,28 @@ server (mix-minus) and sends each receiver one stream.
 one CPU, on loopback:
 
 <!-- BEGIN GENERATED summary_b3 -->
-| Loopback MTU | System | Participants sustained (largest size swept that passed) | Server CPU-seconds per participant-minute (16 participants) |
-|---|---|---|---|
-| MTU 65536 (Linux default) | legacy (original) | 448 (every size swept passed) | 0.138 |
-| MTU 65536 (Linux default) | v2 | 256 (fails at 320) | 0.464 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 192 (fails at 224) | 0.552 |
-| MTU 1500 (Ethernet) | legacy (original) | 448 (every size swept passed) | 0.190 |
-| MTU 1500 (Ethernet) | v2 | 256 (fails at 320) | 0.437 |
+| Loopback | System | Largest size that passed, per repeat | Server CPU at 128 participants | Server CPU-s per participant-minute (16 participants) |
+|---|---|---|---|---|
+| MTU 65536 (Linux default) | legacy (original) | 448/448/448 (the only size run) | not run | 0.158 (0.152-0.163) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 304/304/272 (first failing: 320/288/288) | 0.51 (0.50-0.53) | 0.503 (0.479-0.503) |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 192/192/192 (first failing: 208/208/208) | 0.63 (0.61-0.66) | 0.565 (0.552-0.570) |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 160/176/192 (first failing: 176/192/208) | 0.68 (0.66-0.69) | 0.597 (0.572-0.613) |
 <!-- END GENERATED summary_b3 -->
 
 This comparison does not favour v2: for the same media it sends about 19 times as many
 packets as the original (26 MTU-sized fragments and 7 parity packets per frame and 75
 audio packets per second, against one datagram per frame or audio chunk, because
 loopback's 64 KiB MTU never fragments the original's 31 kB datagrams), and the kernel's
-per-packet work is what costs CPU. A CPU profile at 128 participants showed that
-cutting system calls alone (`recvmmsg`/`sendmmsg`, 20-90 datagrams per call) saved 4 %
-of the server's CPU, while sending each sender's fragments for one receiver as UDP GSO
-messages cut the packets going through the IP stack 10-fold and saved 29 %. On the same
-binary that raised capacity from 192 to 256 participants (the "one system call per
-datagram" row). With a 1500-byte loopback MTU the original's datagrams are fragmented
-as well and its CPU per participant-minute rises from 0.138 to 0.190 s, still below
-v2's; [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b3-relay-capacity) explains where the
-kernel charges fragmentation and reassembly on loopback, and the profiles. v2 trades
+per-packet work is what costs CPU. The original passed at 448 participants, the only
+size it was run at; v2 is CPU-bound well before that. On one v2 binary, at 128
+participants, `recvmmsg`/`sendmmsg` batching (18.6 times fewer system calls in the CPU
+profiles) cut the server's CPU by 7.6 %, and sending each sender's datagrams for one
+receiver as UDP GSO messages (7 times fewer messages down the send path) by a further
+19.1 %; the size that every repeat passed rose from 160 to 272 participants. These are
+loopback numbers, in which the receivers' receive path is charged to the server;
+[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b3-relay-capacity) explains the setup (lo
+splits each GSO message before the receive path, as in front of a NIC without
+segmentation offload), the profiles and an earlier result at Ethernet MTU. v2 trades
 server CPU for loss resilience and MTU safety.
 
 ## Architecture
