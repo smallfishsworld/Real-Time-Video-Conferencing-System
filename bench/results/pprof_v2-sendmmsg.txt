@@ -1,0 +1,51 @@
+run 20261119T114714Z-23555: sudo PARTICIPANTS=128 SECONDS_PROFILED=15 GSO_MAX_SEGS=1 PROFILES="v2-unbatched=-udp-batch=1 v2-sendmmsg=-udp-gso=false v2-gso=" SERVER_CPU=1 LOADGEN_CPUS=2,3 MAX_MBPS=12000 MAX_PPS=1500000 bench/profile_b3.sh
+server flags: -udp-gso=false
+built from 4fe5eca (uncommitted: none) at 2026-11-19T11:47:15Z
+toolchain: go version go1.24.7 linux/amd64
+binaries (SHA-256): confserver 0549a14f96560845, loadgen f86ef42a67f3f21e
+load: 128 participants (v2), delivery 1.0000, p99 7.2 ms, server CPU 0.645 (core 1: busy 0.605, softirq 2.81 s of 10.28 s)
+File: confserver
+Build ID: 3a5548ca70db4f475c100884189bb8968b94e96f
+Type: cpu
+Time: 2026-11-19 12:11:30 UTC
+Duration: 15.17s, Total samples = 8.45s (55.69%)
+Showing nodes accounting for 7.78s, 92.07% of 8.45s total
+
+share of profiled CPU time by code path (cumulative):
+  receive loop (read + route + forward)       85.2 %
+    forwarding video (sending the copies)     70.8 %
+    reading packets                            9.1 %
+  audio mixers (20 ms ticks)                  10.1 %
+    mixed-stream sends                         5.8 %
+  all system calls (Syscall6)                 84.7 %
+  Go scheduler and netpoller                   4.7 %
+  garbage collector                            0.0 %
+
+server counters for the whole run:
+  batching True, GSO False (the server's udp_batching_enabled and udp_gso_enabled gauges)
+  datagrams accepted 1697650, read system calls 73837 (23.0 datagrams per call)
+  video datagrams sent 4428762, send system calls 46633 (95.0 per call)
+  messages 4428762 (1.00 datagrams per message)
+
+top functions by own time:
+      flat  flat%   sum%        cum   cum%
+     7.16s 84.73% 84.73%      7.16s 84.73%  internal/runtime/syscall.Syscall6
+     0.10s  1.18% 85.92%      0.10s  1.18%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Stats).in (inline)
+     0.05s  0.59% 86.51%      0.40s  4.73%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).handleRTP
+     0.05s  0.59% 87.10%      0.09s  1.07%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).push
+     0.05s  0.59% 87.69%      0.77s  9.11%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).mix
+     0.04s  0.47% 88.17%      5.98s 70.77%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).flush
+     0.04s  0.47% 88.64%      0.55s  6.51%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).send
+     0.04s  0.47% 89.11%      5.88s 69.59%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio.(*Writer).flushMmsg
+     0.03s  0.36% 89.47%      0.08s  0.95%  github.com/prometheus/client_golang/prometheus.(*histogram).Observe
+     0.03s  0.36% 89.82%      0.16s  1.89%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).forwardVideo
+     0.03s  0.36% 90.18%      0.08s  0.95%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).pop
+     0.03s  0.36% 90.53%      0.05s  0.59%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).pushParity
+     0.03s  0.36% 90.89%      0.77s  9.11%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio.(*Conn).readMmsg
+     0.03s  0.36% 91.24%      0.26s  3.08%  runtime.netpoll
+     0.01s  0.12% 91.36%      7.20s 85.21%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).Serve
+     0.01s  0.12% 91.48%      0.42s  4.97%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).handle
+     0.01s  0.12% 91.60%      5.84s 69.11%  internal/poll.(*FD).RawWrite
+     0.01s  0.12% 91.72%      0.49s  5.80%  net.(*UDPConn).WriteToUDPAddrPort
+     0.01s  0.12% 91.83%      0.48s  5.68%  net.(*UDPConn).writeToAddrPort
+     0.01s  0.12% 91.95%      0.40s  4.73%  runtime.schedule

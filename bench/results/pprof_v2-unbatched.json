@@ -1,0 +1,155 @@
+{
+  "benchmark": "CPU profile of the v2 server under the B3 load",
+  "run_id": "20261119T114714Z-23555",
+  "command": "sudo PARTICIPANTS=128 SECONDS_PROFILED=15 GSO_MAX_SEGS=1 PROFILES=\"v2-unbatched=-udp-batch=1 v2-sendmmsg=-udp-gso=false v2-gso=\" SERVER_CPU=1 LOADGEN_CPUS=2,3 MAX_MBPS=12000 MAX_PPS=1500000 bench/profile_b3.sh",
+  "server_args": "-udp-batch=1",
+  "raw_files": "bench/tmp/profile/20261119T114714Z-23555",
+  "pprof_header": [
+    "File: confserver",
+    "Build ID: 3a5548ca70db4f475c100884189bb8968b94e96f",
+    "Type: cpu",
+    "Time: 2026-11-19 12:11:06 UTC",
+    "Duration: 15.15s, Total samples = 9.43s (62.23%)",
+    "Showing nodes accounting for 8.75s, 92.79% of 9.43s total"
+  ],
+  "share_of_profile_percent": {
+    "receive loop (read + route + forward)": 93.32,
+    "forwarding video (sending the copies)": 75.93,
+    "reading packets": 13.36,
+    "audio mixers (20 ms ticks)": 5.41,
+    "mixed-stream sends": 3.08,
+    "all system calls (Syscall6)": 84.62,
+    "Go scheduler and netpoller": 1.06,
+    "garbage collector": 0.0
+  },
+  "server_counters": {
+    "udp_batching_enabled": false,
+    "udp_gso_enabled": false,
+    "datagrams_received": 1698626.0,
+    "read_syscalls": 1698626.0,
+    "datagrams_per_read_call": 1.0,
+    "video_datagrams_sent": 4431336.0,
+    "video_send_syscalls": 4431336.0,
+    "video_datagrams_per_send_call": 1.0,
+    "video_send_messages": 4431336.0,
+    "video_datagrams_per_message": 1.0,
+    "drops": {
+      "addr_mismatch": 0.0,
+      "bad_payload": 0.0,
+      "bad_token": 0.0,
+      "bind_queue_full": 0.0,
+      "ingress_limited": 0.0,
+      "late": 0.0,
+      "malformed": 0.0,
+      "nack_limited": 0.0,
+      "oversize": 0.0,
+      "p2p_mode": 0.0,
+      "rebind_limited": 0.0,
+      "register_limited": 0.0,
+      "rtx_budget": 0.0,
+      "unknown_ssrc": 0.0,
+      "write_error": 0.0
+    }
+  },
+  "load": {
+    "label": "20261119T114714Z-23555/v2-unbatched",
+    "wire": "v2",
+    "participants": 128,
+    "rooms": 32,
+    "room_size": 4,
+    "fps": 15,
+    "audio": true,
+    "fec_k": 4,
+    "audio_fec_k": 2,
+    "window_seconds": 17,
+    "avg_frame_bytes": 31090,
+    "max_frame_bytes": 32327,
+    "offered_upstream_mbps": 510.308864,
+    "wire_traffic": {
+      "estimate_average_frame": {
+        "upstream_mbps": 684.71808,
+        "downstream_mbps": 1950.01344,
+        "total_mbps": 2634.73152,
+        "upstream_pps": 72960,
+        "downstream_pps": 199680,
+        "total_pps": 272640
+      },
+      "estimate_largest_frame": {
+        "upstream_mbps": 704.45568,
+        "downstream_mbps": 2009.22624,
+        "total_mbps": 2713.68192,
+        "upstream_pps": 74880,
+        "downstream_pps": 205440,
+        "total_pps": 280320
+      },
+      "limit_total_mbps": 12000,
+      "limit_total_pps": 1500000,
+      "measured_upstream_mbps": 684.8060677878768,
+      "measured_upstream_pps": 73817.36293602048
+    },
+    "frames_sent_in_window": 32640,
+    "frames_expected": 97920,
+    "frames_received": 97920,
+    "delivery_ratio": 1,
+    "latency_ms": {
+      "max": 12.674975395202637,
+      "mean": 0.7386531026866531,
+      "p50": 0.5770489871501923,
+      "p90": 1.1005855321884157,
+      "p99": 4.9168454599380444
+    },
+    "audio_expected": 108800,
+    "audio_received": 108812,
+    "audio_delivery_ratio": 1.000110294117647,
+    "send_errors": 0,
+    "packets_sent": 1697858,
+    "bytes_sent": 1921345436,
+    "video_packets_received": 3504144,
+    "incomplete_frames": 0,
+    "server_cpu_seconds": 11.86,
+    "server_cpu_seconds_per_participant_minute": 0.3270220588235294,
+    "server_cpu_utilisation": 0.6976470588235294,
+    "server_core": {
+      "cpu": 1,
+      "busy_seconds": 11.720000000001164,
+      "softirq_seconds": 2.980000000000018,
+      "utilisation": 0.6894117647059508
+    },
+    "loadgen_cpu_seconds": 18.78,
+    "loadgen_cpu_utilisation": 1.1047058823529412,
+    "loadgen_gomaxprocs": 2,
+    "control_connections_lost": 0,
+    "started_utc": "2026-11-19T12:10:58Z"
+  },
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "kernel_config": {
+      "CONFIG_IRQ_TIME_ACCOUNTING": "n",
+      "CONFIG_VIRT_CPU_ACCOUNTING_GEN": "n",
+      "CONFIG_TICK_CPU_ACCOUNTING": "y",
+      "CONFIG_HZ": "250"
+    },
+    "loadavg": "4.15 1.54 1.33 8/212 8259",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "4fe5eca",
+    "git_dirty": true,
+    "git_dirty_files": [
+      "M bench/profile_b3.sh"
+    ],
+    "build": {
+      "git_commit": "4fe5eca",
+      "utc": "2026-11-19T11:47:15Z",
+      "go": "go version go1.24.7 linux/amd64",
+      "git_dirty_files": [],
+      "git_diff_sha256": null,
+      "binaries": {
+        "confserver": "0549a14f96560845f22355222fb42d7fcea3e566288ab3db9486ccddbb22ad3b",
+        "loadgen": "f86ef42a67f3f21e73054c800b061b4a2478240969ddde9e8d237935258bc49e"
+      }
+    },
+    "utc": "2026-11-19T12:13:32Z"
+  }
+}

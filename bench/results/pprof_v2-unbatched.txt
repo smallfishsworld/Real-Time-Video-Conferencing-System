@@ -1,0 +1,51 @@
+run 20261119T114714Z-23555: sudo PARTICIPANTS=128 SECONDS_PROFILED=15 GSO_MAX_SEGS=1 PROFILES="v2-unbatched=-udp-batch=1 v2-sendmmsg=-udp-gso=false v2-gso=" SERVER_CPU=1 LOADGEN_CPUS=2,3 MAX_MBPS=12000 MAX_PPS=1500000 bench/profile_b3.sh
+server flags: -udp-batch=1
+built from 4fe5eca (uncommitted: none) at 2026-11-19T11:47:15Z
+toolchain: go version go1.24.7 linux/amd64
+binaries (SHA-256): confserver 0549a14f96560845, loadgen f86ef42a67f3f21e
+load: 128 participants (v2), delivery 1.0000, p99 4.9 ms, server CPU 0.698 (core 1: busy 0.689, softirq 2.98 s of 11.72 s)
+File: confserver
+Build ID: 3a5548ca70db4f475c100884189bb8968b94e96f
+Type: cpu
+Time: 2026-11-19 12:11:06 UTC
+Duration: 15.15s, Total samples = 9.43s (62.23%)
+Showing nodes accounting for 8.75s, 92.79% of 9.43s total
+
+share of profiled CPU time by code path (cumulative):
+  receive loop (read + route + forward)       93.3 %
+    forwarding video (sending the copies)     75.9 %
+    reading packets                           13.4 %
+  audio mixers (20 ms ticks)                   5.4 %
+    mixed-stream sends                         3.1 %
+  all system calls (Syscall6)                 84.6 %
+  Go scheduler and netpoller                   1.1 %
+  garbage collector                            0.0 %
+
+server counters for the whole run:
+  batching False, GSO False (the server's udp_batching_enabled and udp_gso_enabled gauges)
+  datagrams accepted 1698626, read system calls 1698626 (1.0 datagrams per call)
+  video datagrams sent 4431336, send system calls 4431336 (1.0 per call)
+  messages 4431336 (1.00 datagrams per message)
+
+top functions by own time:
+      flat  flat%   sum%        cum   cum%
+     7.66s 81.23% 81.23%      7.66s 81.23%  internal/runtime/syscall.Syscall6
+     0.15s  1.59% 82.82%      6.94s 73.59%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio.(*Writer).Flush
+     0.13s  1.38% 84.20%      0.13s  1.38%  runtime.casgstatus
+     0.08s  0.85% 85.05%      0.08s  0.85%  internal/poll.(*fdMutex).rwunlock
+     0.07s  0.74% 85.79%      0.28s  2.97%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).handleRTP
+     0.07s  0.74% 86.53%      0.07s  0.74%  time.runtimeNow
+     0.06s  0.64% 87.17%      0.07s  0.74%  runtime.exitsyscallfast
+     0.06s  0.64% 87.80%      7.98s 84.62%  syscall.Syscall6
+     0.05s  0.53% 88.34%      0.05s  0.53%  github.com/prometheus/client_golang/prometheus.(*histogram).findBucket
+     0.05s  0.53% 88.87%      0.05s  0.53%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio.(*Writer).Add (inline)
+     0.04s  0.42% 89.29%      0.07s  0.74%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).pop
+     0.04s  0.42% 89.71%         7s 74.23%  net.(*UDPConn).writeToAddrPort
+     0.04s  0.42% 90.14%      0.18s  1.91%  runtime.exitsyscall
+     0.02s  0.21% 90.35%      0.05s  0.53%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).forwardVideo
+     0.02s  0.21% 90.56%      0.47s  4.98%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).mix
+     0.02s  0.21% 90.77%      0.34s  3.61%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).send
+     0.02s  0.21% 90.99%      6.93s 73.49%  internal/poll.(*FD).WriteToInet4
+     0.02s  0.21% 91.20%      0.13s  1.38%  runtime.entersyscall
+     0.02s  0.21% 91.41%      0.10s  1.06%  runtime.reentersyscall
+     0.01s  0.11% 91.52%      8.80s 93.32%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).Serve
