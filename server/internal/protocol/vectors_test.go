@@ -51,6 +51,7 @@ type vectorFile struct {
 	} `json:"register"`
 	Control []struct {
 		Name    string         `json:"name"`
+		From    string         `json:"from"`
 		Hex     string         `json:"hex"`
 		Message map[string]any `json:"message"`
 	} `json:"control"`
@@ -272,7 +273,83 @@ func TestGoldenControl(t *testing.T) {
 			if err := json.Unmarshal(body2, &again); err != nil || !reflect.DeepEqual(again, vec.Message) {
 				t.Fatalf("round trip mismatch: %v (%v)", again, err)
 			}
+			checkTyped(t, vec.From, body, vec.Message)
 		})
+	}
+}
+
+// serverMessages maps each server message type to the struct the server sends it as.
+var serverMessages = map[string]func() any{
+	TypeWelcome:    func() any { return new(Welcome) },
+	TypeRoomList:   func() any { return new(RoomList) },
+	TypeJoined:     func() any { return new(Joined) },
+	TypeLeft:       func() any { return new(Left) },
+	TypeRoster:     func() any { return new(Roster) },
+	TypeMode:       func() any { return new(Mode) },
+	TypeChat:       func() any { return new(Chat) },
+	TypeRoomClosed: func() any { return new(RoomClosed) },
+	TypePong:       func() any { return new(Pong) },
+	TypeError:      func() any { return new(Error) },
+}
+
+// checkTyped decodes a vector the way its receiver does: a request through
+// DecodeRequest, a server message into its struct with unknown fields refused. Either
+// way, marshalling the typed value must give back the vector's JSON value, so every
+// field the vectors use (seq, truncated, total, ...) exists in the Go types.
+func checkTyped(t *testing.T, from string, body []byte, want map[string]any) {
+	t.Helper()
+	var typed any
+	switch from {
+	case "client":
+		req, err := DecodeRequest(body)
+		if err != nil {
+			t.Fatalf("DecodeRequest: %v", err)
+		}
+		typed = req
+	case "server":
+		mk, ok := serverMessages[want["type"].(string)]
+		if !ok {
+			t.Fatalf("no server message type %q", want["type"])
+		}
+		typed = mk()
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(typed); err != nil {
+			t.Fatalf("decode into %T: %v", typed, err)
+		}
+	default:
+		t.Fatalf("vector without a sender (from = %q)", from)
+	}
+	frame, err := EncodeFrame(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(frame[4:], &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("typed round trip through %T gave %v, want %v", typed, got, want)
+	}
+}
+
+// Every message type in PROTOCOL.md 1.3 and 1.4 has a vector.
+func TestGoldenControlCoversEveryType(t *testing.T) {
+	seen := map[string]bool{}
+	for _, vec := range loadVectors(t).Control {
+		seen[vec.From+" "+vec.Message["type"].(string)] = true
+	}
+	requests := []string{TypeHello, TypeListRooms, TypeCreateRoom, TypeJoinRoom, TypeLeaveRoom, TypeCancelRoom,
+		TypeChat, TypeMediaState, TypePing}
+	for _, typ := range requests {
+		if !seen["client "+typ] {
+			t.Errorf("no request vector for %q", typ)
+		}
+	}
+	for typ := range serverMessages {
+		if !seen["server "+typ] {
+			t.Errorf("no server message vector for %q", typ)
+		}
 	}
 }
 

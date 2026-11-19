@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from confclient.fec import FecEncoder, recover
+from confclient.packetizer import VideoPacketizer
 from confclient.protocol import (
     MAX_CONTROL_MESSAGE,
     MAX_FRAGMENT_PAYLOAD,
@@ -241,3 +242,21 @@ def test_parse_addr() -> None:
         parse_addr("no-port")
     with pytest.raises(ValueError, match="does not appear to be an IPv4 or IPv6 address"):
         parse_addr("example.com:80")
+
+
+@pytest.mark.parametrize("vec", VECTORS["frames"], ids=_name)
+def test_frame_vectors(vec: dict[str, Any]) -> None:
+    """Whole frames, fragments and parity, laid out like the reference encoder and the
+    Go packetizer that the load generator uses."""
+    data = bytes((i * 7 + 3) & 0xFF for i in range(vec["size"]))
+    pz = VideoPacketizer(ssrc=vec["ssrc"], fec_k=vec["fec_k"])
+    pz.seq = vec["first_seq"]
+    pz.frame_id = vec["frame_id"]
+    frame_id, packets = pz.packetize(data, vec["timestamp"])
+    assert frame_id == vec["frame_id"]
+    assert [p.hex() for p in packets] == vec["packets_hex"]
+    assert pz.wire_size(vec["size"]) == (len(packets), sum(map(len, packets)))
+
+
+def test_every_control_vector_names_its_sender() -> None:
+    assert {v["from"] for v in VECTORS["control"]} == {"client", "server"}

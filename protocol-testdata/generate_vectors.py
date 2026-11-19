@@ -236,10 +236,12 @@ def main() -> None:
         },
     ]
 
+    # (sender, message). The first six keep their historical names (the message type);
+    # the rest cover every other message type and the optional fields.
     messages = [
-        {"type": "hello", "name": "alice", "version": 1, "seq": 1},
-        {"type": "join_room", "room_id": 3, "seq": 2},
-        {
+        ("client", {"type": "hello", "name": "alice", "version": 1, "seq": 1}),
+        ("client", {"type": "join_room", "room_id": 3, "seq": 2}),
+        ("server", {
             "type": "joined",
             "seq": 2,
             "room_id": 3,
@@ -252,25 +254,82 @@ def main() -> None:
             "token": token.hex(),
             "media_port": 6100,
             "max_participants": 16,
-        },
-        {
+        }),
+        ("server", {
             "type": "chat",
             "room_id": 3,
             "from_id": 9,
             "from_name": "Zoë",
             "text": "hi 你好",
             "server_time_ms": 1700000000123,
-        },
-        {
+        }),
+        ("server", {
             "type": "mode",
             "room_id": 3,
             "mode": "p2p",
             "peer": {"participant_id": 4, "audio_ssrc": 1, "video_ssrc": 2, "addr": "127.0.0.1:40000"},
-        },
-        {"type": "error", "seq": 5, "code": "room_full", "message": "room 3 is full"},
+        }),
+        ("server", {"type": "error", "seq": 5, "code": "room_full", "message": "room 3 is full"}),
     ]
-    for msg in messages:
-        vectors["control"].append({"name": msg["type"], "hex": frame(msg).hex(), "message": msg})
+    named = [(msg["type"], sender, msg) for sender, msg in messages]
+    named += [
+        ("welcome", "server", {"type": "welcome", "seq": 1, "client_id": 42, "version": 1,
+                               "server_time_ms": 1700000000000, "media_port": 6100}),
+        ("list_rooms", "client", {"type": "list_rooms", "seq": 3}),
+        ("room_list", "server", {"type": "room_list", "seq": 3, "rooms": [
+            {"room_id": 3, "title": "standup <&>", "host_name": "Zoë", "participants": 2,
+             "max_participants": 16, "mode": "p2p", "created_ms": 1700000000001},
+        ]}),
+        ("room_list_truncated", "server", {"type": "room_list", "seq": 4, "rooms": [], "truncated": True,
+                                           "total": 300}),
+        ("create_room", "client", {"type": "create_room", "title": "standup", "seq": 6}),
+        ("leave_room", "client", {"type": "leave_room", "seq": 7}),
+        ("left", "server", {"type": "left", "seq": 7, "room_id": 3}),
+        ("cancel_room", "client", {"type": "cancel_room", "seq": 8}),
+        ("room_closed_reply", "server", {"type": "room_closed", "seq": 8, "room_id": 3, "reason": "cancelled"}),
+        ("room_closed_event", "server", {"type": "room_closed", "room_id": 3, "reason": "server_shutdown"}),
+        ("chat_request", "client", {"type": "chat", "text": "hi 你好", "seq": 9}),
+        ("chat_own_copy", "server", {"type": "chat", "seq": 9, "room_id": 3, "from_id": 9, "from_name": "Zoë",
+                                     "text": "hi 你好", "server_time_ms": 1700000000124}),
+        ("media_state", "client", {"type": "media_state", "video": False, "audio": True, "seq": 10}),
+        ("roster_own_copy", "server", {"type": "roster", "seq": 10, "room_id": 3, "host_id": 4, "participants": [
+            {"participant_id": 4, "name": "bob", "audio_ssrc": 1, "video_ssrc": 2, "video": True,
+             "audio": True, "registered": True},
+            {"participant_id": 9, "name": "Zoë", "audio_ssrc": 305419896, "video_ssrc": 2596069104,
+             "video": False, "audio": True, "registered": False},
+        ]}),
+        ("mode_relay", "server", {"type": "mode", "room_id": 3, "mode": "relay"}),
+        ("ping", "client", {"type": "ping", "seq": 11}),
+        ("pong", "server", {"type": "pong", "seq": 11, "server_time_ms": 1700000000125}),
+    ]
+    for name, sender, msg in named:
+        vectors["control"].append({"name": name, "from": sender, "hex": frame(msg).hex(), "message": msg})
+
+    # Whole frames as a sender packetizes them: fragments of at most 1200 bytes, and
+    # with fec_k > 0 one parity packet after every fec_k fragments and after the last.
+    vectors["frames"] = []
+    for name, size, fec_k, seq in (("three_fragments_k2", 2500, 2, 65534), ("one_full_fragment_k4", 1200, 4, 10),
+                                   ("four_fragments_no_fec", 3601, 0, 100), ("two_groups_k3", 4000, 3, 7)):
+        data = bytes((i * 7 + 3) & 0xFF for i in range(size))
+        count = -(-size // 1200)
+        ssrc, frame_id, ts = 0x01020304, 77, 123456
+        packets: list[bytes] = []
+        group: list[bytes] = []
+        for i in range(count):
+            pkt = rtp(96, seq, ts, ssrc, marker=i == count - 1) + video_header(frame_id, i, count)
+            pkt += data[i * 1200 : (i + 1) * 1200]
+            seq = (seq + 1) & 0xFFFF
+            packets.append(pkt)
+            group.append(pkt)
+            if fec_k and (len(group) == fec_k or i == count - 1):
+                packets.append(xor_parity(group, ssrc, seq))
+                seq = (seq + 1) & 0xFFFF
+                group = []
+        vectors["frames"].append({
+            "name": name, "ssrc": ssrc, "first_seq": (seq - len(packets)) & 0xFFFF, "frame_id": frame_id,
+            "timestamp": ts, "fec_k": fec_k, "size": size, "data": "bytes((i * 7 + 3) & 0xFF for i in range(size))",
+            "packets_hex": [x.hex() for x in packets],
+        })
 
     vectors["invalid"] = [
         {"kind": "rtp", "name": "short", "hex": "80600001"},
