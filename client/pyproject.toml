@@ -1,0 +1,62 @@
+[project]
+name = "confclient"
+version = "2.0.0"
+description = "Python asyncio client for the real-time video conferencing server"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "numpy>=1.26",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# Real camera capture and the split-screen window.
+video = ["opencv-python>=4.8"]
+# Real microphone and speaker (needs the PortAudio library on the system).
+audio = ["pyaudio>=0.2.13"]
+
+[project.scripts]
+confclient = "confclient.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/confclient"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PL", "N", "C4", "PIE", "PT", "RET"]
+ignore = [
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",  # complexity/magic numbers: protocol code is full of sizes
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Optional device libraries (cv2, pyaudio) are imported only when a device is opened.
+"src/confclient/devices.py" = ["PLC0415"]
+"src/confclient/ui.py" = ["PLC0415"]
+"tests/*" = ["PLC0415"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["cv2", "pyaudio"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["e2e: end-to-end tests that build and run the Go server"]
