@@ -1,0 +1,750 @@
+{
+  "benchmark": "B1 loss resilience",
+  "run_id": "20261119T134226Z-8769",
+  "command": "sudo CONDITIONS=\"both-rtt50\" REPEATS=1 SECONDS_PER_RUN=41 SYSTEMS=\"legacy v2-nofec v2-fec v2-nack v2-fec-nack\" LOSSES=\"0 10 20 50 100\" HARD_SYSTEMS=\"v2-fec-nack v2-nack\" HARD_LOSSES=\"50\" HARD_DELAY_MS=25 LONG_LOSSES=\"10\" LONG_SECONDS=300 LONG_REPEATS=1 RELAY_LOG=1 CHUNK_SECONDS=720 bench/run_b1.sh",
+  "raw_files": "bench/tmp/b1/20261119T134226Z-8769",
+  "deadline_ms": 200.0,
+  "link": "veth pairs, MTU 1500, the server's veth towards the receiver with gso_max_segs 1",
+  "conditions": {
+    "both-rtt50": "userspace relay (bench/lib/udp_impair.py) between the receiver and the server: independent drops per datagram in both directions and a fixed one-way delay each way (25 ms by default: +50 ms round trip); NACKs, retransmissions, parity and REGISTERs can be lost; v2 only (the relay works on whole datagrams)"
+  },
+  "media": "corpus frames 480x480 JPEG q85 at 15.625 fps (one per 1024-sample audio chunk, the legacy rate); 16 kHz mono PCM audio",
+  "groups": [
+    {
+      "condition": "both-rtt50",
+      "system": "v2-nack",
+      "loss_percent": 5.0,
+      "runs": 1,
+      "measured_udp_packet_loss": {
+        "n": 1,
+        "median": 0.0481570754243246,
+        "min": 0.0481570754243246,
+        "max": 0.0481570754243246
+      },
+      "video": {
+        "frames_sent": 578,
+        "frames_on_time": 517,
+        "delivery_ratio": {
+          "k": 517,
+          "n": 578,
+          "p": 0.8944636678200693,
+          "low": 0.866759045493876,
+          "high": 0.916959599919858
+        },
+        "delivery_ratio_per_run": {
+          "n": 1,
+          "median": 0.8944636678200693,
+          "min": 0.8944636678200693,
+          "max": 0.8944636678200693
+        },
+        "latency_ms_p50_per_run": {
+          "n": 1,
+          "median": 88.39975600130856,
+          "min": 88.39975600130856,
+          "max": 88.39975600130856
+        },
+        "latency_ms_p99_per_run": {
+          "n": 1,
+          "median": 157.27631223911882,
+          "min": 157.27631223911882,
+          "max": 157.27631223911882
+        },
+        "model_ratio_independent_loss": null,
+        "nack_totals": {
+          "nacks_sent": 913,
+          "requested": 1682,
+          "recovered": 786,
+          "abandoned": 9
+        },
+        "assembler_totals": {
+          "completed": 552,
+          "expired": 0,
+          "superseded": 65,
+          "duplicates": 809,
+          "malformed": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1850,
+        "residual_loss": {
+          "k": 85,
+          "n": 1850,
+          "p": 0.04594594594594595,
+          "low": 0.037309853807463426,
+          "high": 0.05646378473560861
+        },
+        "residual_loss_per_run": {
+          "n": 1,
+          "median": 0.04594594594594592,
+          "min": 0.04594594594594592,
+          "max": 0.04594594594594592
+        },
+        "gap_fraction_after_concealment_per_run": {
+          "n": 1,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "receiver_frag_memory_max_bytes": {
+        "n": 1,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tags": [
+        "both-rtt50-v2-nack-50-r1"
+      ]
+    },
+    {
+      "condition": "both-rtt50",
+      "system": "v2-fec-nack",
+      "loss_percent": 5.0,
+      "runs": 1,
+      "measured_udp_packet_loss": {
+        "n": 1,
+        "median": 0.048223350253807105,
+        "min": 0.048223350253807105,
+        "max": 0.048223350253807105
+      },
+      "video": {
+        "frames_sent": 578,
+        "frames_on_time": 549,
+        "delivery_ratio": {
+          "k": 549,
+          "n": 578,
+          "p": 0.9498269896193772,
+          "low": 0.9288722814873506,
+          "high": 0.9648419632826967
+        },
+        "delivery_ratio_per_run": {
+          "n": 1,
+          "median": 0.9498269896193772,
+          "min": 0.9498269896193772,
+          "max": 0.9498269896193772
+        },
+        "latency_ms_p50_per_run": {
+          "n": 1,
+          "median": 27.494034002302215,
+          "min": 27.494034002302215,
+          "max": 27.494034002302215
+        },
+        "latency_ms_p99_per_run": {
+          "n": 1,
+          "median": 90.91977595875504,
+          "min": 90.91977595875504,
+          "max": 90.91977595875504
+        },
+        "model_ratio_independent_loss": null,
+        "nack_totals": {
+          "nacks_sent": 176,
+          "requested": 402,
+          "recovered": 167,
+          "abandoned": 0
+        },
+        "assembler_totals": {
+          "completed": 586,
+          "expired": 0,
+          "superseded": 31,
+          "duplicates": 226,
+          "malformed": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1850,
+        "residual_loss": {
+          "k": 15,
+          "n": 1850,
+          "p": 0.008108108108108109,
+          "low": 0.0049197738354868825,
+          "high": 0.01333500125284116
+        },
+        "residual_loss_per_run": {
+          "n": 1,
+          "median": 0.008108108108108136,
+          "min": 0.008108108108108136,
+          "max": 0.008108108108108136
+        },
+        "gap_fraction_after_concealment_per_run": {
+          "n": 1,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        }
+      },
+      "receiver_frag_memory_max_bytes": {
+        "n": 1,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tags": [
+        "both-rtt50-v2-fec-nack-50-r1"
+      ]
+    }
+  ],
+  "failed_runs": [],
+  "runs": [
+    {
+      "tag": "both-rtt50-v2-nack-50-r1",
+      "condition": "both-rtt50",
+      "repeat": 1,
+      "seconds": 41,
+      "system": "v2-nack",
+      "loss_percent": 5.0,
+      "measured_udp_packet_loss": 0.0481570754243246,
+      "relay": {
+        "method": "userspace UDP relay (bench/lib/udp_impair.py): independent drops per datagram and direction, fixed one-way delay, order kept",
+        "listen": "10.77.2.1:7000",
+        "upstream": {
+          "received": 923,
+          "dropped": 63,
+          "sent": 860,
+          "send_errors": 0,
+          "bytes_received": 15564
+        },
+        "one_way_delay_ms": 25.0,
+        "loss_probability": 0.05,
+        "seed": 1050,
+        "downstream": {
+          "received": 19914,
+          "dropped": 959,
+          "sent": 18955,
+          "send_errors": 0,
+          "bytes_received": 22717524
+        },
+        "clients": 1,
+        "measured_loss_upstream": 0.06825568797399784,
+        "measured_loss_downstream": 0.0481570754243246
+      },
+      "video": {
+        "frames_sent": 578,
+        "frames_complete": 517,
+        "frames_on_time": 517,
+        "delivery_ratio": 0.8944636678200693,
+        "complete_ratio": 0.8944636678200693,
+        "delivery_ratio_first_half": 0.8927335640138409,
+        "delivery_ratio_second_half": 0.8961937716262975,
+        "model_ratio_independent_loss": null,
+        "delivery_by_30s": [
+          {
+            "from_s": 0,
+            "frames": 469,
+            "on_time": 421
+          },
+          {
+            "from_s": 30,
+            "frames": 109,
+            "on_time": 96
+          }
+        ],
+        "latency_ms": {
+          "n": 517,
+          "mean": 75.77231765195107,
+          "p50": 88.39975600130856,
+          "p95": 125.81225620087933,
+          "p99": 157.27631223911882,
+          "max": 185.41080500290263
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 913,
+          "requested": 1682,
+          "recovered": 786,
+          "abandoned": 9
+        },
+        "assembler": {
+          "completed": 552,
+          "expired": 0,
+          "superseded": 65,
+          "duplicates": 809,
+          "malformed": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1850,
+        "frames_lost": 85,
+        "frame_ms": 20,
+        "residual_loss": 0.04594594594594592,
+        "ticks": 1839,
+        "concealed_fraction": 0.046220772158781946,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18928,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.3,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "tag": "both-rtt50-v2-fec-nack-50-r1",
+      "condition": "both-rtt50",
+      "repeat": 1,
+      "seconds": 41,
+      "system": "v2-fec-nack",
+      "loss_percent": 5.0,
+      "measured_udp_packet_loss": 0.048223350253807105,
+      "relay": {
+        "method": "userspace UDP relay (bench/lib/udp_impair.py): independent drops per datagram and direction, fixed one-way delay, order kept",
+        "listen": "10.77.2.1:7000",
+        "upstream": {
+          "received": 186,
+          "dropped": 11,
+          "sent": 175,
+          "send_errors": 0,
+          "bytes_received": 3224
+        },
+        "one_way_delay_ms": 25.0,
+        "loss_probability": 0.05,
+        "seed": 1050,
+        "downstream": {
+          "received": 24034,
+          "dropped": 1159,
+          "sent": 22875,
+          "send_errors": 0,
+          "bytes_received": 27282111
+        },
+        "clients": 1,
+        "measured_loss_upstream": 0.05913978494623656,
+        "measured_loss_downstream": 0.048223350253807105
+      },
+      "video": {
+        "frames_sent": 578,
+        "frames_complete": 549,
+        "frames_on_time": 549,
+        "delivery_ratio": 0.9498269896193772,
+        "complete_ratio": 0.9498269896193772,
+        "delivery_ratio_first_half": 0.9584775086505191,
+        "delivery_ratio_second_half": 0.9411764705882353,
+        "model_ratio_independent_loss": null,
+        "delivery_by_30s": [
+          {
+            "from_s": 0,
+            "frames": 469,
+            "on_time": 446
+          },
+          {
+            "from_s": 30,
+            "frames": 109,
+            "on_time": 103
+          }
+        ],
+        "latency_ms": {
+          "n": 549,
+          "mean": 32.79938701460607,
+          "p50": 27.494034002302215,
+          "p95": 87.25280539656525,
+          "p99": 90.91977595875504,
+          "max": 93.05950099951588
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 176,
+          "requested": 402,
+          "recovered": 167,
+          "abandoned": 0
+        },
+        "assembler": {
+          "completed": 586,
+          "expired": 0,
+          "superseded": 31,
+          "duplicates": 226,
+          "malformed": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1850,
+        "frames_lost": 15,
+        "frame_ms": 20,
+        "residual_loss": 0.008108108108108136,
+        "ticks": 1840,
+        "concealed_fraction": 0.008152173913043478,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 779
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 22843,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.3,
+            0.0
+          ],
+          [
+            21.3,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "kernel_config": {
+      "CONFIG_IRQ_TIME_ACCOUNTING": "n",
+      "CONFIG_VIRT_CPU_ACCOUNTING_GEN": "n",
+      "CONFIG_TICK_CPU_ACCOUNTING": "y",
+      "CONFIG_HZ": "250"
+    },
+    "loadavg": "0.54 0.36 0.43 2/175 11534",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "3855bcb",
+    "git_dirty": false,
+    "git_dirty_files": [],
+    "build": {
+      "git_commit": "a679aef",
+      "utc": "2026-11-19T13:42:27Z",
+      "go": "go version go1.24.7 linux/amd64",
+      "git_dirty_files": [
+        " M bench/render.py"
+      ],
+      "git_diff_sha256": "0f8671b13e74f6825c342459a418631c3dec7aaf58f4a2b7b168986373d8f8f7",
+      "binaries": {
+        "confserver": "975662790c2178e99a0183911fe1563d549b0d9a51ffcab5808f05afdfd1410d",
+        "loadgen": "d524e363e7f785b73d6799d50b9bdeba802a7e23c4c5e797a7e34e421635083e"
+      }
+    },
+    "utc": "2026-11-19T13:52:22Z"
+  }
+}

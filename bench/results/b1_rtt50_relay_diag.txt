@@ -1,0 +1,105 @@
+run 20261119T134226Z-8769
+both-rtt50-v2-fec-nack-50-r1: relay one-way delay 25 ms, drop probability 0.05; downstream 1159/24034 dropped, upstream 11/186 dropped
+  NACKs 176 (11 dropped); video retransmissions 271, of which 139 first repairs and 132 repeats of a packet already resent; assembler {'completed': 586, 'expired': 0, 'superseded': 31, 'duplicates': 226, 'malformed': 0}
+  frame 2 (26 fragments): lost [1, 20]; repairs [20@+66, 20@+98]; fragments [1] never got through (FEC may have rebuilt them)
+  frame 29 (27 fragments): lost [8, 11, 15]; repairs [8@+66, 11@+66, 8@+98, 11@+98]; fragments [15] never got through (FEC may have rebuilt them)
+  frame 41 (27 fragments): lost [6, 7]; repairs [6@+69, 7@+69, 6@+101, 7@+101]; all fragments got through; complete at the relay at +69 ms vs the next frame's first fragment at +64 ms
+  frame 81 (27 fragments): lost [15, 26]; repairs [26@+127]; fragments [15] never got through (FEC may have rebuilt them)
+  frame 108 (26 fragments): lost [4, 18, 23]; repairs [18@+67, 18@+100]; fragments [4, 23] never got through (FEC may have rebuilt them)
+  frame 125 (27 fragments): lost [1, 11, 17, 18, 22]; repairs [17@+64, 18@+64, 17@+96, 18@+96]; fragments [1, 11, 22] never got through (FEC may have rebuilt them)
+  frame 164 (26 fragments): lost [1, 21, 23]; repairs [21@+64 dropped, 23@+64, 21@+97, 23@+97]; fragments [1] never got through (FEC may have rebuilt them)
+  frame 172 (26 fragments): lost [24, 25]; repairs [24@+69, 25@+69, 24@+101, 25@+101]; all fragments got through; complete at the relay at +69 ms vs the next frame's first fragment at +64 ms
+  frame 181 (27 fragments): lost [2, 3, 21]; repairs [2@+68 dropped, 3@+68, 2@+100, 3@+100]; fragments [21] never got through (FEC may have rebuilt them)
+  frame 201 (27 fragments): lost [12]; repairs [12@+66, 12@+98 dropped]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +63 ms
+  frame 204 (27 fragments): lost [12, 15]; repairs [12@+64, 15@+64, 12@+97, 15@+97]; all fragments got through; complete at the relay at +64 ms vs the next frame's first fragment at +64 ms
+  frame 271 (27 fragments): lost [11, 14, 18, 19, 20, 22]; repairs [18@+65, 19@+65, 20@+65, 22@+65, 18@+96, 19@+96, 20@+96, 22@+96]; fragments [11, 14] never got through (FEC may have rebuilt them)
+  frame 284 (26 fragments): lost [2, 6, 7]; repairs [6@+92, 7@+92, 6@+125, 7@+125]; fragments [2] never got through (FEC may have rebuilt them)
+  frame 326 (26 fragments): lost [2, 22]; repairs [2@+65 dropped, 2@+95]; fragments [22] never got through (FEC may have rebuilt them)
+  frame 328 (26 fragments): lost [1, 17, 22, 24]; repairs [1@+66, 1@+97]; fragments [17, 22, 24] never got through (FEC may have rebuilt them)
+  frame 339 (27 fragments): lost [11, 13, 21, 22]; repairs [21@+66, 22@+66, 21@+98, 22@+98]; fragments [11, 13] never got through (FEC may have rebuilt them)
+  frame 366 (26 fragments): lost [11, 18]; repairs [18@+68, 18@+101]; fragments [11] never got through (FEC may have rebuilt them)
+  frame 389 (27 fragments): lost [1, 24]; repairs [24@+67, 24@+97]; fragments [1] never got through (FEC may have rebuilt them)
+  frame 393 (27 fragments): lost [8, 20, 24, 26]; repairs [24@+97, 26@+97, 24@+127, 26@+127]; fragments [8, 20] never got through (FEC may have rebuilt them)
+  frame 409 (27 fragments): lost [0, 1, 26]; repairs [0@+67, 1@+67, 0@+98, 1@+98]; fragments [26] never got through (FEC may have rebuilt them)
+  frame 415 (27 fragments): lost [0, 1]; repairs [0@+65, 1@+65, 0@+99, 1@+99]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 430 (26 fragments): lost [10, 11, 12, 14]; repairs [10@+66, 11@+66, 12@+66, 14@+66, 10@+98, 11@+98, 12@+98, 14@+98]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +65 ms
+  frame 435 (27 fragments): lost [0, 21]; repairs [0@+65, 0@+97]; fragments [21] never got through (FEC may have rebuilt them)
+  frame 439 (27 fragments): lost [26]; repairs [26@+156, 26@+187]; all fragments got through; complete at the relay at +156 ms vs the next frame's first fragment at +63 ms
+  frame 500 (27 fragments): lost [4, 9, 11, 26]; repairs [9@+94, 11@+94, 9@+126, 11@+126]; fragments [4, 26] never got through (FEC may have rebuilt them)
+  frame 507 (27 fragments): lost [2, 9, 13, 18, 19, 24]; repairs [18@+68, 19@+68]; fragments [2, 9, 13, 24] never got through (FEC may have rebuilt them)
+  frame 509 (27 fragments): lost [0, 14, 15]; repairs [14@+66, 15@+66, 14@+98, 15@+98 dropped]; fragments [0] never got through (FEC may have rebuilt them)
+  frame 538 (26 fragments): lost [8, 12]; repairs [8@+68, 8@+98]; fragments [12] never got through (FEC may have rebuilt them)
+  frame 581 (27 fragments): lost [12, 15, 21, 23]; repairs [12@+67, 15@+67, 21@+67, 23@+67, 12@+98, 15@+98, 21@+98, 23@+98]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +63 ms
+  frame 585 (27 fragments): lost [1, 17, 18]; repairs [17@+64, 18@+64, 17@+97, 18@+97]; fragments [1] never got through (FEC may have rebuilt them)
+  frame 611 (27 fragments): lost [7, 18]; repairs [7@+66]; fragments [18] never got through (FEC may have rebuilt them)
+  frame 617 (27 fragments): lost [2, 8]; repairs []; fragments [2, 8] never got through (FEC may have rebuilt them)
+  of the 31 frames never completed (next frame seen), the next frame needed no NACK for 31; of all 618 frames, 535 (86.6 %) needed none
+both-rtt50-v2-nack-50-r1: relay one-way delay 25 ms, drop probability 0.05; downstream 959/19914 dropped, upstream 63/923 dropped
+  NACKs 913 (63 dropped); video retransmissions 1569, of which 795 first repairs and 774 repeats of a packet already resent; assembler {'completed': 552, 'expired': 0, 'superseded': 65, 'duplicates': 809, 'malformed': 0}
+  frame 8 (27 fragments): lost [3, 11, 22]; repairs [3@+66, 11@+66, 22@+66, 3@+97, 11@+97, 22@+97]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +64 ms
+  frame 11 (27 fragments): lost [14, 16, 23]; repairs [14@+64, 16@+64, 23@+64, 14@+96, 16@+96, 23@+96]; all fragments got through; complete at the relay at +64 ms vs the next frame's first fragment at +64 ms
+  frame 20 (26 fragments): lost [5]; repairs [5@+68, 5@+98]; all fragments got through; complete at the relay at +68 ms vs the next frame's first fragment at +64 ms
+  frame 28 (27 fragments): lost [8, 13]; repairs [8@+62 dropped, 13@+62, 8@+94, 13@+94, 8@+126]; all fragments got through; complete at the relay at +94 ms vs the next frame's first fragment at +65 ms
+  frame 35 (27 fragments): lost [1, 22]; repairs [1@+65, 22@+65, 1@+97, 22@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 38 (26 fragments): lost [12, 21]; repairs [12@+64, 21@+64, 12@+96, 21@+96]; all fragments got through; complete at the relay at +64 ms vs the next frame's first fragment at +64 ms
+  frame 57 (27 fragments): lost [5, 10, 15, 19]; repairs [5@+94, 10@+94, 15@+94, 19@+94]; all fragments got through; complete at the relay at +94 ms vs the next frame's first fragment at +64 ms
+  frame 78 (26 fragments): lost [17]; repairs [17@+65, 17@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +63 ms
+  frame 101 (27 fragments): lost [11]; repairs [11@+62 dropped, 11@+93, 11@+126]; all fragments got through; complete at the relay at +93 ms vs the next frame's first fragment at +63 ms
+  frame 103 (27 fragments): lost [8, 12, 21]; repairs [8@+62, 12@+62, 21@+62 dropped, 8@+94, 12@+94, 21@+94, 21@+125]; all fragments got through; complete at the relay at +94 ms vs the next frame's first fragment at +65 ms
+  frame 107 (27 fragments): lost [14]; repairs [14@+69, 14@+100]; all fragments got through; complete at the relay at +69 ms vs the next frame's first fragment at +64 ms
+  frame 109 (27 fragments): lost [24, 25]; repairs [24@+67, 25@+67, 24@+99, 25@+99]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 121 (27 fragments): lost [4, 22]; repairs [4@+64 dropped, 22@+64, 4@+96 dropped, 22@+96, 4@+128]; all fragments got through; complete at the relay at +128 ms vs the next frame's first fragment at +64 ms
+  frame 133 (27 fragments): lost [4]; repairs [4@+67, 4@+99]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 147 (27 fragments): lost [25]; repairs [25@+67]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 155 (27 fragments): lost [23, 24]; repairs [23@+65, 24@+65, 23@+97, 24@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +63 ms
+  frame 159 (27 fragments): lost [0, 8, 25]; repairs [0@+66, 8@+66, 25@+66, 0@+99, 8@+99, 25@+99]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +63 ms
+  frame 161 (27 fragments): lost [13]; repairs [13@+65, 13@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 168 (26 fragments): lost [9, 25]; repairs [9@+60, 9@+93, 25@+126, 25@+158]; all fragments got through; complete at the relay at +126 ms vs the next frame's first fragment at +63 ms
+  frame 174 (26 fragments): lost [6, 12, 20, 25]; repairs [6@+60, 12@+60, 20@+60, 6@+93, 12@+93, 20@+93, 25@+124, 25@+156]; all fragments got through; complete at the relay at +124 ms vs the next frame's first fragment at +64 ms
+  frame 183 (27 fragments): lost [6]; repairs [6@+65, 6@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 191 (27 fragments): lost [19, 22, 26]; repairs [19@+62, 22@+62, 19@+93, 22@+93, 26@+126 dropped, 26@+157, 26@+191]; all fragments got through; complete at the relay at +157 ms vs the next frame's first fragment at +64 ms
+  frame 202 (26 fragments): lost [5]; repairs [5@+66]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +64 ms
+  frame 204 (27 fragments): lost [5]; repairs [5@+64, 5@+96]; all fragments got through; complete at the relay at +64 ms vs the next frame's first fragment at +64 ms
+  frame 214 (25 fragments): lost [8, 21]; repairs [8@+57 dropped, 21@+57, 8@+88, 21@+88, 8@+120 dropped]; all fragments got through; complete at the relay at +88 ms vs the next frame's first fragment at +64 ms
+  frame 224 (26 fragments): lost [7, 8, 21]; repairs [7@+98, 8@+98, 21@+98 dropped, 7@+131, 8@+131, 21@+131]; all fragments got through; complete at the relay at +131 ms vs the next frame's first fragment at +63 ms
+  frame 225 (27 fragments): lost [16, 18]; repairs [16@+67, 18@+67 dropped, 16@+98, 18@+98, 18@+129]; all fragments got through; complete at the relay at +98 ms vs the next frame's first fragment at +65 ms
+  frame 241 (27 fragments): lost [0, 3]; repairs [0@+66, 3@+66, 0@+98, 3@+98 dropped]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +64 ms
+  frame 247 (27 fragments): lost [7, 21]; repairs [7@+67, 21@+67, 7@+99, 21@+99]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 250 (26 fragments): lost [9, 12, 22]; repairs [9@+66, 12@+66, 22@+66, 9@+97, 12@+97, 22@+97]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +63 ms
+  frame 274 (25 fragments): lost [14]; repairs [14@+66, 14@+99]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +63 ms
+  frame 284 (26 fragments): lost [12]; repairs [12@+66, 12@+98]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +64 ms
+  frame 289 (26 fragments): lost [20]; repairs [20@+67, 20@+98]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 306 (26 fragments): lost [3, 12, 25]; repairs [3@+67, 12@+67, 3@+99, 12@+99, 25@+131, 25@+163]; all fragments got through; complete at the relay at +131 ms vs the next frame's first fragment at +64 ms
+  frame 307 (27 fragments): lost [15, 21]; repairs [15@+67, 21@+67, 15@+99, 21@+100]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +65 ms
+  frame 320 (26 fragments): lost [5, 7]; repairs [5@+67, 7@+67, 5@+100, 7@+100]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 333 (27 fragments): lost [11, 13]; repairs [11@+65, 13@+65, 11@+97, 13@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +65 ms
+  frame 339 (27 fragments): lost [25]; repairs [25@+65, 25@+96]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 375 (27 fragments): lost [0]; repairs [0@+67, 0@+98]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +65 ms
+  frame 391 (27 fragments): lost [16, 20]; repairs [16@+60, 20@+60 dropped, 16@+92, 20@+92, 20@+122]; all fragments got through; complete at the relay at +92 ms vs the next frame's first fragment at +64 ms
+  frame 395 (27 fragments): lost [10, 12, 20, 21]; repairs [10@+66, 12@+66, 20@+66, 21@+66, 10@+97, 12@+97, 20@+97, 21@+97]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +64 ms
+  frame 398 (26 fragments): lost [5, 11, 21, 23]; repairs [5@+69, 11@+69, 21@+69, 23@+69, 5@+102, 11@+102, 21@+102, 23@+102]; all fragments got through; complete at the relay at +69 ms vs the next frame's first fragment at +64 ms
+  frame 407 (27 fragments): lost [0, 12]; repairs [0@+71, 12@+71, 0@+102, 12@+102]; all fragments got through; complete at the relay at +71 ms vs the next frame's first fragment at +64 ms
+  frame 413 (27 fragments): lost [0, 25]; repairs [0@+66, 25@+66, 0@+98, 25@+98]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +64 ms
+  frame 415 (27 fragments): lost [8]; repairs [8@+65, 8@+98]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 441 (27 fragments): lost [21]; repairs [21@+68, 21@+99]; all fragments got through; complete at the relay at +68 ms vs the next frame's first fragment at +64 ms
+  frame 445 (26 fragments): lost [0]; repairs [0@+65, 0@+96]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +65 ms
+  frame 455 (27 fragments): lost [5]; repairs [5@+66, 5@+97]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +65 ms
+  frame 468 (26 fragments): lost [23]; repairs [23@+65, 23@+98]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 476 (26 fragments): lost [11, 24]; repairs [11@+65, 24@+65, 11@+97, 24@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +65 ms
+  frame 492 (26 fragments): lost [16]; repairs [16@+70, 16@+101]; all fragments got through; complete at the relay at +70 ms vs the next frame's first fragment at +64 ms
+  frame 521 (27 fragments): lost [2, 23, 26]; repairs [2@+68, 23@+68, 26@+131, 26@+162]; all fragments got through; complete at the relay at +131 ms vs the next frame's first fragment at +64 ms
+  frame 523 (27 fragments): lost [11, 15, 24]; repairs [11@+65, 15@+65, 24@+65, 11@+98, 15@+98, 24@+98]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 527 (27 fragments): lost [0, 1, 14]; repairs [0@+75, 1@+75, 14@+75, 0@+106 dropped, 1@+106, 14@+106]; all fragments got through; complete at the relay at +75 ms vs the next frame's first fragment at +64 ms
+  frame 544 (26 fragments): lost [16]; repairs [16@+90, 16@+122]; all fragments got through; complete at the relay at +90 ms vs the next frame's first fragment at +64 ms
+  frame 546 (26 fragments): lost [10, 15]; repairs [10@+67, 15@+67 dropped, 15@+132]; all fragments got through; complete at the relay at +132 ms vs the next frame's first fragment at +64 ms
+  frame 548 (26 fragments): lost [8, 25]; repairs [8@+67, 8@+100 dropped, 25@+131, 25@+163]; all fragments got through; complete at the relay at +131 ms vs the next frame's first fragment at +64 ms
+  frame 553 (27 fragments): lost [20, 22]; repairs [20@+67, 22@+67]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 556 (26 fragments): lost [22]; repairs [22@+67, 22@+98]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +63 ms
+  frame 567 (27 fragments): lost [13]; repairs [13@+67, 13@+98]; all fragments got through; complete at the relay at +67 ms vs the next frame's first fragment at +64 ms
+  frame 569 (27 fragments): lost [1]; repairs [1@+65, 1@+97]; all fragments got through; complete at the relay at +65 ms vs the next frame's first fragment at +64 ms
+  frame 578 (26 fragments): lost [25]; repairs [25@+126 dropped, 25@+159, 25@+190]; all fragments got through; complete at the relay at +159 ms vs the next frame's first fragment at +64 ms
+  frame 582 (26 fragments): lost [4, 14]; repairs [4@+95, 14@+95 dropped, 4@+129, 14@+129]; all fragments got through; complete at the relay at +129 ms vs the next frame's first fragment at +65 ms
+  frame 603 (27 fragments): lost [13]; repairs [13@+94]; all fragments got through; complete at the relay at +94 ms vs the next frame's first fragment at +63 ms
+  frame 612 (26 fragments): lost [10]; repairs [10@+68, 10@+100]; all fragments got through; complete at the relay at +68 ms vs the next frame's first fragment at +64 ms
+  frame 617 (27 fragments): lost [20]; repairs []; fragments [20] never got through (FEC may have rebuilt them)
+  of the 65 frames never completed (next frame seen), the next frame needed no NACK for 61; of all 618 frames, 166 (26.9 %) needed none
