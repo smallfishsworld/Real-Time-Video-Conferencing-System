@@ -12,7 +12,8 @@
 #
 # Usage: sudo bench/run_b3.sh
 #        WIRES=v2 SIZES="8 16" MTU=1500 bench/run_b3.sh
-#        WIRES=v2 SERVER_ARGS="-udp-batch 1" TAG=unbatched bench/run_b3.sh
+#        WIRES=v2 SERVER_ARGS="-udp-batch 1" TAG=nobatch bench/run_b3.sh
+#        WIRES=v2 SERVER_ARGS="-udp-gso=false" TAG=nogso bench/run_b3.sh
 # Writes bench/results/b3_capacity[_mtu1500][_TAG].json. SERVER_ARGS are extra flags
 # for the v2 server (for example the pre-batching system-call pattern, "-udp-batch 1",
 # or batching without GSO, "-udp-gso=false"); TAG names such a variant.
@@ -128,5 +129,5 @@ cmd="bench/run_b3.sh"
 [ "$SIZES" != "$DEFAULT_SIZES" ] && cmd="SIZES=\"$SIZES\" $cmd"
 [ "$WIRES" != "v2 legacy" ] && cmd="WIRES=\"$WIRES\" $cmd"
 "$PY" "$BENCH/analyze_b3.py" "$OUT_DIR" "$RESULTS/b3_capacity$SUFFIX.json" --mtu "$MTU" \
-  --server-cpu "$SERVER_CPU" --loadgen-cpus "$LOADGEN_CPUS" --server-args "$SERVER_ARGS" \
-  --command "sudo $cmd"
+  --server-cpu "$SERVER_CPU" --loadgen-cpus "$LOADGEN_CPUS" --server-args="$SERVER_ARGS" \
+  --command="sudo $cmd" # "=": argparse would take a value such as "-udp-gso=false" for an option

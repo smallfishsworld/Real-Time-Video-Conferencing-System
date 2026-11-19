@@ -41,14 +41,20 @@ PLOTS = RESULTS / "plots"
 # --- theme ---------------------------------------------------------------------------
 # Chart chrome and the first three categorical slots of the validated reference
 # palette (dataviz skill, references/palette.md); colors follow the system, never the
-# rank, and are the same in every chart.
+# rank, and are the same in every chart. Variants that only make sense as a factor of
+# another system (NACK on top of an FEC setting, B3's batching modes) either share
+# that system's colour in a panel of their own or appear in the tables only.
 
 LABELS = {
     "legacy": "legacy (original)",
     "v2": "v2",
     "v2-fec": "v2 with FEC",
     "v2-nofec": "v2 without FEC",
-    "v2-unbatched": "v2 before syscall batching",
+    "v2-nack": "v2 with NACK",
+    "v2-fec-nack": "v2 with FEC and NACK",
+    "v2-unbatched": "v2 before batching existed",
+    "v2-nogso": "v2, recvmmsg/sendmmsg without GSO",
+    "v2-nobatch": "v2, one system call per datagram",
 }
 
 
@@ -77,7 +83,9 @@ LIGHT = Theme(
         "v2": "#eb6834",
         "v2-fec": "#eb6834",
         "v2-nofec": "#1baf7a",
-        "v2-unbatched": "#1baf7a",
+        "v2-nack": "#1baf7a",
+        "v2-fec-nack": "#eb6834",
+        "v2-nobatch": "#1baf7a",
     },
 )
 DARK = Theme(
@@ -93,7 +101,9 @@ DARK = Theme(
         "v2": "#d95926",
         "v2-fec": "#d95926",
         "v2-nofec": "#199e70",
-        "v2-unbatched": "#199e70",
+        "v2-nack": "#199e70",
+        "v2-fec-nack": "#d95926",
+        "v2-nobatch": "#199e70",
     },
 )
 
@@ -306,7 +316,15 @@ def percent_axis(ax: Axes, step: float = 20) -> None:
 
 # --- B1 ------------------------------------------------------------------------------
 
-B1_ORDER = ["legacy", "v2-fec", "v2-nofec"]
+# Tables: each v2 mechanism added in turn (v2-fec-nack is the client's default).
+B1_ORDER = ["legacy", "v2-nofec", "v2-fec", "v2-nack", "v2-fec-nack"]
+# Charts: one colour per FEC setting. NACK is a second factor on top of it, so the NACK
+# runs get a panel of their own in the colour of the FEC setting they use.
+B1_LEGEND = ["legacy", "v2-nofec", "v2-fec"]
+B1_PANELS = [
+    ("Without retransmission", ["legacy", "v2-nofec", "v2-fec"]),
+    ("v2 with NACK retransmission", ["legacy", "v2-nack", "v2-fec-nack"]),
+]
 
 
 def b1_runs(b1: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
@@ -320,27 +338,33 @@ def b1_runs(b1: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
 
 def plot_b1(b1: dict[str, Any], theme: Theme) -> None:
     runs = b1_runs(b1)
-    keys = [k for k in B1_ORDER if k in runs]
-    fig, (ax,) = new_chart(
+    keys = [k for k in B1_LEGEND if k in runs]
+    panels = [(t, [k for k in ks if k in runs]) for t, ks in B1_PANELS if any(k in runs for k in ks[1:])]
+    fig, axes = new_chart(
         theme,
         "Video frames delivered under random packet loss",
         "Complete frames within 200 ms; 480x480 JPEG at 15.6 fps over a 1500-byte-MTU link",
+        ncols=len(panels),
     )
     legend(fig, theme, keys)
-    ends = {}
-    for k in keys:
-        xs = [r["loss_percent"] for r in runs[k]]
-        ys = [100 * r["video"]["delivery_ratio"] for r in runs[k]]
-        plot_line(ax, theme, k, xs, ys)
-        ends[k] = (xs[-1], ys[-1])
-    ax.set_ylim(0, 105)
-    ax.set_xlim(-0.3, 11.5)
-    percent_axis(ax)
-    ax.set_xticks([0, 1, 2, 5, 10], ["0 %", "1 %", "2 %", "5 %", "10 %"])
-    ax.set_xlabel("Packet loss on the server-to-receiver link")
-    end_labels(ax, theme, ends, lambda v: f"{v:.0f} %")
+    for ax, (title, panel_keys) in zip(axes, panels, strict=True):
+        ends = {}
+        for k in panel_keys:
+            xs = [r["loss_percent"] for r in runs[k]]
+            ys = [100 * r["video"]["delivery_ratio"] for r in runs[k]]
+            plot_line(ax, theme, k, xs, ys)
+            ends[k] = (xs[-1], ys[-1])
+        ax.set_ylim(0, 105)
+        ax.set_xlim(-0.3, 11.5 if len(panels) == 1 else 12.5)
+        percent_axis(ax)
+        ax.set_xticks([0, 1, 2, 5, 10], ["0 %", "1 %", "2 %", "5 %", "10 %"])
+        ax.set_xlabel("Packet loss on the server-to-receiver link")
+        if len(panels) > 1:
+            ax.set_title(title, color=theme.ink2, fontsize=px(11.5), loc="left", pad=px(6))
+        end_labels(ax, theme, ends, lambda v: f"{v:.0f} %")
     save(fig, "b1_video_delivery", theme)
 
+    # NACK covers video only; the NACK runs' audio repeats their FEC setting's (tables).
     fig, (ax,) = new_chart(
         theme,
         "Audio lost under random packet loss",
@@ -415,6 +439,20 @@ def table_b1(b1: dict[str, Any]) -> str:
             lines.append(
                 f"| {LABELS[k]} | {r['loss_percent']:g} % | {pct(v['delivery_ratio_first_half'])} | "
                 f"{pct(v['delivery_ratio_second_half'])} | {kern['ip_reasm_fails']} | {peak_s} |"
+            )
+    nack_runs = [r for k in keys for r in runs[k] if r["video"].get("nack")]
+    if nack_runs:
+        lines += [
+            "",
+            "| System | Packet loss | NACK packets sent | Video packets requested | Recovered by"
+            " retransmission | Given up | Video frames on time |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for r in nack_runs:
+            n = r["video"]["nack"]
+            lines.append(
+                f"| {LABELS[r['system']]} | {r['loss_percent']:g} % | {n['nacks_sent']} | {n['requested']} | "
+                f"{n['recovered']} | {n['abandoned']} | {pct(r['video']['delivery_ratio'])} |"
             )
     return "\n".join(lines)
 
@@ -513,11 +551,16 @@ def table_b2(b2: dict[str, Any]) -> str:
 # --- B3 ------------------------------------------------------------------------------
 
 
-B3_ORDER = ["legacy", "v2", "v2-unbatched"]
+# Tables: the original, v2, then v2 with GSO and with all batching switched off on the
+# same binary, and v2 at the commit before batching existed (a cross-check).
+B3_ORDER = ["legacy", "v2", "v2-nogso", "v2-nobatch", "v2-unbatched"]
+# Charts and the README summary: the original, v2 and the same binary with one system
+# call per datagram, so that nothing but the batching differs.
+B3_CHART = ["legacy", "v2", "v2-nobatch"]
 
 
 def plot_b3(variants: list[tuple[str, dict[str, Any]]], theme: Theme) -> None:
-    keys = [k for k in B3_ORDER if any(k in b3["systems"] for _, b3 in variants)]
+    keys = [k for k in B3_CHART if any(k in b3["systems"] for _, b3 in variants)]
     metrics = [
         (
             "b3_delivery",
@@ -548,7 +591,11 @@ def plot_b3(variants: list[tuple[str, dict[str, Any]]], theme: Theme) -> None:
         fig, axes = new_chart(theme, title, subtitle, ncols=len(variants))
         legend(fig, theme, keys)
         xmax = max(
-            r["participants"] for _, b3 in variants for s in b3["systems"].values() for r in s["sweep"]
+            r["participants"]
+            for _, b3 in variants
+            for k, s in b3["systems"].items()
+            if k in keys
+            for r in s["sweep"]
         )
         for ax, (label, b3) in zip(axes, variants, strict=True):
             for k in keys:
@@ -577,9 +624,9 @@ def plot_b3(variants: list[tuple[str, dict[str, Any]]], theme: Theme) -> None:
 
 def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
     lines = [
-        "| Loopback MTU | System | Capacity (participants) | First failing | CPU s per participant-minute"
-        " (fixed run) | Server CPU in fixed run | Load generator CPU in fixed run |",
-        "|---|---|---|---|---|---|---|",
+        "| Loopback MTU | System | Built from | Capacity (participants) | First failing | CPU s per"
+        " participant-minute (fixed run) | Server CPU in fixed run | Load generator CPU in fixed run |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
         for k in B3_ORDER:
@@ -592,7 +639,8 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
             last_swept = max(r["participants"] for r in s["sweep"])
             cap_s = f"{cap}" if first is not None else f">= {cap} (largest size swept: {last_swept})"
             lines.append(
-                f"| {label} | {LABELS[k]} | {cap_s} | {first if first is not None else 'none'} | "
+                f"| {label} | {LABELS[k]} | `{s.get('commit') or 'n/a'}` | {cap_s} | "
+                f"{first if first is not None else 'none'} | "
                 f"{_num(fixed.get('server_cpu_seconds_per_participant_minute'), 3)} "
                 f"(N={fixed.get('participants', 'n/a')}) | {_num(fixed.get('server_cpu_utilisation'), 3)} | "
                 f"{_num(fixed.get('loadgen_cpu_utilisation'), 2)} |"
@@ -620,8 +668,63 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
     return "\n".join(lines)
 
 
+def tag_commit(data: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Record in each system the commit its binaries were built from."""
+    if data is not None:
+        env = data["environment"]
+        commit = (env.get("build") or {}).get("git_commit") or env.get("git_commit")
+        for s in data["systems"].values():
+            s.setdefault("commit", commit)
+    return data
+
+
 def _num(v: float | None, digits: int) -> str:
     return "n/a" if v is None else f"{v:.{digits}f}"
+
+
+# CPU profiles of the v2 server at 128 participants (bench/profile_b3.sh), as summarised
+# by bench/analyze_pprof.py: (file, server build and flags).
+PROFILES = [
+    ("pprof_v2.txt", "before batching (commit ef8982e)"),
+    ("pprof_v2-unbatched.txt", "`-udp-batch 1`"),
+    ("pprof_v2-sendmmsg.txt", "`-udp-gso=false`"),
+    ("pprof_v2-gso.txt", "default (batching + GSO)"),
+]
+PROFILE_PATHS = [
+    "forwarding video (sending the copies)",
+    "reading packets",
+    "audio mixers (20 ms ticks)",
+    "mixed-stream sends",
+    "all system calls (Syscall6)",
+]
+
+
+def table_profiles() -> str | None:
+    lines = [
+        "| Server | Server CPU | p99 latency | Forwarding | Reading | Audio mixers | of which mixer sends"
+        " | All system calls | Datagrams per read call | Copies per send call | Datagrams per message"
+        " | File |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for name, label in PROFILES:
+        path = RESULTS / name
+        if not path.exists():
+            continue
+        text = path.read_text()
+        head = re.search(r"p99 ([\d.]+) ms, server CPU ([\d.]+)", text)
+        shares = dict(re.findall(r"^ {2,}(\S.*?)\s{2,}([\d.]+) %$", text, re.MULTILINE))
+        per_read = re.search(r"\(([\d.]+) datagrams per call\)", text)
+        per_send = re.search(r"\(([\d.]+) per call\)", text)
+        per_msg = re.search(r"\(([\d.]+) datagrams per message\)", text)
+        if head is None or any(k not in shares for k in PROFILE_PATHS):
+            print(f"skip: {path} has no summary")
+            continue
+        cells = [f"{shares[k]} %" for k in PROFILE_PATHS]
+        cells += [m.group(1) if m else "n/a" for m in (per_read, per_send, per_msg)]
+        lines.append(
+            f"| {label} | {head.group(2)} | {head.group(1)} ms | " + " | ".join(cells) + f" | `{name}` |"
+        )
+    return "\n".join(lines) if len(lines) > 2 else None
 
 
 # --- micro ---------------------------------------------------------------------------
@@ -687,7 +790,7 @@ def summary_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
         "|---|---|---|---|",
     ]
     for label, b3 in variants:
-        for k in B3_ORDER:
+        for k in B3_CHART:
             s = b3["systems"].get(k)
             if not s:
                 continue
@@ -732,11 +835,23 @@ def main() -> None:
         )
         if data is not None
     ]
-    unbatched = load("b3_capacity_unbatched.json")
-    if variants and unbatched is not None and "v2" in unbatched["systems"]:
+    for _, data in variants:
+        tag_commit(data)
+    if variants:
         main_b3 = variants[0][1]
-        if main_b3["environment"]["git_commit"] != unbatched["environment"]["git_commit"]:
+        # v2 at the commit before batching, and the same binary as main_b3 with batching
+        # or GSO turned off, all on the default loopback MTU.
+        unbatched = tag_commit(load("b3_capacity_unbatched.json"))
+        if (
+            unbatched is not None
+            and "v2" in unbatched["systems"]
+            and main_b3["environment"]["git_commit"] != unbatched["environment"]["git_commit"]
+        ):
             main_b3["systems"]["v2-unbatched"] = unbatched["systems"]["v2"]
+        for key, name in (("v2-nogso", "b3_capacity_nogso.json"), ("v2-nobatch", "b3_capacity_nobatch.json")):
+            ablation = tag_commit(load(name))
+            if ablation is not None and "v2" in ablation["systems"]:
+                main_b3["systems"][key] = ablation["systems"]["v2"]
     micro = load("micro.json")
     for theme in (LIGHT, DARK):
         if b1:
@@ -754,6 +869,9 @@ def main() -> None:
     if variants:
         blocks["b3"] = table_b3(variants)
         blocks["summary_b3"] = summary_b3(variants)
+    profiles = table_profiles()
+    if profiles:
+        blocks["b3_profile"] = profiles
     if micro:
         blocks["micro"] = table_micro(micro)
     (RESULTS / "tables.md").write_text(
