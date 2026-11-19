@@ -76,8 +76,8 @@ together with the run-to-run range. A single run (B1's 300 s run, the relay-logg
 gets no interval; its 30 s bins show its spread. The CPU profiles are one 15 s window
 per server variant, and the microbenchmarks five runs each.
 
-**Earlier results (round 2).** The first results of each benchmark, made earlier the
-same day with the code of that time, are kept in
+**Earlier results (round 2).** The first results of each benchmark, made earlier with
+the code of that time, are kept in
 [`bench/results/v1/`](../bench/results/v1/). They were made with one run per point;
 apart from the churn and jitter files, their build records give only the commit
 (`v1/b3_capacity_unbatched.json` has none, from a tree with uncommitted changes), and
@@ -355,11 +355,10 @@ Per run, median (range):
 | Audio frames lost | 5 % | 22 % | 16 % | 25 % | 17 % | 18 % | 18 % | 13 % | 19 % | 18 % |
 <!-- END GENERATED b1_long -->
 
-**Reading the results.** Numbers from `b1_loss.json` (run 20261119T112236Z-10546,
-binaries built at b06dd9e): the frames of the three runs pooled, with the Wilson 95 %
-interval in brackets, unless a range of runs is given. The counts of lost frames and
-what followed them come from `b1_lost_frames.txt` (its summary lines) and
-`b1_rtt50_relay_diag.txt`.
+**Reading the results.** Numbers from `b1_loss.json` (binaries built at b06dd9e): the
+frames of the three runs pooled, with the Wilson 95 % interval in brackets, unless a
+range of runs is given. The counts of lost frames and what followed them come from
+`b1_lost_frames.txt` (its summary lines) and `b1_rtt50_relay_diag.txt`.
 
 *Downlink loss, the best case for repair:*
 
@@ -418,7 +417,7 @@ what followed them come from `b1_lost_frames.txt` (its summary lines) and
   did better at 10 % loss than at 2 %.
 - Both oddities come from the same newest-wins rule. A repair now takes a round trip
   more, so it arrives about when the next frame does. In the relay-logged runs at 5 %
-  loss (run 20261119T134226Z-8769, one 41 s run per system), the first repair of a lost
+  loss (`b1_rtt50_relay_diag.txt`, one 41 s run per system), the first repair of a lost
   packet passed the relay a median of 63.6 ms (FEC and NACK, 139 packets) and 63.8 ms
   (NACK alone, 795 packets) after its frame's first fragment, 56 % and 51 % of them
   within 64 ms, the frame interval, which is when the next frame's first fragment
@@ -537,8 +536,8 @@ covered by gaps longer than 0.5 s (`stalled_fraction`) and the latency series
 | v2 | 5 | 3 | 119 (119-124) | 135 (131-135) | 0 | 100.0 % | 100.0 % | 420 |
 <!-- END GENERATED b2 -->
 
-**Reading the results.** Numbers from `b2_audio.json` (run 20261119T115303Z-29601,
-built at 4fe5eca); medians of three runs with the range in brackets.
+**Reading the results.** Numbers from `b2_audio.json` (built at 4fe5eca); medians of
+three runs with the range in brackets.
 
 - The 2024 version's receiver has to play (n - 1) x real time of audio through a
   speaker that plays one. Its receive thread blocks in `write()`, the socket's receive
@@ -694,8 +693,8 @@ round-2 result, one run per point, is in `bench/results/v1/b3_capacity_mtu1500.j
 | MTU 65536 (Linux default) | v2, one system call per datagram | 224 | 0/1 | 91.32 % (91.32 %) | 36.1 (36.1) ms | 0.99 | 0.765 | 1.00 | 22 % | 1.0 | 1.0 | 1.0 |
 <!-- END GENERATED b3 -->
 
-**Reading the results.** Numbers from `b3_capacity.json` (run 20261119T110241Z-2243,
-built at 472e0e5); CPU figures are medians of three runs with the range in brackets.
+**Reading the results.** Numbers from `b3_capacity.json` (built at 472e0e5); CPU
+figures are medians of three runs with the range in brackets.
 
 - v2 is CPU-bound and the 2024 version is not. Every repeat of v2 as shipped passed up
   to 272 participants (delivery 99.57 %, lowest run 99.28 %; p99 20.7 ms); its repeats'
@@ -774,8 +773,8 @@ server pinned to CPU 1 and the load generator to CPUs 2-3; 15 s of
 `/debug/pprof/profile` per variant, all three in one hold of the lock), summarised by
 `bench/analyze_pprof.py`. Each profile has a provenance file next to it
 (`pprof_<variant>.json`: run ID, command, server flags, build record with binary
-hashes, the load generator's result and the server's counters). The published run
-(20261119T114714Z-23555) predates two changes to `bench/profile_b3.sh`: its
+hashes, the load generator's result and the server's counters). The published run (the
+one these files record) predates two changes to `bench/profile_b3.sh`: its
 `command.txt` was written after the run, from the settings it recorded, and it has no
 `lo_gso_check.json` (the script set `gso_max_segs 1` but did not yet check the split).
 The code-path columns are cumulative shares of the profiled CPU time (paths nest, so they do not add up); the
@@ -868,8 +867,8 @@ Median (min-max) of 3 runs of 1000 packets each.
 | as the third row, per-member rebind limit raised to 1000/s | not measured | 1000 | not measured | 0.159 (0.146-0.161) | not measured | 3.39 (2.99-6.54) |
 <!-- END GENERATED churn -->
 
-**Reading the results.** "After" is `churn_after.json` (raw lines in
-`bench/tmp/churn/after-20261119T125115Z/`, test binary built at a408133 with no
+**Reading the results.** "After" is `churn_after.json` (raw lines in the directory it
+names under `bench/tmp/churn/`, test binary built at a408133 with no
 uncommitted changes; the server code is the same as at the final commit), "before" is
 `churn_before.json`; median (min-max) of three runs.
 
@@ -1037,8 +1036,8 @@ sends.
 
 ## Earlier result sets (v1)
 
-`bench/results/v1/` keeps the first results of every benchmark, made earlier the same
-day with the code of that time (round 2; most build records with the commit only; B1
+`bench/results/v1/` keeps the first results of every benchmark, made earlier with the
+code of that time (round 2; most build records with the commit only; B1
 and B2 with one run per point; B3, the profiles and the microbenchmarks
 with lo passing whole UDP GSO messages and one sweep per variant; the "after" runs of
 the churn and jitter measurements at earlier commits). The B3 results at MTU 1500

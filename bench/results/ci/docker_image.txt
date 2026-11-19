@@ -1,5 +1,5 @@
 # make ci-docker at 8259b9b (Dockerfile with both images pinned by digest), run locally
-# on 2026-11-19 under the bench lock at nice 19:
+# under the bench lock at nice 19:
 #   make ci-docker DOCKER_BUILD_FLAGS="--network host --build-arg HTTPS_PROXY --secret id=ca,src=<CA bundle> --build-arg GOMAXPROCS=2 --build-arg GOFLAGS=-p=2"
 # result: exit 0 (build, then the smoke test: health check healthy, /metrics answers, JSON logs)
 

@@ -321,8 +321,8 @@ ingress budget are dropped, and retransmission stops when its byte budget is spe
 attack or load test was run against them). The client waits 5 ms before asking (so FEC and reordering get
 the first chance), retries every 30 ms, at most three times and for 250 ms.
 
-**Measured.** In B1 (`bench/results/b1_loss.json`, run 20261119T112236Z-10546; three
-41 s runs per point, frames pooled), with loss on the server-to-receiver link only and a
+**Measured.** In B1 (`bench/results/b1_loss.json`; three 41 s runs per point, frames
+pooled), with loss on the server-to-receiver link only and a
 sub-millisecond round trip, FEC plus NACK delivered every frame within 200 ms at 1 and
 2 % random loss (1 745 of 1 745 and 1 746 of 1 746), 99.9 % at 5 % and 99.3 % at 10 %,
 against 99.1, 97.8, 86.4 and 57.3 % with FEC alone. At 10 % loss the receivers sent 794

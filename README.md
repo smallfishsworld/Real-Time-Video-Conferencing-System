@@ -24,8 +24,8 @@ All numbers were measured on one shared 4-vCPU Linux virtual machine, on loopbac
 in network namespaces, with three runs per point: tables give the median and, in round
 brackets, the range of the three runs, except B1's, which pool the frames of the three
 runs and give a Wilson 95 % interval in square brackets.
-[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) has the methodology, the result file and run
-ID behind every number, and the caveats.
+[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) has the methodology, the result file behind
+every number, and the caveats.
 
 **Loss resilience (B1).** Video frames delivered complete within 200 ms over a link
 with random packet loss from the server to the receiver (1500-byte MTU, sub-millisecond

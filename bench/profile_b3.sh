@@ -12,8 +12,9 @@
 # generator's result and the server counters). Raw files stay in
 # bench/tmp/profile/<run ID>/, with command.txt (written before the run) and
 # lo_gso_check.json (how a GSO message crossed lo in the profiles' namespace setup).
-# The published run 20261119T114714Z-23555 predates both: its command.txt was written
-# after the run and it has no lo_gso_check.json (the B3 run of the same build has one).
+# The published run, the one recorded in bench/results/pprof_NAME.json, predates both:
+# its command.txt was written after the run and it has no lo_gso_check.json (the B3
+# run of the same build has one).
 #
 # Usage: sudo bench/profile_b3.sh
 #        PARTICIPANTS=96 PROFILES="v2-gso=" bench/profile_b3.sh
