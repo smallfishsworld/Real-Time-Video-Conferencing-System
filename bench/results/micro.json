@@ -1,0 +1,447 @@
+{
+  "benchmark": "Go microbenchmarks",
+  "command": "COUNT=5 MICRO_CPU=1 bench/run_micro.sh",
+  "note": "go test -bench . -benchmem -count 5 -cpu 1, pinned with taskset to CPU 1. Send benchmarks (udpio.BenchmarkSendFrame, media.BenchmarkForwardVideo) use loopback receivers: their times include the receive path, which on lo runs in softirq on the sending CPU, and lo passes a UDP GSO message up that path whole, so GSO speed-ups there are loopback-only upper bounds.",
+  "raw_output": "bench/tmp/micro/20261119T121211Z-7573/micro.txt",
+  "benchmarks": [
+    {
+      "name": "protocol.BenchmarkParseRTPVideoFragment",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 8.132
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6.954
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 9.07
+      }
+    },
+    {
+      "name": "protocol.BenchmarkMarshalRTPHeader",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6.767
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6.326
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 8.063
+      }
+    },
+    {
+      "name": "protocol.BenchmarkFECEncodeVideoGroup",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 16815.58,
+        "allocs/op": 0.0,
+        "ns/op": 290.2
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 13453.94,
+        "allocs/op": 0.0,
+        "ns/op": 262.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 18629.05,
+        "allocs/op": 0.0,
+        "ns/op": 362.7
+      }
+    },
+    {
+      "name": "protocol.BenchmarkFECRecoverVideoFragment",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 4579.15,
+        "allocs/op": 0.0,
+        "ns/op": 266.4
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 4098.73,
+        "allocs/op": 0.0,
+        "ns/op": 215.2
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 5668.32,
+        "allocs/op": 0.0,
+        "ns/op": 297.7
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=3",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 5749.0,
+        "packets/op": 4.5
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 4998.0,
+        "packets/op": 4.5
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 5959.0,
+        "packets/op": 4.5
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=4",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 7393.0,
+        "packets/op": 6.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 5238.0,
+        "packets/op": 6.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 8637.0,
+        "packets/op": 6.0
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=5",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 8553.0,
+        "packets/op": 7.5
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6419.0,
+        "packets/op": 7.5
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 10631.0,
+        "packets/op": 7.5
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=16",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 22842.0,
+        "packets/op": 24.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 20129.0,
+        "packets/op": 24.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 23494.0,
+        "packets/op": 24.0
+      }
+    },
+    {
+      "name": "media.BenchmarkMixMinus",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 2030.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 1928.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 3050.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/unbatched",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 582.37,
+        "allocs/op": 0.0,
+        "ns/op": 6285.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 443.1,
+        "allocs/op": 0.0,
+        "ns/op": 5951.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 614.99,
+        "allocs/op": 0.0,
+        "ns/op": 8260.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/sendmmsg/batch=1",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 616.52,
+        "allocs/op": 0.0,
+        "ns/op": 5937.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 552.6,
+        "allocs/op": 0.0,
+        "ns/op": 5201.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 703.77,
+        "allocs/op": 0.0,
+        "ns/op": 6623.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/sendmmsg/batch=16",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 714.8,
+        "allocs/op": 0.0,
+        "ns/op": 5120.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 579.18,
+        "allocs/op": 0.0,
+        "ns/op": 4404.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 831.13,
+        "allocs/op": 0.0,
+        "ns/op": 6319.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/sendmmsg/batch=64",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 744.88,
+        "allocs/op": 0.0,
+        "ns/op": 4914.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 633.2,
+        "allocs/op": 0.0,
+        "ns/op": 4652.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 786.69,
+        "allocs/op": 0.0,
+        "ns/op": 5780.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/gso/batch=16",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3204.43,
+        "allocs/op": 0.0,
+        "ns/op": 1142.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 2312.45,
+        "allocs/op": 0.0,
+        "ns/op": 1118.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 3274.41,
+        "allocs/op": 0.0,
+        "ns/op": 1583.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/gso/batch=64",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3527.67,
+        "allocs/op": 0.0,
+        "ns/op": 1038.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 3458.86,
+        "allocs/op": 0.0,
+        "ns/op": 1003.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 3649.25,
+        "allocs/op": 0.0,
+        "ns/op": 1058.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/gso+nack-buffer/batch=64",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3457.29,
+        "allocs/op": 0.0,
+        "ns/op": 1059.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 3155.27,
+        "allocs/op": 0.0,
+        "ns/op": 1042.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 3512.93,
+        "allocs/op": 0.0,
+        "ns/op": 1160.0
+      }
+    },
+    {
+      "name": "udpio.BenchmarkSendFrame/sendto",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 924.19,
+        "allocs/op": 0.0,
+        "ns/op": 31682.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 761.18,
+        "allocs/op": 0.0,
+        "ns/op": 31042.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 943.22,
+        "allocs/op": 0.0,
+        "ns/op": 38467.0
+      }
+    },
+    {
+      "name": "udpio.BenchmarkSendFrame/sendmmsg",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 955.37,
+        "allocs/op": 0.0,
+        "ns/op": 30648.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 931.11,
+        "allocs/op": 0.0,
+        "ns/op": 27315.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 1071.95,
+        "allocs/op": 0.0,
+        "ns/op": 31446.0
+      }
+    },
+    {
+      "name": "udpio.BenchmarkSendFrame/sendmmsg+gso",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3698.52,
+        "allocs/op": 0.0,
+        "ns/op": 7917.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 3325.52,
+        "allocs/op": 0.0,
+        "ns/op": 7838.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 3735.68,
+        "allocs/op": 0.0,
+        "ns/op": 8805.0
+      }
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "kernel_config": {
+      "CONFIG_IRQ_TIME_ACCOUNTING": "n",
+      "CONFIG_VIRT_CPU_ACCOUNTING_GEN": "n",
+      "CONFIG_TICK_CPU_ACCOUNTING": "y",
+      "CONFIG_HZ": "250"
+    },
+    "loadavg": "1.77 0.97 0.79 7/194 23065",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "a408133",
+    "git_dirty": false,
+    "git_dirty_files": [],
+    "build": {
+      "git_commit": "4fe5eca",
+      "utc": "2026-11-19T12:12:12Z",
+      "go": "go version go1.24.7 linux/amd64",
+      "git_dirty_files": [],
+      "git_diff_sha256": null,
+      "binaries": {
+        "protocol.test": "c56cbfbe0407e3cec0d552399b9603ea7e4a54db712329d2f86c83e2e58c506c",
+        "media.test": "575d0d0fc6ee39dfb18844337b4a663632465dd1853f4bfd7991486050326432",
+        "udpio.test": "07ef1ed0299725fefe127d20311cd1840d439030c074dd6487db768a03394686"
+      }
+    },
+    "utc": "2026-11-19T12:51:15Z"
+  }
+}

@@ -1,0 +1,110 @@
+goos: linux
+goarch: amd64
+pkg: github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkParseRTPVideoFragment   	137252734	         9.070 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	137551546	         8.227 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	177934954	         6.954 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	149377712	         8.132 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	145491399	         7.819 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	187619198	         6.675 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	196666105	         6.326 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	168821220	         6.767 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	196600308	         7.065 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	162795836	         8.063 ns/op	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 4274790	       297.4 ns/op	16411.62 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 4564491	       262.0 ns/op	18629.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 3463981	       362.7 ns/op	13453.94 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 5257818	       287.5 ns/op	16971.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 4505355	       290.2 ns/op	16815.58 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 3703381	       297.7 ns/op	4098.73 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 4435705	       291.8 ns/op	4181.63 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 5071144	       230.0 ns/op	5305.37 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 6879511	       215.2 ns/op	5668.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 5124090	       266.4 ns/op	4579.15 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkMixerTick/members=3         	  204916	      5749 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  316263	      4998 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  227931	      5696 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  261685	      5959 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  192762	      5904 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  128229	      8637 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  220140	      5238 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  203101	      7903 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  232092	      6667 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  217360	      7393 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  200560	      9482 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  142798	      8553 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  130320	     10631 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  186789	      6419 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  131906	      8415 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   55838	     23494 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   59802	     20129 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   54367	     23352 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   56558	     21382 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   57962	     22842 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  620390	      2162 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  577800	      2030 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  648322	      1928 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  628956	      1949 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  657924	      3050 ns/op	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/unbatched      	  134750	      8260 ns/op	 443.10 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/unbatched      	  169368	      5951 ns/op	 614.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/unbatched      	  192262	      6310 ns/op	 580.02 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/unbatched      	  226510	      6285 ns/op	 582.37 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/unbatched      	  254925	      6184 ns/op	 591.84 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=1         	  280867	      5882 ns/op	 622.28 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=1         	  208214	      5201 ns/op	 703.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=1         	  326192	      6458 ns/op	 566.76 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=1         	  291799	      5937 ns/op	 616.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=1         	  251380	      6623 ns/op	 552.60 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=16        	  219295	      5230 ns/op	 699.80 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=16        	  186121	      6319 ns/op	 579.18 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=16        	  241216	      4941 ns/op	 740.80 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=16        	  231818	      5120 ns/op	 714.80 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=16        	  316492	      4404 ns/op	 831.13 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=64        	  373670	      5192 ns/op	 704.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=64        	  221148	      5780 ns/op	 633.20 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=64        	  339681	      4888 ns/op	 748.84 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=64        	  253039	      4652 ns/op	 786.69 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=64        	  234128	      4914 ns/op	 744.88 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=16             	 1000000	      1583 ns/op	2312.45 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=16             	 1000000	      1118 ns/op	3274.41 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=16             	 1000000	      1142 ns/op	3204.43 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=16             	 1000000	      1162 ns/op	3148.75 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=16             	 1067307	      1134 ns/op	3228.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=64             	 1000000	      1038 ns/op	3527.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=64             	 1000000	      1058 ns/op	3459.67 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=64             	 1000000	      1015 ns/op	3606.65 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=64             	 1000000	      1003 ns/op	3649.25 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=64             	 1000000	      1058 ns/op	3458.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso+nack-buffer/batch=64 	 1000000	      1042 ns/op	3512.93 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso+nack-buffer/batch=64 	 1000000	      1066 ns/op	3432.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso+nack-buffer/batch=64 	 1000000	      1160 ns/op	3155.27 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso+nack-buffer/batch=64 	 1000000	      1059 ns/op	3457.29 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso+nack-buffer/batch=64 	 1152754	      1047 ns/op	3494.21 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkSendFrame/sendto         	   34766	     38467 ns/op	 761.18 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendto         	   37390	     31432 ns/op	 931.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendto         	   38310	     31682 ns/op	 924.19 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendto         	   39700	     32065 ns/op	 913.15 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendto         	   36322	     31042 ns/op	 943.22 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg       	   43604	     30648 ns/op	 955.37 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg       	   40077	     31292 ns/op	 935.71 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg       	   37314	     29018 ns/op	1009.04 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg       	   40712	     27315 ns/op	1071.95 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg       	   43220	     31446 ns/op	 931.11 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg+gso   	  143013	      8805 ns/op	3325.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg+gso   	  156418	      7917 ns/op	3698.52 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg+gso   	  127401	      8232 ns/op	3556.77 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg+gso   	  166848	      7838 ns/op	3735.68 MB/s	       0 B/op	       0 allocs/op
+BenchmarkSendFrame/sendmmsg+gso   	  169788	      7910 ns/op	3701.53 MB/s	       0 B/op	       0 allocs/op
+PASS
