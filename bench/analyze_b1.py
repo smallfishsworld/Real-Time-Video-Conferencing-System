@@ -2,7 +2,13 @@
 
 Video: a frame counts as delivered when the receiver had the complete frame within
 DEADLINE of the moment the sender handed it to the socket. Frames sent in the first
-second and the last 1.5 s of a run are left out (start-up and shutdown edges).
+second and the last 1.5 s of a run are left out (start-up and shutdown edges), and so
+are frames the sender's bitrate cap refused (v2 records them; none in these runs).
+Latency percentiles cover the frames that completed, so two systems that complete
+different shares of their frames are compared over different frames. For v2 they are
+also given separately for frames assembled within QUICK_ASSEMBLY of their first
+fragment (no repair round trip fits in that time) and for the rest, which waited for
+a retransmission or for fragments that came late.
 
 Audio: residual loss is the fraction of the sender's audio frames (legacy: 64 ms
 chunks; v2: 20 ms frames) whose tag never reached the speaker. Legacy has no
@@ -13,8 +19,9 @@ silence (neither received audio nor PLC).
 Each (condition, system, loss rate) group pools its repeats: frames on time out of
 frames sent, with a Wilson 95 % score interval, and the median, minimum and maximum
 of the per-run ratios. The interval treats frames as independent trials; where
-losses are correlated in time (the original's reassembly queue), the run-to-run range
-is the better guide. Only the files of the run in RUNDIR are read; a run whose
+losses are correlated in time (the 2024 version's reassembly queue), the run-to-run
+range is the better guide. A group of one run (the long run) gets no interval, only
+the range of its 30 s bins. Only the files of the run in RUNDIR are read; a run whose
 processes failed has no .net.json and is listed under failed_runs.
 
 Usage: analyze_b1.py RUNDIR OUT.json [--build BUILD.json] [--command CMD]
@@ -37,6 +44,7 @@ from common import ROOT, environment, load_frames, spread, summary, wilson, writ
 
 DEADLINE = 0.2  # seconds from send to complete frame
 EDGE_START, EDGE_END = 1.0, 1.5
+QUICK_ASSEMBLY = 0.0015  # seconds from a frame's first fragment to its completion
 
 
 def _ip_fragments(pickled_len: int, mtu: int = 1500) -> int:
@@ -73,9 +81,10 @@ def model_ratio(system: str, p: float, sizes: list[int]) -> float:
 
 
 def match_arrivals(
-    sent: list[tuple[int, float]], received: list[tuple[int, float]]
-) -> dict[tuple[int, float], float]:
-    """First arrival of each sent frame: (corpus index, send time) -> arrival time.
+    sent: list[tuple[int, float]], received: list[tuple[int, float, float | None]]
+) -> dict[tuple[int, float], tuple[float, float | None]]:
+    """First arrival of each sent frame: (corpus index, send time) -> (time complete,
+    time of its first fragment, None if the receiver did not record it).
 
     Frames are identified by their corpus index, and the corpus repeats (1000 frames,
     64 s at 15.625 fps), so a run longer than that sends an index more than once. An
@@ -86,13 +95,24 @@ def match_arrivals(
         sends_of[i].append(t)
     for times in sends_of.values():
         times.sort()
-    arrivals: dict[tuple[int, float], float] = {}
-    for i, t in sorted(received, key=lambda e: e[1]):
+    arrivals: dict[tuple[int, float], tuple[float, float | None]] = {}
+    for i, t, first in sorted(received, key=lambda e: e[1]):
         times = sends_of.get(i, [])
         j = bisect.bisect_right(times, t) - 1
         if j >= 0:
-            arrivals.setdefault((i, times[j]), t)
+            arrivals.setdefault((i, times[j]), (t, first))
     return arrivals
+
+
+def split_by_assembly(arrived: dict[tuple[int, float], tuple[float, float | None]]) -> dict[str, Any]:
+    """Latency (ms, send to complete) of the frames completed within QUICK_ASSEMBLY of
+    their first fragment, and of the rest; frames without a first-fragment time are left out."""
+    quick: list[float] = []
+    later: list[float] = []
+    for (_, sent_at), (done, first) in arrived.items():
+        if first is not None:
+            (quick if done - first <= QUICK_ASSEMBLY else later).append(1000 * (done - sent_at))
+    return {"within_quick_assembly": summary(quick), "later": summary(later)}
 
 
 def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
@@ -101,14 +121,18 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
     net = json.loads((d / f"{tag}.net.json").read_text())
     system = net["system"]
 
-    sent = [(int(e[0]), float(e[1])) for e in send["sent_video"]]
+    # v2 entries are (index, time, accepted by the bitrate cap); the 2024 version's have no flag.
+    sent = [(int(e[0]), float(e[1])) for e in send["sent_video"] if len(e) < 3 or e[2]]
     t_first, t_last = sent[0][1], sent[-1][1]
     lo, hi = t_first + EDGE_START, t_last - EDGE_END
     window = [(i, t) for i, t in sent if lo <= t <= hi]
-    arrived = match_arrivals(sent, [(int(e[1]), float(e[2])) for e in recv["recv_video"]])
+    # v2 entries are (sender, index, time complete, time of the first fragment).
+    received = [(int(e[1]), float(e[2]), float(e[3]) if len(e) > 3 else None) for e in recv["recv_video"]]
+    arrived = match_arrivals(sent, received)
     # Frames of the counted window that arrived complete: (index, send time) -> arrival.
-    arrivals = {k: arrived[k] for k in window if k in arrived}
+    arrivals = {k: arrived[k][0] for k in window if k in arrived}
     latencies = [a - k[1] for k, a in arrivals.items()]
+    by_assembly = split_by_assembly({k: arrived[k] for k in arrivals}) if system != "legacy" else None
     on_time = sum(1 for x in latencies if x <= DEADLINE)
     mid = (lo + hi) / 2
 
@@ -208,6 +232,10 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
             "model_ratio_independent_loss": model,
             "delivery_by_30s": by_30s,
             "latency_ms": summary(x * 1000 for x in latencies),
+            # v2: the completed frames split by the time from their first fragment to
+            # completion (QUICK_ASSEMBLY): no repair round trip fits in the first group.
+            "latency_ms_by_assembly_time": by_assembly,
+            "quick_assembly_ms": 1000 * QUICK_ASSEMBLY,
             "sender_frames_rate_limited": send.get("video_frames_rate_limited", 0),
             "nack": recv.get("nack") or None,
             # v2 only: frames the receiver abandoned incomplete, past the 300 ms
@@ -235,8 +263,8 @@ CONDITIONS = {
     "independent drops per datagram in both directions and a fixed one-way delay each way (25 ms by "
     "default: +50 ms round trip); NACKs, retransmissions, parity and REGISTERs can be lost; v2 only "
     "(the relay works on whole datagrams)",
-    "downlink-long": "the downlink condition for the original only, in long runs, for its dynamics as "
-    "the receiver's IP reassembly queue fills",
+    "downlink-long": "the downlink condition for the 2024 version only, in long runs, for its dynamics "
+    "as the receiver's IP reassembly queue fills",
 }
 
 
@@ -248,6 +276,16 @@ def aggregate(runs: list[dict[str, Any]]) -> dict[str, Any]:
     audio_lost = sum(r["audio"]["frames_lost"] for r in runs)
     nacks = [r["video"]["nack"] for r in runs if r["video"]["nack"]]
     assembled = [r["video"]["assembler"] for r in runs if r["video"].get("assembler")]
+    split = [x for r in runs if (x := r["video"].get("latency_ms_by_assembly_time"))]
+    # One run (the long run, the relay-log runs): its frames are not independent trials, so no interval;
+    # the range of its 30 s bins shows how much the ratio moved instead.
+    single = len(runs) == 1
+
+    def ratio(k: int, n: int) -> dict[str, Any]:
+        w = wilson(k, n)
+        return {**w, "low": None, "high": None} if single else w
+
+    bins = runs[0]["video"]["delivery_by_30s"] if single else []
     return {
         "condition": runs[0]["condition"],
         "system": runs[0]["system"],
@@ -257,10 +295,27 @@ def aggregate(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "video": {
             "frames_sent": sent,
             "frames_on_time": on_time,
-            "delivery_ratio": wilson(on_time, sent),
+            "delivery_ratio": ratio(on_time, sent),
+            "delivery_ratio_by_30s_bins": (
+                spread(b["on_time"] / b["frames"] for b in bins if b["frames"]) if single else None
+            ),
             "delivery_ratio_per_run": spread(r["video"]["delivery_ratio"] for r in runs),
+            "frames_complete_per_run": spread(r["video"].get("frames_complete") for r in runs),
             "latency_ms_p50_per_run": spread(r["video"]["latency_ms"]["p50"] for r in runs),
             "latency_ms_p99_per_run": spread(r["video"]["latency_ms"]["p99"] for r in runs),
+            # v2: the same split by assembly time as in each run (None for the 2024 version).
+            "latency_by_assembly_time_per_run": (
+                {
+                    part: {
+                        "frames": spread(x[part]["n"] for x in split),
+                        "p50_ms": spread(x[part]["p50"] for x in split),
+                        "p99_ms": spread(x[part]["p99"] for x in split),
+                    }
+                    for part in ("within_quick_assembly", "later")
+                }
+                if split
+                else None
+            ),
             "model_ratio_independent_loss": runs[0]["video"]["model_ratio_independent_loss"],
             "nack_totals": {k: sum(n.get(k, 0) for n in nacks) for k in nacks[0]} if nacks else None,
             "assembler_totals": (
@@ -269,7 +324,12 @@ def aggregate(runs: list[dict[str, Any]]) -> dict[str, Any]:
         },
         "audio": {
             "frames_sent": audio_sent,
-            "residual_loss": wilson(audio_lost, audio_sent),
+            "residual_loss": ratio(audio_lost, audio_sent),
+            "residual_loss_by_30s_bins": (
+                spread(b["lost"] / b["frames"] for b in runs[0]["audio"]["lost_by_30s"] if b["frames"])
+                if single
+                else None
+            ),
             "residual_loss_per_run": spread(r["audio"]["residual_loss"] for r in runs),
             "gap_fraction_after_concealment_per_run": spread(
                 r["audio"].get("gap_fraction_after_concealment") for r in runs
@@ -333,9 +393,13 @@ def main() -> None:
     for _, g in sorted(groups.items()):
         a = aggregate(g)
         v, au = a["video"]["delivery_ratio"], a["audio"]["residual_loss"]
+        bins = a["video"]["delivery_ratio_by_30s_bins"]
+        spread_s = (
+            f"30 s bins {bins['min']:.4f}-{bins['max']:.4f}" if bins else f"[{v['low']:.4f}, {v['high']:.4f}]"
+        )
         print(
             f"{a['condition']:13s} {a['system']:12s} {a['loss_percent']:5.1f} % x{a['runs']}: "
-            f"video {v['p']:.4f} [{v['low']:.4f}, {v['high']:.4f}]  audio lost {au['p']:.4f}"
+            f"video {v['p']:.4f} {spread_s}  audio lost {au['p']:.4f}"
         )
 
 

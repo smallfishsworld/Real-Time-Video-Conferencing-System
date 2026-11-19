@@ -50,12 +50,42 @@ def test_b1_model_of_independent_loss() -> None:
 def test_b1_matches_an_arrival_to_the_latest_send_of_its_index() -> None:
     # The corpus repeats, so a long run sends index 7 at 0 s and again at 64 s.
     sent = [(7, 0.0), (8, 0.064), (7, 64.0), (8, 64.064)]
-    received = [(7, 0.01), (7, 64.02), (8, 64.2), (7, 64.5), (9, 1.0)]
+    received = [(7, 0.01, 0.009), (7, 64.02, None), (8, 64.2, 64.1), (7, 64.5, 64.4), (9, 1.0, 1.0)]
     assert analyze_b1.match_arrivals(sent, received) == {
-        (7, 0.0): 0.01,
-        (7, 64.0): 64.02,  # its later duplicate at 64.5 s is not a new arrival
-        (8, 64.064): 64.2,  # the first send of index 8 never arrived
+        (7, 0.0): (0.01, 0.009),
+        (7, 64.0): (64.02, None),  # its later duplicate at 64.5 s is not a new arrival
+        (8, 64.064): (64.2, 64.1),  # the first send of index 8 never arrived
     }
+
+
+def test_b1_splits_latency_by_assembly_time() -> None:
+    # Complete 1 ms after the first fragment (no repair could have arrived), 40 ms after
+    # it (waited for a retransmission), and one without a first-fragment time.
+    arrived = {(1, 0.0): (0.003, 0.002), (2, 0.064): (0.110, 0.070), (3, 0.128): (0.130, None)}
+    split = analyze_b1.split_by_assembly(arrived)
+    assert split["within_quick_assembly"]["n"] == 1
+    assert split["within_quick_assembly"]["p50"] == pytest.approx(3.0)
+    assert split["later"]["n"] == 1
+    assert split["later"]["p50"] == pytest.approx(46.0)
+
+
+def test_b1_gives_a_single_run_no_interval_but_its_bin_range() -> None:
+    run = _b1_run(1, 600, 420, 60)
+    run["video"]["delivery_by_30s"] = [
+        {"from_s": 0, "frames": 300, "on_time": 240},
+        {"from_s": 30, "frames": 300, "on_time": 180},
+    ]
+    run["audio"]["lost_by_30s"] = [
+        {"from_s": 0, "frames": 925, "lost": 10},
+        {"from_s": 30, "frames": 925, "lost": 50},
+    ]
+    g = analyze_b1.aggregate([run])
+    assert g["video"]["delivery_ratio"]["p"] == pytest.approx(0.7)
+    assert g["video"]["delivery_ratio"]["low"] is None
+    assert g["video"]["delivery_ratio"]["high"] is None
+    assert g["video"]["delivery_ratio_by_30s_bins"] == spread([0.8, 0.6])
+    assert g["audio"]["residual_loss"]["low"] is None
+    assert g["audio"]["residual_loss_by_30s_bins"] == spread([10 / 925, 50 / 925])
 
 
 def _b1_run(rep: int, sent: int, on_time: int, audio_lost: int) -> dict[str, Any]:
@@ -87,6 +117,7 @@ def test_b1_pools_the_repeats_of_a_group() -> None:
     assert g["video"]["nack_totals"] == {"nacks_sent": 30, "retransmissions": 15}
     assert g["video"]["assembler_totals"] == {"completed": 1163, "superseded": 2}
     assert g["audio"]["residual_loss"] == wilson(2, 3700)
+    assert g["video"]["delivery_ratio_by_30s_bins"] is None
     assert g["tags"] == ["downlink-v2-fec-nack-50-r1", "downlink-v2-fec-nack-50-r2"]
 
 
