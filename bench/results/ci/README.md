@@ -23,3 +23,10 @@ Commands (server/, nice 19, CPU 0, under the bench lock):
     GOMAXPROCS=2 GODEBUG=fuzzdebug=1 go test -run '^$' -fuzz '^FuzzParseVideo$' -fuzztime 15s -parallel 2 ./internal/protocol
     GOMAXPROCS=2 GODEBUG=fuzzdebug=1 go test -run '^$' -fuzz '^FuzzParseVideo$' -fuzztime 15s -fuzzminimizetime 100x -parallel 2 ./internal/protocol
     GOMAXPROCS=2 go test -run '^$' -fuzz '^FuzzFECRecovery$' -fuzztime 15s -fuzzminimizetime 100x -parallel 2 ./internal/protocol
+
+## Docker image (make ci-docker)
+
+`docker_image.txt`: `make ci-docker` at 8259b9b, the first commit with both images of
+`server/Dockerfile` pinned by digest, passed locally (build and smoke test), and
+`docker image inspect` gives the image's size (13,287,899 bytes) and user
+(65532:65532). The full build log is not committed.
