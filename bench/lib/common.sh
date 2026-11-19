@@ -50,18 +50,24 @@ prepare() {
   fi
 }
 
-# write_build_record OUT [BINARY...]: what the binaries were built from (commit and the
-# uncommitted paths outside bench/results), when, and each binary's SHA-256. The
-# analysis scripts copy it into the result files.
+# write_build_record OUT [BINARY...]: what the binaries were built from (commit, the
+# uncommitted paths outside bench/results and the SHA-256 of their diff against the
+# commit, null when there is none), when, and each binary's SHA-256. The analysis
+# scripts copy it into the result files.
 write_build_record() {
-  local out=$1 first=1 bin
+  local out=$1 first=1 bin diff
   shift
+  diff=$(git -C "$ROOT" diff HEAD -- server client bench legacy ':!bench/results')
   {
     printf '{"git_commit": "%s", "utc": "%s", "git_dirty_files": [' \
       "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     git -C "$ROOT" status --porcelain -- server client bench legacy ':!bench/results' |
       sed 's/\\/\\\\/g; s/"/\\"/g; s/.*/"&"/' | paste -sd, -
-    printf '], "binaries": {'
+    if [ -n "$diff" ]; then
+      printf '], "git_diff_sha256": "%s", "binaries": {' "$(printf '%s\n' "$diff" | sha256sum | cut -c1-64)"
+    else
+      printf '], "git_diff_sha256": null, "binaries": {'
+    fi
     for bin in "$@"; do
       [ $first -eq 1 ] || printf ', '
       first=0
