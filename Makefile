@@ -92,9 +92,12 @@ ci-mypy:
 ci-race:
 	cd server && go test -race ./...
 
+# -fuzzminimizetime 100x: with the default (60 s per input), FuzzParseVideo and
+# FuzzFECRecovery spent most of a 10 s run minimizing inputs whose new coverage did not
+# reproduce, and stopped executing (GODEBUG=fuzzdebug=1 shows it).
 ci-fuzz:
 	cd server && for t in $(GO_FUZZ_TARGETS); do \
-		go test -run '^$$' -fuzz "^$$t$$" -fuzztime $(CI_FUZZTIME) ./internal/protocol || exit 1; \
+		go test -run '^$$' -fuzz "^$$t$$" -fuzztime $(CI_FUZZTIME) -fuzzminimizetime 100x ./internal/protocol || exit 1; \
 	done
 
 ci-bench:

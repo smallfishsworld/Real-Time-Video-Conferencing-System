@@ -1,0 +1,10 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/24 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 24/24 completed, now fuzzing with 2 workers
+fuzz: elapsed: 3s, execs: 93041 (31007/sec), new interesting: 0 (total: 24)
+fuzz: elapsed: 6s, execs: 189759 (32244/sec), new interesting: 0 (total: 24)
+fuzz: elapsed: 9s, execs: 282285 (30844/sec), new interesting: 0 (total: 24)
+fuzz: elapsed: 12s, execs: 381179 (32962/sec), new interesting: 0 (total: 24)
+fuzz: elapsed: 15s, execs: 474006 (30942/sec), new interesting: 0 (total: 24)
+fuzz: elapsed: 15s, execs: 474006 (0/sec), new interesting: 0 (total: 24)
+PASS
+ok  	github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol	15.108s

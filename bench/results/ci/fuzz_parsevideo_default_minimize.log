@@ -1,0 +1,27 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/8 completed
+2026-11-19 17:29:27.578672667 DEBUG processed an initial input, id: , new bits: 39, size: 0, exec time: 85.239µs
+2026-11-19 17:29:27.581704704 DEBUG processed an initial input, id: , new bits: 6, size: 0, exec time: 250.911µs
+2026-11-19 17:29:27.582873398 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 746.253µs
+2026-11-19 17:29:27.583329719 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 27.967µs
+2026-11-19 17:29:27.585345632 DEBUG processed an initial input, id: , new bits: 2, size: 0, exec time: 26.366µs
+2026-11-19 17:29:27.58537791 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 25.311µs
+2026-11-19 17:29:27.587714007 DEBUG processed an initial input, id: , new bits: 1, size: 0, exec time: 31.066µs
+2026-11-19 17:29:27.587792079 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 26.691µs
+fuzz: elapsed: 0s, gathering baseline coverage: 8/8 completed, now fuzzing with 2 workers
+2026-11-19 17:29:27.587809773 DEBUG finished processing input corpus, entries: 8, initial coverage bits: 48
+2026-11-19 17:29:27.601453086 DEBUG queueing input for minimization, id: c052f222, parent: seed#0, keepCoverage: true, crasher: false
+2026-11-19 17:29:28.242735851 DEBUG queueing input for minimization, id: c811922b, parent: seed#0, keepCoverage: true, crasher: false
+2026-11-19 17:29:28.417425838 DEBUG queueing input for minimization, id: 5ffa2239, parent: testdata/fuzz/FuzzParseVideo/seed-00, keepCoverage: true, crasher: false
+fuzz: elapsed: 3s, execs: 23941 (7964/sec), new interesting: 0 (total: 8)
+fuzz: elapsed: 6s, execs: 23941 (0/sec), new interesting: 0 (total: 8)
+fuzz: elapsed: 9s, execs: 23941 (0/sec), new interesting: 0 (total: 8)
+fuzz: elapsed: 12s, execs: 23941 (0/sec), new interesting: 0 (total: 8)
+fuzz: elapsed: 15s, execs: 23941 (0/sec), new interesting: 0 (total: 8)
+2026-11-19 17:29:42.585767913 DEBUG stop called at /usr/local/go1.24.7/src/internal/fuzz/fuzz.go:228. stopping: false
+2026-11-19 17:29:43.604823382 DEBUG input minimized, id: c811922b, original id: c811922b, crasher: false, originally crasher: false, minimizing took: 0s
+2026-11-19 17:29:43.604983274 DEBUG stop called at /usr/local/go1.24.7/src/internal/fuzz/fuzz.go:232. stopping: true
+2026-11-19 17:29:43.605042941 DEBUG input minimized, id: c052f222, original id: c052f222, crasher: false, originally crasher: false, minimizing took: 0s
+2026-11-19 17:29:43.60507796 DEBUG stop called at /usr/local/go1.24.7/src/internal/fuzz/fuzz.go:232. stopping: true
+fuzz: elapsed: 16s, execs: 23941 (0/sec), new interesting: 0 (total: 8)
+PASS
+ok  	github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol	16.034s

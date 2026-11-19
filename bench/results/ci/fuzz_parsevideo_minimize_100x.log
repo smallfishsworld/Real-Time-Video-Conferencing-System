@@ -1,0 +1,97 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/8 completed
+2026-11-19 17:29:56.836352684 DEBUG processed an initial input, id: , new bits: 39, size: 0, exec time: 64.807µs
+2026-11-19 17:29:56.838102482 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 57.323µs
+2026-11-19 17:29:56.840428881 DEBUG processed an initial input, id: , new bits: 6, size: 0, exec time: 267.606µs
+2026-11-19 17:29:56.840866897 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 166.158µs
+2026-11-19 17:29:56.842902835 DEBUG processed an initial input, id: , new bits: 2, size: 0, exec time: 43.662µs
+2026-11-19 17:29:56.843128035 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 42.218µs
+2026-11-19 17:29:56.84447878 DEBUG processed an initial input, id: , new bits: 1, size: 0, exec time: 30.003µs
+2026-11-19 17:29:56.844999316 DEBUG processed an initial input, id: , new bits: 0, size: 0, exec time: 500.452µs
+fuzz: elapsed: 0s, gathering baseline coverage: 8/8 completed, now fuzzing with 2 workers
+2026-11-19 17:29:56.845018716 DEBUG finished processing input corpus, entries: 8, initial coverage bits: 48
+2026-11-19 17:29:57.718873398 DEBUG queueing input for minimization, id: 9345513c, parent: seed#1, keepCoverage: true, crasher: false
+2026-11-19 17:29:57.728672084 DEBUG input minimized, id: c4937f1f, original id: 9345513c, crasher: false, originally crasher: false, minimizing took: 2.261525ms
+2026-11-19 17:29:57.728711306 DEBUG worker reported interesting input that doesn't expand coverage, id: c4937f1f, parent: seed#1, canMinimize: false
+2026-11-19 17:29:57.965684092 DEBUG queueing input for minimization, id: ce8b2eb1, parent: testdata/fuzz/FuzzParseVideo/seed-03, keepCoverage: true, crasher: false
+2026-11-19 17:29:57.971054033 DEBUG input minimized, id: 131d9c2c, original id: ce8b2eb1, crasher: false, originally crasher: false, minimizing took: 3.431472ms
+2026-11-19 17:29:57.97107957 DEBUG worker reported interesting input that doesn't expand coverage, id: 131d9c2c, parent: testdata/fuzz/FuzzParseVideo/seed-03, canMinimize: false
+2026-11-19 17:29:58.241824225 DEBUG queueing input for minimization, id: 24d67a37, parent: testdata/fuzz/FuzzParseVideo/seed-00, keepCoverage: true, crasher: false
+2026-11-19 17:29:58.252133935 DEBUG input minimized, id: b62320c1, original id: 24d67a37, crasher: false, originally crasher: false, minimizing took: 5.125366ms
+2026-11-19 17:29:58.252158686 DEBUG worker reported interesting input that doesn't expand coverage, id: b62320c1, parent: testdata/fuzz/FuzzParseVideo/seed-00, canMinimize: false
+fuzz: elapsed: 3s, execs: 95210 (31734/sec), new interesting: 0 (total: 8)
+2026-11-19 17:30:00.313609648 DEBUG queueing input for minimization, id: 0e2f597c, parent: testdata/fuzz/FuzzParseVideo/seed-01, keepCoverage: true, crasher: false
+2026-11-19 17:30:00.323990697 DEBUG input minimized, id: 46faf2e4, original id: 0e2f597c, crasher: false, originally crasher: false, minimizing took: 7.436446ms
+2026-11-19 17:30:00.324029804 DEBUG worker reported interesting input that doesn't expand coverage, id: 46faf2e4, parent: testdata/fuzz/FuzzParseVideo/seed-01, canMinimize: false
+2026-11-19 17:30:00.591734198 DEBUG queueing input for minimization, id: 76ae9c25, parent: seed#0, keepCoverage: true, crasher: false
+2026-11-19 17:30:00.597996069 DEBUG queueing input for minimization, id: c352bad0, parent: testdata/fuzz/FuzzParseVideo/seed-00, keepCoverage: true, crasher: false
+2026-11-19 17:30:00.604175528 DEBUG input minimized, id: 348f5750, original id: 76ae9c25, crasher: false, originally crasher: false, minimizing took: 4.902498ms
+2026-11-19 17:30:00.604202799 DEBUG worker reported interesting input that doesn't expand coverage, id: 348f5750, parent: seed#0, canMinimize: false
+2026-11-19 17:30:00.708759174 DEBUG input minimized, id: 574df2db, original id: c352bad0, crasher: false, originally crasher: false, minimizing took: 2.161782ms
+2026-11-19 17:30:00.708810155 DEBUG worker reported interesting input that doesn't expand coverage, id: 574df2db, parent: testdata/fuzz/FuzzParseVideo/seed-00, canMinimize: false
+2026-11-19 17:30:01.398458847 DEBUG queueing input for minimization, id: 2f528b18, parent: testdata/fuzz/FuzzParseVideo/seed-00, keepCoverage: true, crasher: false
+2026-11-19 17:30:01.401823518 DEBUG input minimized, id: fb4b7374, original id: 2f528b18, crasher: false, originally crasher: false, minimizing took: 2.171709ms
+2026-11-19 17:30:01.401843536 DEBUG worker reported interesting input that doesn't expand coverage, id: fb4b7374, parent: testdata/fuzz/FuzzParseVideo/seed-00, canMinimize: false
+2026-11-19 17:30:01.467764081 DEBUG queueing input for minimization, id: 4fe3ab20, parent: testdata/fuzz/FuzzParseVideo/seed-01, keepCoverage: true, crasher: false
+2026-11-19 17:30:01.471317369 DEBUG input minimized, id: 5e0c575f, original id: 4fe3ab20, crasher: false, originally crasher: false, minimizing took: 2.257605ms
+2026-11-19 17:30:01.471340007 DEBUG worker reported interesting input that doesn't expand coverage, id: 5e0c575f, parent: testdata/fuzz/FuzzParseVideo/seed-01, canMinimize: false
+fuzz: elapsed: 6s, execs: 196197 (33664/sec), new interesting: 0 (total: 8)
+2026-11-19 17:30:02.929698869 DEBUG queueing input for minimization, id: af1fbd30, parent: seed#1, keepCoverage: true, crasher: false
+2026-11-19 17:30:02.942077598 DEBUG input minimized, id: 27941c2f, original id: af1fbd30, crasher: false, originally crasher: false, minimizing took: 5.077668ms
+2026-11-19 17:30:02.942148725 DEBUG worker reported interesting input that doesn't expand coverage, id: 27941c2f, parent: seed#1, canMinimize: false
+2026-11-19 17:30:04.343975488 DEBUG queueing input for minimization, id: 1f9c572b, parent: testdata/fuzz/FuzzParseVideo/seed-03, keepCoverage: true, crasher: false
+2026-11-19 17:30:04.502641014 DEBUG queueing input for minimization, id: 534bf536, parent: seed#0, keepCoverage: true, crasher: false
+2026-11-19 17:30:04.514211115 DEBUG input minimized, id: e91e7202, original id: 1f9c572b, crasher: false, originally crasher: false, minimizing took: 9.261656ms
+2026-11-19 17:30:04.51423954 DEBUG worker reported interesting input that doesn't expand coverage, id: e91e7202, parent: testdata/fuzz/FuzzParseVideo/seed-03, canMinimize: false
+2026-11-19 17:30:04.518214175 DEBUG input minimized, id: ed46e786, original id: 534bf536, crasher: false, originally crasher: false, minimizing took: 2.771149ms
+2026-11-19 17:30:04.5182351 DEBUG worker reported interesting input that doesn't expand coverage, id: ed46e786, parent: seed#0, canMinimize: false
+2026-11-19 17:30:05.087773819 DEBUG queueing input for minimization, id: 53e00e8e, parent: testdata/fuzz/FuzzParseVideo/seed-01, keepCoverage: true, crasher: false
+2026-11-19 17:30:05.158073835 DEBUG input minimized, id: 3363e0f4, original id: 53e00e8e, crasher: false, originally crasher: false, minimizing took: 2.370203ms
+2026-11-19 17:30:05.158122579 DEBUG worker reported interesting input that doesn't expand coverage, id: 3363e0f4, parent: testdata/fuzz/FuzzParseVideo/seed-01, canMinimize: false
+2026-11-19 17:30:05.410419365 DEBUG queueing input for minimization, id: 1f93be18, parent: testdata/fuzz/FuzzParseVideo/seed-01, keepCoverage: true, crasher: false
+2026-11-19 17:30:05.416744483 DEBUG input minimized, id: 27ba9b29, original id: 1f93be18, crasher: false, originally crasher: false, minimizing took: 4.106118ms
+2026-11-19 17:30:05.416885168 DEBUG worker reported interesting input that doesn't expand coverage, id: 27ba9b29, parent: testdata/fuzz/FuzzParseVideo/seed-01, canMinimize: false
+fuzz: elapsed: 9s, execs: 295968 (33231/sec), new interesting: 0 (total: 8)
+2026-11-19 17:30:06.539711124 DEBUG queueing input for minimization, id: dad0df21, parent: seed#1, keepCoverage: true, crasher: false
+2026-11-19 17:30:06.559878257 DEBUG input minimized, id: fb9da391, original id: dad0df21, crasher: false, originally crasher: false, minimizing took: 2.38669ms
+2026-11-19 17:30:06.559912506 DEBUG worker reported interesting input that doesn't expand coverage, id: fb9da391, parent: seed#1, canMinimize: false
+2026-11-19 17:30:06.730006113 DEBUG queueing input for minimization, id: 0562695a, parent: testdata/fuzz/FuzzParseVideo/seed-02, keepCoverage: true, crasher: false
+2026-11-19 17:30:06.840566729 DEBUG input minimized, id: fabd7e53, original id: 0562695a, crasher: false, originally crasher: false, minimizing took: 2.152154ms
+2026-11-19 17:30:06.840598476 DEBUG worker reported interesting input that doesn't expand coverage, id: fabd7e53, parent: testdata/fuzz/FuzzParseVideo/seed-02, canMinimize: false
+2026-11-19 17:30:07.914012147 DEBUG queueing input for minimization, id: 084273c3, parent: testdata/fuzz/FuzzParseVideo/seed-03, keepCoverage: true, crasher: false
+2026-11-19 17:30:08.004309198 DEBUG queueing input for minimization, id: a0df793f, parent: testdata/fuzz/FuzzParseVideo/seed-05, keepCoverage: true, crasher: false
+2026-11-19 17:30:08.016136302 DEBUG input minimized, id: 166688b4, original id: 084273c3, crasher: false, originally crasher: false, minimizing took: 9.282748ms
+2026-11-19 17:30:08.016170822 DEBUG worker reported interesting input that doesn't expand coverage, id: 166688b4, parent: testdata/fuzz/FuzzParseVideo/seed-03, canMinimize: false
+2026-11-19 17:30:08.023794408 DEBUG input minimized, id: c19461f9, original id: a0df793f, crasher: false, originally crasher: false, minimizing took: 6.421175ms
+2026-11-19 17:30:08.023818847 DEBUG worker reported interesting input that doesn't expand coverage, id: c19461f9, parent: testdata/fuzz/FuzzParseVideo/seed-05, canMinimize: false
+2026-11-19 17:30:08.113173887 DEBUG queueing input for minimization, id: 6c536373, parent: seed#1, keepCoverage: true, crasher: false
+2026-11-19 17:30:08.116557106 DEBUG input minimized, id: 00e4ea75, original id: 6c536373, crasher: false, originally crasher: false, minimizing took: 2.289721ms
+2026-11-19 17:30:08.1165839 DEBUG worker reported interesting input that doesn't expand coverage, id: 00e4ea75, parent: seed#1, canMinimize: false
+2026-11-19 17:30:08.212108228 DEBUG queueing input for minimization, id: 35298c3b, parent: testdata/fuzz/FuzzParseVideo/seed-00, keepCoverage: true, crasher: false
+2026-11-19 17:30:08.215316231 DEBUG input minimized, id: 999c96cf, original id: 35298c3b, crasher: false, originally crasher: false, minimizing took: 2.140921ms
+2026-11-19 17:30:08.215336372 DEBUG worker reported interesting input that doesn't expand coverage, id: 999c96cf, parent: testdata/fuzz/FuzzParseVideo/seed-00, canMinimize: false
+2026-11-19 17:30:08.349157042 DEBUG queueing input for minimization, id: b6380044, parent: testdata/fuzz/FuzzParseVideo/seed-05, keepCoverage: true, crasher: false
+2026-11-19 17:30:08.74148734 DEBUG input minimized, id: 37e8facc, original id: b6380044, crasher: false, originally crasher: false, minimizing took: 2.378866ms
+2026-11-19 17:30:08.74152501 DEBUG worker reported interesting input that doesn't expand coverage, id: 37e8facc, parent: testdata/fuzz/FuzzParseVideo/seed-05, canMinimize: false
+fuzz: elapsed: 12s, execs: 392551 (32210/sec), new interesting: 0 (total: 8)
+2026-11-19 17:30:09.211204904 DEBUG queueing input for minimization, id: 83b1e66d, parent: testdata/fuzz/FuzzParseVideo/seed-05, keepCoverage: true, crasher: false
+2026-11-19 17:30:09.325644892 DEBUG input minimized, id: efc3280a, original id: 83b1e66d, crasher: false, originally crasher: false, minimizing took: 2.876742ms
+2026-11-19 17:30:09.325679038 DEBUG worker reported interesting input that doesn't expand coverage, id: efc3280a, parent: testdata/fuzz/FuzzParseVideo/seed-05, canMinimize: false
+2026-11-19 17:30:09.550950949 DEBUG queueing input for minimization, id: 94c49e00, parent: testdata/fuzz/FuzzParseVideo/seed-05, keepCoverage: true, crasher: false
+2026-11-19 17:30:09.614678312 DEBUG input minimized, id: a561ba06, original id: 94c49e00, crasher: false, originally crasher: false, minimizing took: 2.898523ms
+2026-11-19 17:30:09.614711756 DEBUG worker reported interesting input that doesn't expand coverage, id: a561ba06, parent: testdata/fuzz/FuzzParseVideo/seed-05, canMinimize: false
+2026-11-19 17:30:09.716819345 DEBUG queueing input for minimization, id: e228d059, parent: testdata/fuzz/FuzzParseVideo/seed-01, keepCoverage: true, crasher: false
+2026-11-19 17:30:09.720732397 DEBUG input minimized, id: 3332bec3, original id: e228d059, crasher: false, originally crasher: false, minimizing took: 2.697389ms
+2026-11-19 17:30:09.720758131 DEBUG worker reported interesting input that doesn't expand coverage, id: 3332bec3, parent: testdata/fuzz/FuzzParseVideo/seed-01, canMinimize: false
+2026-11-19 17:30:10.840079038 DEBUG queueing input for minimization, id: fa194480, parent: seed#0, keepCoverage: true, crasher: false
+2026-11-19 17:30:10.84631632 DEBUG input minimized, id: e3511219, original id: fa194480, crasher: false, originally crasher: false, minimizing took: 3.724817ms
+2026-11-19 17:30:10.846350421 DEBUG worker reported interesting input that doesn't expand coverage, id: e3511219, parent: seed#0, canMinimize: false
+2026-11-19 17:30:11.145938367 DEBUG queueing input for minimization, id: 482e369e, parent: testdata/fuzz/FuzzParseVideo/seed-04, keepCoverage: true, crasher: false
+2026-11-19 17:30:11.319155321 DEBUG input minimized, id: dd15bb7a, original id: 482e369e, crasher: false, originally crasher: false, minimizing took: 3.880296ms
+2026-11-19 17:30:11.319193674 DEBUG worker reported interesting input that doesn't expand coverage, id: dd15bb7a, parent: testdata/fuzz/FuzzParseVideo/seed-04, canMinimize: false
+2026-11-19 17:30:11.831587606 DEBUG stop called at /usr/local/go1.24.7/src/internal/fuzz/fuzz.go:228. stopping: false
+fuzz: elapsed: 15s, execs: 495949 (34470/sec), new interesting: 0 (total: 8)
+2026-11-19 17:30:11.881990896 DEBUG stop called at /usr/local/go1.24.7/src/internal/fuzz/fuzz.go:232. stopping: true
+2026-11-19 17:30:11.938325823 DEBUG stop called at /usr/local/go1.24.7/src/internal/fuzz/fuzz.go:232. stopping: true
+fuzz: elapsed: 15s, execs: 495949 (0/sec), new interesting: 0 (total: 8)
+PASS
+ok  	github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol	15.111s
