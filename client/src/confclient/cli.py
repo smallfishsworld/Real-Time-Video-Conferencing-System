@@ -45,6 +45,10 @@ HELP = """commands:
   exit                  leave and quit"""
 
 
+# Longest --duration: a week. The range check also rejects NaN, infinity and negatives.
+MAX_DURATION_S = 7 * 24 * 3600
+
+
 def _ranged(kind: Callable[[str], float], lo: float, hi: float, step: int = 0) -> Callable[[str], float]:
     """An argparse type that accepts kind(text) in [lo, hi] (and a multiple of step)."""
 
@@ -112,7 +116,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="COMMANDS",
         help='commands to run at start, separated by ";" (for example "create demo; sleep 10; exit")',
     )
-    p.add_argument("--duration", type=float, help="leave and exit after this many seconds")
+    p.add_argument(
+        "--duration",
+        type=_ranged(float, 0, MAX_DURATION_S),
+        help=f"leave and exit after this many seconds (0..{MAX_DURATION_S})",
+    )
     return p
 
 
