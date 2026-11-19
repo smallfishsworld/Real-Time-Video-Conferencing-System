@@ -343,14 +343,18 @@ honnef.co/go/tools/cmd/staticcheck@2025.1.1` installs the same version (then pas
 for Python 3.11, the oldest version the client supports.
 
 - Go: table-driven unit tests (room state machine, mode decisions, mixer saturation and
-  mix-minus, FEC recovery of any single lost packet, header round trips), fuzz tests
-  for every decoder with a committed seed corpus, and integration tests that start the
+  mix-minus, FEC recovery of any single lost packet, header round trips, the NACK and
+  retransmission budgets), eight fuzz targets for the decoders with a committed seed
+  corpus (no bug found; two of them barely ran in CI's 10 s runs until
+  `-fuzzminimizetime 100x`, see
+  [`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md)), and integration tests that start the
   server in-process and drive fake clients through create/join/list/chat/leave/cancel,
   P2P -> relay -> P2P, meeting isolation, spoofed SSRCs and mixed-audio content.
 - Python: unit tests against the same golden vectors as the Go code
   (`protocol-testdata/vectors.json`), packetizer and FEC, frame assembly with loss,
   reordering and duplicates, audio jitter buffer and concealment, rate limiting, the
-  media session against a fake server, and end-to-end tests (`pytest -m e2e`) that build
+  command-line parser's range checks, the media session against a fake server, and
+  end-to-end tests (`pytest -m e2e`) that build
   and start the Go server and run three headless clients with synthetic media.
 - CI: a GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml);
   not yet run on GitHub) with lint, the Go race tests, short fuzzing, every benchmark
