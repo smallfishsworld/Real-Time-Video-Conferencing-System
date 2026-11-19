@@ -35,7 +35,11 @@ type Config struct {
 }
 
 // DefaultConfig listens on loopback only; pass explicit addresses to serve a LAN.
+// Signaling.MaxConns is 0, which Start turns into Room.MaxClients plus
+// ConnHeadroom.
 func DefaultConfig() Config {
+	sig := signaling.DefaultConfig()
+	sig.MaxConns = 0
 	return Config{
 		ControlAddr:  "127.0.0.1:6100",
 		MediaAddr:    "127.0.0.1:6100",
@@ -43,8 +47,24 @@ func DefaultConfig() Config {
 		SocketBuffer: 4 << 20,
 		Room:         room.DefaultConfig(),
 		Media:        media.DefaultConfig(),
-		Signaling:    signaling.DefaultConfig(),
+		Signaling:    sig,
 	}
+}
+
+// ConnHeadroom is how many control connections beyond Room.MaxClients the server
+// accepts by default: connections that have not sent hello yet, or are about to be
+// refused with limit_reached.
+const ConnHeadroom = 64
+
+// effective fills in the derived settings.
+func (cfg Config) effective() Config {
+	if cfg.Signaling.MaxConns <= 0 {
+		cfg.Signaling.MaxConns = cfg.Room.MaxClients + ConnHeadroom
+	}
+	if cfg.Media.Logger == nil {
+		cfg.Media.Logger = cfg.Logger
+	}
+	return cfg
 }
 
 // Server is a running conference server.
@@ -61,6 +81,9 @@ type Server struct {
 	wg        sync.WaitGroup
 	errMu     sync.Mutex
 	err       error
+	done      chan struct{} // closed when a serving goroutine fails
+	doneOnce  sync.Once
+	cfg       Config
 }
 
 // Start binds all sockets and starts serving.
@@ -68,7 +91,9 @@ func Start(cfg Config) (*Server, error) {
 	log := cfg.Logger
 	if log == nil {
 		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+		cfg.Logger = log
 	}
+	cfg = cfg.effective()
 	udpAddr, err := net.ResolveUDPAddr("udp", cfg.MediaAddr)
 	if err != nil {
 		return nil, fmt.Errorf("media address: %w", err)
@@ -87,7 +112,7 @@ func Start(cfg Config) (*Server, error) {
 		return nil, fmt.Errorf("listen control: %w", err)
 	}
 
-	s := &Server{log: log, controlLn: ctl, Metrics: metrics.New()}
+	s := &Server{log: log, controlLn: ctl, Metrics: metrics.New(), done: make(chan struct{}), cfg: cfg}
 	s.Registry = room.NewRegistry(cfg.Room)
 	s.Router = media.NewRouter(udp, s.Registry, cfg.Media, s.Metrics.Hooks())
 	s.Registry.SetMediaPort(int(s.Router.LocalAddr().Port()))
@@ -117,8 +142,26 @@ func Start(cfg Config) (*Server, error) {
 		"media", s.Router.LocalAddr().String(),
 		"metrics", s.MetricsAddr(),
 		"pprof", cfg.EnablePprof,
-		"p2p", cfg.Room.P2PEnabled)
+		"p2p", cfg.Room.P2PEnabled,
+		"udp_batching", s.Router.Batching(),
+		"udp_gso", s.Router.GSO(),
+		"max_clients", cfg.Room.MaxClients,
+		"max_conns", cfg.Signaling.MaxConns)
 	return s, nil
+}
+
+// Config returns the configuration the server runs with, derived settings filled in.
+func (s *Server) Config() Config { return s.cfg }
+
+// Done is closed when a serving goroutine (media, control or metrics) fails; Err then
+// returns its error. The process should shut down rather than keep running without it.
+func (s *Server) Done() <-chan struct{} { return s.done }
+
+// Err returns the first serving error, or nil.
+func (s *Server) Err() error {
+	s.errMu.Lock()
+	defer s.errMu.Unlock()
+	return s.err
 }
 
 func (s *Server) goServe(name string, fn func() error) {
@@ -129,9 +172,10 @@ func (s *Server) goServe(name string, fn func() error) {
 			s.log.Error("serve failed", "component", name, "err", err)
 			s.errMu.Lock()
 			if s.err == nil {
-				s.err = err
+				s.err = fmt.Errorf("%s: %w", name, err)
 			}
 			s.errMu.Unlock()
+			s.doneOnce.Do(func() { close(s.done) })
 		}
 	}()
 }
