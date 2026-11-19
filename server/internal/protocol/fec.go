@@ -136,6 +136,9 @@ func (e *FECEncoder) Flush(out []byte, ssrc uint32, seq uint16) (int, error) {
 	return n, nil
 }
 
+// Reset drops the current group without sending its parity.
+func (e *FECEncoder) Reset() { e.reset() }
+
 func (e *FECEncoder) reset() {
 	clear(e.parity[:e.maxBody])
 	e.hdr = FECHeader{}

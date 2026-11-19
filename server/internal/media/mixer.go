@@ -100,6 +100,7 @@ type mixRoom struct {
 }
 
 func newMixRoom(id, ssrc uint32, conn packetWriter, stats *Stats, hooks *Hooks, fecK int, ts0 uint32) *mixRoom {
+	fecK = min(max(fecK, 0), protocol.MaxFECGroup) // a larger group could never be sent
 	return &mixRoom{
 		id:    id,
 		ssrc:  ssrc,
@@ -219,7 +220,12 @@ func (m *mixRoom) send(snap *mixSnapshot, i int, mm mixMember, d *downstream) {
 		return
 	}
 	if d.fec.Add(m.pkt[:n]) != nil {
-		return
+		// Start a new group rather than leave FEC off for good (a full or broken
+		// group would make every later Add fail).
+		d.fec.Reset()
+		if d.fec.Add(m.pkt[:n]) != nil {
+			return
+		}
 	}
 	if d.fec.Len() >= m.fecK {
 		pn, err := d.fec.Flush(m.parity[:], m.ssrc, d.seq)
