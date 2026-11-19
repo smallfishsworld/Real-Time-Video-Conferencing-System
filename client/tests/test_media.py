@@ -362,6 +362,36 @@ def test_a_frame_larger_than_the_burst_goes_out_once_the_bucket_refills() -> Non
     _run(scenario)
 
 
+def test_audio_timestamps_count_frames_and_jump_only_over_pauses() -> None:
+    """Review finding client-8: one late capture callback used to shift every later
+    timestamp. The timestamp now counts frames; only a pause of more than ten frames
+    (or a time with nobody to send to) moves it by the capture clock."""
+
+    async def scenario() -> None:
+        async with fake_server() as server:
+            a, b = Peer(server, 1), Peer(server, 2)
+            await a.session.start()
+            a.session.update_roster(_roster(a.joined, b.joined))
+            pcm = bytes(640)
+            for t in (0.0, 0.02, 0.07, 0.075, 0.10):  # one callback 30 ms late, then a quick one
+                assert a.session.send_audio(pcm, t)
+            assert a.session.send_audio(pcm, 1.0)  # a 0.9 s pause: 45 frames
+            a.session.update_roster(_roster(a.joined))  # alone: nothing is sent ...
+            for n in range(1, 11):
+                assert not a.session.send_audio(pcm, 1.0 + 0.02 * n)
+            a.session.update_roster(_roster(a.joined, b.joined))
+            assert a.session.send_audio(pcm, 1.22)  # ... but the timestamp kept counting
+            ssrc = a.joined["audio_ssrc"]
+            await until(lambda: len(_rtp_of(server, ssrc, PT_AUDIO)) == 7)
+            headers = _rtp_of(server, ssrc, PT_AUDIO)
+            frames = [((h.timestamp - headers[0].timestamp) & 0xFFFFFFFF) // 320 for h in headers]
+            assert frames == [0, 1, 2, 3, 4, 49, 60]
+            assert [h.marker for h in headers] == [True, False, False, False, False, True, True]
+            await a.session.close()
+
+    _run(scenario)
+
+
 def test_nacks_stay_within_the_feedback_budget_and_registers_are_charged() -> None:
     """Review finding client-11: NACK and REGISTER packets bypassed every budget. NACKs
     now have their own (feedback_kbps, feedback_pps); a REGISTER always goes out, and

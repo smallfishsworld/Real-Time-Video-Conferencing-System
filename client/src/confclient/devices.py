@@ -164,7 +164,9 @@ def tone(freq: float, amplitude: int, n0: int) -> Frame:
 
 
 class FakeMicrophone(AudioSource):
-    """A sine tone, one 20 ms frame per tick, paced by the event loop's clock."""
+    """A sine tone, one 20 ms frame per tick, paced by the event loop's clock. Like a
+    sound card's ADC time, the capture time it reports is when the frame was due, not
+    when a busy event loop got round to delivering it."""
 
     def __init__(self, freq: float = 440.0, amplitude: int = 3000) -> None:
         self.freq = freq
@@ -183,12 +185,13 @@ class FakeMicrophone(AudioSource):
         i = 0
         while True:
             i += 1
-            delay = t0 + i * AUDIO_FRAME_SECONDS - time.monotonic()
+            due = t0 + i * AUDIO_FRAME_SECONDS
+            delay = due - time.monotonic()
             if delay > 0:
                 await asyncio.sleep(delay)
             frame = self.make_frame(self.frames)
             self.frames += 1
-            on_frame(frame.astype(">i2").tobytes(), time.monotonic())
+            on_frame(frame.astype(">i2").tobytes(), due)
 
     def stop(self) -> None:
         if self._task is not None:
@@ -276,9 +279,17 @@ class PyAudioMicrophone(_PyAudioDevice, AudioSource):
     def start(self, loop: asyncio.AbstractEventLoop, on_frame: AudioCallback) -> None:
         import pyaudio
 
+        offset: list[float] = []  # ADC clock to time.monotonic(), set by the first frame
+
         def callback(data: bytes, frames: int, info: Any, status: int) -> tuple[None, int]:
             pcm = np.frombuffer(data, dtype=np.int16).astype(">i2").tobytes()
-            loop.call_soon_threadsafe(on_frame, pcm, time.monotonic())
+            now = time.monotonic()
+            adc = float(info.get("input_buffer_adc_time", 0.0)) if isinstance(info, dict) else 0.0
+            if adc > 0:
+                if not offset:
+                    offset.append(now - adc)
+                now = adc + offset[0]
+            loop.call_soon_threadsafe(on_frame, pcm, now)
             return None, pyaudio.paContinue
 
         self._open(input=True, stream_callback=callback)

@@ -43,6 +43,9 @@ from .ratelimit import TokenBucket
 Addr = tuple[str, int]
 _WIRE_OVERHEAD = 28  # IPv4 + UDP header bytes charged to the send budgets per packet
 _KINDS = ("video", "video_fec", "audio", "audio_fec")
+# A capture pause longer than this many frames (a muted or stalled device) moves the
+# audio timestamp forward by the pause; shorter irregularities do not.
+_AUDIO_GAP_FRAMES = 10
 
 
 @dataclass
@@ -156,7 +159,9 @@ class MediaSession(asyncio.DatagramProtocol):
         self._t0 = clock()
         self._video_ts_base = secrets.randbelow(1 << 32)
         self._audio_ts_base = secrets.randbelow(1 << 32) // AUDIO_SAMPLES_PER_FRAME * AUDIO_SAMPLES_PER_FRAME
-        self._last_audio_n: int | None = None
+        self._audio_n = 0  # frames of audio captured, plus the pauses
+        self._last_audio_capture: float | None = None
+        self._audio_marker = True  # the next audio frame sent starts a talk spurt
 
     # Life cycle -----------------------------------------------------------------
 
@@ -364,22 +369,30 @@ class MediaSession(asyncio.DatagramProtocol):
         return frame_id
 
     def send_audio(self, pcm_be: bytes, capture_time: float) -> bool:
-        """Send one 20 ms frame (big-endian L16). The RTP timestamp follows the capture
-        clock, so a pause in capture shows up as a timestamp gap with the marker set.
-        The budget is checked before the frame is packetized, so a refused frame never
-        enters the FEC encoder."""
+        """Send one 20 ms frame (big-endian L16). The RTP timestamp advances 320 samples
+        per captured frame, whether or not the frame is sent. The capture clock only
+        detects a pause: a frame that comes more than _AUDIO_GAP_FRAMES frames after the
+        previous one moves the timestamp over the pause and sets the marker, while a late
+        callback followed by a quick one does not shift the stream."""
+        if self._last_audio_capture is not None:
+            elapsed = round((capture_time - self._last_audio_capture) / AUDIO_FRAME_SECONDS)
+            if elapsed > _AUDIO_GAP_FRAMES:
+                self._audio_n += elapsed
+                self._audio_marker = True
+            else:
+                self._audio_n += 1
+        self._last_audio_capture = capture_time
+        # A frame that is not sent still advances the timestamp, so the stream keeps
+        # time with the capture clock.
         if self._others == 0 or self._transport is None:
+            self._audio_marker = True  # the next frame sent starts a talk spurt
             return False
         if not self._bucket.try_consume(self._cost(*self._audio_tx.wire_size())):
             self.stats.audio_frames_rate_limited += 1  # a loss to the receivers
             return False
-        n = round((capture_time - self._t0) / AUDIO_FRAME_SECONDS)
-        marker = self._last_audio_n is None or n > self._last_audio_n + 1
-        if self._last_audio_n is not None and n <= self._last_audio_n:
-            n = self._last_audio_n + 1
-        self._last_audio_n = n
-        ts = (self._audio_ts_base + n * AUDIO_SAMPLES_PER_FRAME) & 0xFFFFFFFF
-        pkts = self._audio_tx.packetize(pcm_be, ts, marker)
+        ts = (self._audio_ts_base + self._audio_n * AUDIO_SAMPLES_PER_FRAME) & 0xFFFFFFFF
+        pkts = self._audio_tx.packetize(pcm_be, ts, self._audio_marker)
+        self._audio_marker = False
         self._send_packets(pkts)
         self.stats.audio_frames_sent += 1
         return True
