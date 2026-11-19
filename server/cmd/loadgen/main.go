@@ -553,6 +553,38 @@ func run(args []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	parts, stats, err := setup(ctx, cfg, clk)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		for _, p := range parts {
+			p.close()
+		}
+	}()
+	m, err := measure(ctx, cfg, clk, frames, parts, stats, bound)
+	if err != nil {
+		return err
+	}
+	res := summarize(cfg, m, avg, largest, bound)
+	res.Label = cfg.Label
+	res.LoadgenGOMAXPROCS = runtime.GOMAXPROCS(0)
+	res.StartedUTC = clk.start.UTC().Format(time.RFC3339)
+
+	out, err := json.MarshalIndent(res, "", "  ")
+	if err != nil {
+		return err
+	}
+	out = append(out, '\n')
+	if cfg.Out == "" {
+		_, err = os.Stdout.Write(out)
+		return err
+	}
+	return os.WriteFile(cfg.Out, out, 0o644)
+}
+
+// setup connects every participant and seats it in its room.
+func setup(ctx context.Context, cfg config, clk clock) ([]participant, []*senderStats, error) {
 	server := netip.MustParseAddr(cfg.Server)
 	parts := make([]participant, cfg.Participants)
 	stats := make([]*senderStats, cfg.Participants)
@@ -561,6 +593,7 @@ func run(args []string) error {
 	}
 	setupCtx, setupCancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer setupCancel()
+	var err error
 	switch cfg.Wire {
 	case "v2":
 		err = setupV2(setupCtx, cfg, clk, server, parts, stats)
@@ -573,30 +606,47 @@ func run(args []string) error {
 				p.close()
 			}
 		}
-		return fmt.Errorf("setup: %w", err)
+		return nil, nil, fmt.Errorf("setup: %w", err)
 	}
-	defer func() {
-		for _, p := range parts {
-			p.close()
-		}
-	}()
+	return parts, stats, nil
+}
 
+// measurement is what one run observed: every sender's and receiver's counters and
+// the CPU readings at the edges of the measurement window.
+type measurement struct {
+	stats []*senderStats
+	recs  []*recorder
+	// serverCPU holds the server process's CPU seconds at the window edges; nil when
+	// -server-pid was not given or could not be read.
+	serverCPU *[2]float64
+	// core holds the server core's /proc/stat times at the window edges; nil when
+	// -server-core was not given or could not be read.
+	core        *[2]coreTimes
+	loadgenCPU  [2]float64 // the load generator's own CPU seconds at the window edges
+	sendSeconds float64    // from the start of the warm-up to the end of sending
+	controlLost int        // participants whose control connection ended
+}
+
+// measure runs the load: the warm-up, the measurement window and the grace period.
+func measure(ctx context.Context, cfg config, clk clock, frames [][]byte, parts []participant,
+	stats []*senderStats, bound load) (measurement, error) {
 	// The window starts after the warmup, measured from now.
 	t0 := clk.now()
 	winStart := t0 + int64(cfg.Warmup)
 	winEnd := winStart + int64(cfg.Duration)
 	stopSend := winEnd + int64(cfg.Grace)
 
-	recs := make([]*recorder, len(parts))
+	m := measurement{stats: stats, recs: make([]*recorder, len(parts))}
 	var rwg sync.WaitGroup
 	recvCtx, recvCancel := context.WithCancel(ctx)
+	defer recvCancel()
 	for i, p := range parts {
-		recs[i] = &recorder{windowStartNS: winStart, windowEndNS: winEnd}
+		m.recs[i] = &recorder{windowStartNS: winStart, windowEndNS: winEnd}
 		rwg.Add(1)
 		go func(p participant, r *recorder) {
 			defer rwg.Done()
 			p.receive(recvCtx, r)
-		}(p, recs[i])
+		}(p, m.recs[i])
 	}
 
 	// The watchdog stops every sender if what they send is more than the estimate
@@ -606,10 +656,7 @@ func run(args []string) error {
 
 	var swg sync.WaitGroup
 	period := time.Duration(float64(time.Second) / cfg.FPS)
-	audioPeriod := 20 * time.Millisecond
-	if cfg.Wire == "legacy" {
-		audioPeriod = 64 * time.Millisecond // CHUNK = 1024 samples at 16 kHz
-	}
+	audioPeriod := cfg.audioPeriod()
 	for i, p := range parts {
 		swg.Add(1)
 		go func(i int, p participant, st *senderStats) {
@@ -618,49 +665,56 @@ func run(args []string) error {
 		}(i, p, stats[i])
 	}
 
-	var cpu0, cpu1 float64
-	var haveCPU bool
-	var core0, core1 coreTimes
-	var core0Err, core1Err error = errors.New("not read"), errors.New("not read")
-	sleepUntil(clk, winStart)
-	if cfg.ServerPID > 0 {
-		if v, err := procCPUSeconds(cfg.ServerPID); err == nil {
-			cpu0, haveCPU = v, true
+	var cpu [2]float64
+	var core [2]coreTimes
+	cpuOK, coreOK := cfg.ServerPID > 0, cfg.ServerCore >= 0
+	for edge, at := range [2]int64{winStart, winEnd} {
+		sleepUntil(clk, at)
+		if cpuOK {
+			v, err := procCPUSeconds(cfg.ServerPID)
+			cpu[edge], cpuOK = v, err == nil
 		}
-	}
-	if cfg.ServerCore >= 0 {
-		core0, core0Err = readCoreTimes(cfg.ServerCore)
-	}
-	selfWin0 := selfCPUSeconds()
-	sleepUntil(clk, winEnd)
-	if haveCPU {
-		if v, err := procCPUSeconds(cfg.ServerPID); err == nil {
-			cpu1 = v
-		} else {
-			haveCPU = false
+		if coreOK {
+			v, err := readCoreTimes(cfg.ServerCore)
+			core[edge], coreOK = v, err == nil
 		}
+		m.loadgenCPU[edge] = selfCPUSeconds()
 	}
-	if cfg.ServerCore >= 0 {
-		core1, core1Err = readCoreTimes(cfg.ServerCore)
+	if cpuOK {
+		m.serverCPU = &cpu
 	}
-	selfWin1 := selfCPUSeconds()
-	lost := 0
+	if coreOK {
+		m.core = &core
+	}
 	for _, p := range parts {
 		if p.controlLost() {
-			lost++
+			m.controlLost++
 		}
 	}
 	swg.Wait()
-	sendEnd := clk.now()
+	m.sendSeconds = float64(clk.now()-t0) / 1e9
 	recvCancel()
 	rwg.Wait()
 	if tripped.Load() {
-		return errors.New("stopped: the load generator sent more than its traffic estimate allows")
+		return m, errors.New("stopped: the load generator sent more than its traffic estimate allows")
 	}
-	maxMbps, maxPPS := cfg.limits()
+	return m, nil
+}
 
+// audioPeriod is the time between one participant's audio packets.
+func (c *config) audioPeriod() time.Duration {
+	if c.Wire == "legacy" {
+		return 64 * time.Millisecond // CHUNK = 1024 samples at 16 kHz
+	}
+	return 20 * time.Millisecond
+}
+
+// summarize turns a measurement into the result: what was expected and received,
+// latency percentiles and CPU per participant-minute. avg and largest are the corpus's
+// average and largest frame sizes; bound is the traffic estimate for the largest.
+func summarize(cfg config, m measurement, avg float64, largest int, bound load) result {
+	maxMbps, maxPPS := cfg.limits()
 	res := result{
-		Label:         cfg.Label,
 		Wire:          cfg.Wire,
 		Participants:  cfg.Participants,
 		Rooms:         (cfg.Participants + cfg.RoomSize - 1) / cfg.RoomSize,
@@ -677,23 +731,21 @@ func run(args []string) error {
 			LimitMbps: maxMbps,
 			LimitPPS:  maxPPS,
 		},
-		LoadgenGOMAXPROCS: runtime.GOMAXPROCS(0),
-		ControlLost:       lost,
-		StartedUTC:        clk.start.UTC().Format(time.RFC3339),
+		ControlLost: m.controlLost,
 	}
 	if cfg.Wire == "v2" {
 		res.FECK, res.AudioFECK = cfg.FECK, cfg.AudioFECK
 	}
 	// Each frame a sender sends in the window should reach every other member.
 	var lat []float64
-	for i := range parts {
+	for i := range m.stats {
+		st, r := m.stats[i], m.recs[i]
 		members := roomMembers(cfg, i)
-		res.FramesSent += stats[i].framesInWin.Load()
-		res.FramesExpected += stats[i].framesInWin.Load() * int64(members-1)
-		res.PacketsSent += stats[i].packets.Load()
-		res.BytesSent += stats[i].bytes.Load()
-		res.SendErrors += stats[i].sendErrors.Load()
-		r := recs[i]
+		res.FramesSent += st.framesInWin.Load()
+		res.FramesExpected += st.framesInWin.Load() * int64(members-1)
+		res.PacketsSent += st.packets.Load()
+		res.BytesSent += st.bytes.Load()
+		res.SendErrors += st.sendErrors.Load()
 		res.FramesReceived += r.framesInWin
 		res.AudioReceived += r.audioInWin
 		res.VideoPacketsReceived += r.videoPackets
@@ -704,18 +756,18 @@ func run(args []string) error {
 		if cfg.Audio && members > 1 {
 			if cfg.Wire == "v2" {
 				// One mixed stream per receiver: a frame every 20 ms while others talk.
-				res.AudioExpected += int64(cfg.Duration / audioPeriod)
+				res.AudioExpected += int64(cfg.Duration / cfg.audioPeriod())
 			} else {
 				// Every chunk a sender sends in the window goes to each other member.
 				// Receivers count chunks by arrival time, so a stream can be off by one
 				// chunk at each window edge.
-				res.AudioExpected += stats[i].audioInWin.Load() * int64(members-1)
+				res.AudioExpected += st.audioInWin.Load() * int64(members-1)
 			}
 		}
 	}
-	if secs := float64(sendEnd-t0) / 1e9; secs > 0 {
-		res.Traffic.SentUpMbps = float64(res.BytesSent+ipUDPHeader*res.PacketsSent) * 8 / 1e6 / secs
-		res.Traffic.SentUpPPS = float64(res.PacketsSent) / secs
+	if m.sendSeconds > 0 {
+		res.Traffic.SentUpMbps = float64(res.BytesSent+ipUDPHeader*res.PacketsSent) * 8 / 1e6 / m.sendSeconds
+		res.Traffic.SentUpPPS = float64(res.PacketsSent) / m.sendSeconds
 	}
 	if res.FramesExpected > 0 {
 		res.DeliveryRatio = float64(res.FramesReceived) / float64(res.FramesExpected)
@@ -724,34 +776,25 @@ func run(args []string) error {
 		res.AudioDeliveryRatio = float64(res.AudioReceived) / float64(res.AudioExpected)
 	}
 	res.LatencyMS = percentiles(lat)
-	if haveCPU {
-		d := cpu1 - cpu0
+	window := cfg.Duration.Seconds()
+	if m.serverCPU != nil {
+		d := m.serverCPU[1] - m.serverCPU[0]
 		perPM := d / (float64(cfg.Participants) * cfg.Duration.Minutes())
-		util := d / cfg.Duration.Seconds()
+		util := d / window
 		res.ServerCPUSeconds, res.ServerCPUPerPartMin, res.ServerCPUUtil = &d, &perPM, &util
 	}
-	if core0Err == nil && core1Err == nil {
-		busy := core1.busy - core0.busy
+	if m.core != nil {
+		busy := m.core[1].busy - m.core[0].busy
 		res.ServerCore = &coreReport{
 			CPU:            cfg.ServerCore,
 			BusySeconds:    busy,
-			SoftirqSeconds: core1.softirq - core0.softirq,
-			Utilisation:    busy / cfg.Duration.Seconds(),
+			SoftirqSeconds: m.core[1].softirq - m.core[0].softirq,
+			Utilisation:    busy / window,
 		}
 	}
-	res.LoadgenCPUSeconds = selfWin1 - selfWin0
-	res.LoadgenCPUUtil = res.LoadgenCPUSeconds / cfg.Duration.Seconds()
-
-	out, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		return err
-	}
-	out = append(out, '\n')
-	if cfg.Out == "" {
-		_, err = os.Stdout.Write(out)
-		return err
-	}
-	return os.WriteFile(cfg.Out, out, 0o644)
+	res.LoadgenCPUSeconds = m.loadgenCPU[1] - m.loadgenCPU[0]
+	res.LoadgenCPUUtil = res.LoadgenCPUSeconds / window
+	return res
 }
 
 // roomMembers is the size of participant i's room (the last room may be smaller).

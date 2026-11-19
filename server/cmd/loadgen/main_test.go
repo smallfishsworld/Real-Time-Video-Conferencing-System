@@ -1,19 +1,25 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"math"
 	"net"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"golang.org/x/net/ipv4"
 
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/app"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/client"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
 )
@@ -291,5 +297,132 @@ func TestRoomMembers(t *testing.T) {
 		if got := roomMembers(cfg, i); got != w {
 			t.Errorf("roomMembers(%d) = %d, want %d", i, got, w)
 		}
+	}
+}
+
+// summarize with synthetic counters: 6 participants in rooms of 4 and 2.
+func TestSummarize(t *testing.T) {
+	cfg := config{Wire: "v2", Server: "127.0.0.1", Participants: 6, RoomSize: 4, FPS: 15, Audio: true,
+		FECK: 4, AudioFECK: 2, Duration: 20 * time.Second, ServerCore: 1}
+	m := measurement{
+		serverCPU:   &[2]float64{10, 16}, // 6 CPU-s in the window
+		core:        &[2]coreTimes{{busy: 100, softirq: 5}, {busy: 108, softirq: 7}},
+		loadgenCPU:  [2]float64{1, 3},
+		sendSeconds: 26,
+		controlLost: 1,
+	}
+	for i := 0; i < cfg.Participants; i++ {
+		st := &senderStats{}
+		st.framesInWin.Store(300)
+		st.packets.Store(1000)
+		st.bytes.Store(1_000_000)
+		st.sendErrors.Store(int64(i % 2))
+		m.stats = append(m.stats, st)
+		// Every receiver got all frames but one, with latencies 1..n ms.
+		members := roomMembers(cfg, i)
+		r := &recorder{framesInWin: int64(300*(members-1) - 1), audioInWin: 990, videoPackets: 7, incomplete: 1}
+		for j := int64(1); j <= r.framesInWin; j++ {
+			r.latMS = append(r.latMS, float32(j%10+1))
+		}
+		m.stats[i].audioInWin.Store(1000)
+		m.recs = append(m.recs, r)
+	}
+	res := summarize(cfg, m, 31000, 40000, cfg.estimate(40000))
+
+	// Senders in the room of 4 reach 3 others, those in the room of 2 reach 1.
+	wantExpected := int64(4*300*3 + 2*300*1)
+	if res.FramesExpected != wantExpected || res.FramesReceived != wantExpected-6 || res.FramesSent != 1800 {
+		t.Fatalf("frames: sent %d expected %d received %d", res.FramesSent, res.FramesExpected, res.FramesReceived)
+	}
+	if want := float64(wantExpected-6) / float64(wantExpected); math.Abs(res.DeliveryRatio-want) > 1e-12 {
+		t.Fatalf("delivery %v, want %v", res.DeliveryRatio, want)
+	}
+	// v2: one mixed stream per receiver, a frame per 20 ms of the window.
+	if res.AudioExpected != 6*1000 || res.AudioReceived != 6*990 {
+		t.Fatalf("audio expected %d received %d", res.AudioExpected, res.AudioReceived)
+	}
+	if res.Rooms != 2 || res.PacketsSent != 6000 || res.BytesSent != 6_000_000 || res.SendErrors != 3 ||
+		res.VideoPacketsReceived != 42 || res.IncompleteFrames != 6 || res.ControlLost != 1 {
+		t.Fatalf("counters: %+v", res)
+	}
+	if res.LatencyMS["max"] != 10 || res.LatencyMS["p50"] < 1 || res.LatencyMS["p50"] > 10 {
+		t.Fatalf("latency %v", res.LatencyMS)
+	}
+	// 6 CPU-s over 6 participants and 20 s: 6 / (6 * 1/3) = 3 CPU-s per participant-minute.
+	if *res.ServerCPUSeconds != 6 || math.Abs(*res.ServerCPUPerPartMin-3) > 1e-12 || *res.ServerCPUUtil != 0.3 {
+		t.Fatalf("server CPU %v %v %v", *res.ServerCPUSeconds, *res.ServerCPUPerPartMin, *res.ServerCPUUtil)
+	}
+	if c := res.ServerCore; c == nil || c.CPU != 1 || c.BusySeconds != 8 || c.SoftirqSeconds != 2 || c.Utilisation != 0.4 {
+		t.Fatalf("server core %+v", res.ServerCore)
+	}
+	if res.LoadgenCPUSeconds != 2 || res.LoadgenCPUUtil != 0.1 {
+		t.Fatalf("loadgen CPU %v %v", res.LoadgenCPUSeconds, res.LoadgenCPUUtil)
+	}
+	// Upstream as sent: payload plus 28 bytes of IP and UDP header per packet, over 26 s.
+	wantMbps := float64(6_000_000+28*6000) * 8 / 1e6 / 26
+	if math.Abs(res.Traffic.SentUpMbps-wantMbps) > 1e-9 || math.Abs(res.Traffic.SentUpPPS-6000.0/26) > 1e-9 {
+		t.Fatalf("traffic %+v", res.Traffic)
+	}
+	if res.FECK != 4 || res.AudioFECK != 2 {
+		t.Fatalf("FEC %d %d", res.FECK, res.AudioFECK)
+	}
+
+	// Legacy: every chunk a sender sends goes to each other member; no CPU readings.
+	cfg.Wire, m.serverCPU, m.core = "legacy", nil, nil
+	res = summarize(cfg, m, 31000, 40000, cfg.estimate(40000))
+	if res.AudioExpected != 4*1000*3+2*1000*1 || res.ServerCPUSeconds != nil || res.ServerCore != nil ||
+		res.FECK != 0 {
+		t.Fatalf("legacy: audio expected %d, cpu %v, core %v, fec %d", res.AudioExpected, res.ServerCPUSeconds,
+			res.ServerCore, res.FECK)
+	}
+}
+
+// The whole load generator against an in-process server: four participants in one
+// room for a one-second window.
+func TestRunEndToEnd(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a server and sends for about two seconds")
+	}
+	dir := t.TempDir()
+	for i := 0; i < 3; i++ {
+		f := append([]byte{0xFF, 0xD8, 0xFF, 0xFE, 0x00, 0x22}, make([]byte, 32)...)
+		f = append(f, make([]byte, 3000+i*2000)...) // 1, 3 and 5 fragments
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("frame_%05d.jpg", i)), f, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := app.DefaultConfig()
+	cfg.ControlAddr, cfg.MediaAddr, cfg.MetricsAddr = "127.0.0.1:0", "127.0.0.1:0", ""
+	srv, err := app.Start(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = srv.Shutdown(context.Background()) }()
+	_, port, _ := net.SplitHostPort(srv.ControlAddr())
+	out := filepath.Join(dir, "result.json")
+	err = run([]string{"-wire", "v2", "-port", port, "-participants", "4", "-fps", "10", "-frames", dir,
+		"-warmup", "500ms", "-duration", "1s", "-grace", "300ms", "-server-pid", strconv.Itoa(os.Getpid()),
+		"-label", "e2e", "-out", out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var res result
+	if err := json.Unmarshal(b, &res); err != nil {
+		t.Fatal(err)
+	}
+	// 4 senders x ~10 frames, each to 3 receivers; loopback loses nothing.
+	if res.Label != "e2e" || res.FramesExpected < 4*9*3 || res.DeliveryRatio < 0.99 || res.IncompleteFrames != 0 {
+		t.Fatalf("frames expected %d received %d delivery %.3f incomplete %d", res.FramesExpected,
+			res.FramesReceived, res.DeliveryRatio, res.IncompleteFrames)
+	}
+	if res.AudioDeliveryRatio < 0.8 || res.ControlLost != 0 || res.SendErrors != 0 {
+		t.Fatalf("audio %.3f, control lost %d, send errors %d", res.AudioDeliveryRatio, res.ControlLost, res.SendErrors)
+	}
+	if res.ServerCPUSeconds == nil || res.LatencyMS["p99"] <= 0 || res.Traffic.SentUpPPS <= 0 {
+		t.Fatalf("cpu %v latency %v traffic %+v", res.ServerCPUSeconds, res.LatencyMS, res.Traffic)
 	}
 }
