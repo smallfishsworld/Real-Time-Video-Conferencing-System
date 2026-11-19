@@ -336,7 +336,12 @@ def pct(v: float | None, digits: int = 1) -> str:
 
 
 def _num(v: float | None, digits: int) -> str:
-    return "n/a" if v is None else f"{v:.{digits}f}"
+    """v rounded to digits ('n/a' for None), without the sign of a value that rounds to
+    zero ('-0')."""
+    if v is None:
+        return "n/a"
+    s = f"{v:.{digits}f}"
+    return s[1:] if s.startswith("-") and float(s) == 0 else s
 
 
 def _nice_ceiling(v: float) -> float:
@@ -351,12 +356,6 @@ def ci(w: dict[str, Any], digits: int = 1) -> str:
         return "n/a"
     lo, hi = 100 * w["low"], 100 * w["high"]
     return f"{100 * w['p']:.{digits}f} % [{lo:.{digits}f}, {hi:.{digits}f}]"
-
-
-def _num(x: float, digits: int) -> str:
-    """x rounded to digits, without the sign of a value that rounds to zero ('-0')."""
-    s = f"{x:.{digits}f}"
-    return s[1:] if s.startswith("-") and float(s) == 0 else s
 
 
 def rng(s: dict[str, Any], digits: int = 1, scale: float = 1.0, unit: str = "") -> str:
