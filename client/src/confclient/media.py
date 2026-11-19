@@ -14,6 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from .aio import cancel_and_wait
 from .assembler import FrameAssembler, VideoFrame
 from .fec import FecDecoder
 from .jitter import AudioPlayout
@@ -195,15 +196,13 @@ class MediaSession(asyncio.DatagramProtocol):
                     raise TimeoutError("media registration was not acknowledged") from None
 
     async def close(self) -> None:
-        for task in self._tasks:
-            task.cancel()
-        for task in self._tasks:
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
-        self._tasks.clear()
-        if self._transport is not None:
-            self._transport.close()
-            self._transport = None
+        tasks, self._tasks = self._tasks, []
+        try:
+            await cancel_and_wait(tasks)
+        finally:
+            if self._transport is not None:
+                self._transport.close()
+                self._transport = None
 
     async def _keepalive(self) -> None:
         while True:

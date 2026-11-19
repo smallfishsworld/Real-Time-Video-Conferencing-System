@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+from confclient.app import ClientConfig, ConferenceApp, Devices
 from confclient.control import ControlClient, ServerError
 from confclient.protocol import encode_frame, read_frame
 
@@ -97,6 +98,21 @@ def test_an_error_reply_raises_and_is_not_also_an_event() -> None:
     _run(scenario)
 
 
+def test_a_refused_hello_raises_server_error_and_close_still_works() -> None:
+    async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        hello = await read_frame(reader)
+        await _send(writer, {"type": "error", "seq": hello["seq"], "code": "bad_request", "message": "name"})
+
+    async def scenario() -> None:
+        async with control_server(handler) as port:
+            app = ConferenceApp(ClientConfig(name="x" * 40, port=port), Devices(None, None, None), print)
+            with pytest.raises(ServerError, match="bad_request"):
+                await app.start()
+            await app.close()  # nothing left running, nothing raised
+
+    _run(scenario)
+
+
 @pytest.mark.parametrize(
     "garbage",
     [
@@ -124,6 +140,27 @@ def test_a_server_that_sends_garbage_disconnects_cleanly(garbage: bytes) -> None
             with pytest.raises(ConnectionError):
                 await client.request({"type": "list_rooms"})
             await client.close()
+
+    _run(scenario)
+
+
+def test_the_app_prints_errors_that_answer_no_request() -> None:
+    async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        await _welcome(reader, writer)
+        await _send(writer, {"type": "error", "code": "rate_limited", "message": "slow down"})
+        await reader.read()
+
+    async def scenario() -> None:
+        async with control_server(handler) as port:
+            log: list[str] = []
+            app = ConferenceApp(ClientConfig(name="alice", port=port), Devices(None, None, None), log.append)
+            await app.start()
+            for _ in range(100):
+                if log:
+                    break
+                await asyncio.sleep(0.01)
+            assert log == ["! server: rate_limited: slow down"]
+            await app.close()
 
     _run(scenario)
 

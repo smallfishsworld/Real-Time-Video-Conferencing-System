@@ -111,7 +111,10 @@ class FakeCamera(VideoSource):
 
 
 class OpenCVCamera(VideoSource):
-    """A real camera through OpenCV (`pip install confclient[video]`)."""
+    """A real camera through OpenCV (`pip install confclient[video]`). Frames are
+    scaled to width x height when the camera ignores the requested size. capture()
+    and close() may run on different threads; a lock keeps close() from releasing the
+    device under a capture."""
 
     def __init__(
         self, index: int = 0, width: int = 480, height: int = 480, fps: float = 15.0, quality: int = 85
@@ -125,22 +128,33 @@ class OpenCVCamera(VideoSource):
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.fps = fps
+        self._size = (width, height)
         self._quality = quality
         self._pacer = _Pacer(1.0 / fps)
+        self._lock = threading.Lock()
+        self._closed = False
 
     def capture(self) -> CapturedFrame | None:
         self._pacer.wait()
-        ok, bgr = self._cap.read()
-        if not ok:
-            return None
-        t = time.monotonic()
-        ok, buf = self._cv2.imencode(".jpg", bgr, [self._cv2.IMWRITE_JPEG_QUALITY, self._quality])
+        with self._lock:
+            if self._closed:
+                return None
+            ok, bgr = self._cap.read()
+            if not ok:
+                return None
+            t = time.monotonic()
+            if (bgr.shape[1], bgr.shape[0]) != self._size:
+                bgr = self._cv2.resize(bgr, self._size, interpolation=self._cv2.INTER_AREA)
+            ok, buf = self._cv2.imencode(".jpg", bgr, [self._cv2.IMWRITE_JPEG_QUALITY, self._quality])
         if not ok:
             return None
         return CapturedFrame(buf.tobytes(), bgr[:, :, ::-1], t)
 
     def close(self) -> None:
-        self._cap.release()
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                self._cap.release()
 
 
 def tone(freq: float, amplitude: int, n0: int) -> Frame:
@@ -213,14 +227,51 @@ class FakeSpeaker(AudioSink):
             self._thread = None
 
 
-class PyAudioMicrophone(AudioSource):
-    """A real microphone through PyAudio (`pip install confclient[audio]`)."""
+class _PyAudioDevice:
+    """One PyAudio instance and stream. Each device owns its instance and terminates it
+    in stop(), so opening a device per room membership leaks nothing."""
 
     def __init__(self) -> None:
         import pyaudio
 
         self._pa: Any = pyaudio.PyAudio()
         self._stream: Any = None
+
+    def _open(self, **kwargs: Any) -> None:
+        import pyaudio
+
+        try:
+            self._stream = self._pa.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=AUDIO_CLOCK_RATE,
+                frames_per_buffer=AUDIO_SAMPLES_PER_FRAME,
+                **kwargs,
+            )
+            self._stream.start_stream()
+        except BaseException:
+            self.stop()
+            raise
+
+    def stop(self) -> None:
+        stream, self._stream = self._stream, None
+        try:
+            if stream is not None:
+                try:
+                    with contextlib.suppress(OSError):
+                        stream.stop_stream()
+                finally:
+                    with contextlib.suppress(OSError):
+                        stream.close()
+        finally:
+            pa, self._pa = self._pa, None
+            if pa is not None:
+                pa.terminate()
+
+
+class PyAudioMicrophone(_PyAudioDevice, AudioSource):
+    """A real microphone through PyAudio (`pip install confclient[audio]`). The capture
+    time of a frame is the sound card's ADC time when the driver reports it."""
 
     def start(self, loop: asyncio.AbstractEventLoop, on_frame: AudioCallback) -> None:
         import pyaudio
@@ -230,33 +281,12 @@ class PyAudioMicrophone(AudioSource):
             loop.call_soon_threadsafe(on_frame, pcm, time.monotonic())
             return None, pyaudio.paContinue
 
-        self._stream = self._pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=AUDIO_CLOCK_RATE,
-            input=True,
-            frames_per_buffer=AUDIO_SAMPLES_PER_FRAME,
-            stream_callback=callback,
-        )
-        self._stream.start_stream()
-
-    def stop(self) -> None:
-        if self._stream is not None:
-            with contextlib.suppress(OSError):
-                self._stream.stop_stream()
-                self._stream.close()
-            self._stream = None
+        self._open(input=True, stream_callback=callback)
 
 
-class PyAudioSpeaker(AudioSink):
+class PyAudioSpeaker(_PyAudioDevice, AudioSink):
     """A real speaker through PyAudio; the sound card's callback pulls each frame, so
     the device clock drives playout."""
-
-    def __init__(self) -> None:
-        import pyaudio
-
-        self._pa: Any = pyaudio.PyAudio()
-        self._stream: Any = None
 
     def start(self, pull: PullFrame) -> None:
         import pyaudio
@@ -264,19 +294,4 @@ class PyAudioSpeaker(AudioSink):
         def callback(_in: bytes | None, frames: int, info: Any, status: int) -> tuple[bytes, int]:
             return pull().tobytes(), pyaudio.paContinue
 
-        self._stream = self._pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=AUDIO_CLOCK_RATE,
-            output=True,
-            frames_per_buffer=AUDIO_SAMPLES_PER_FRAME,
-            stream_callback=callback,
-        )
-        self._stream.start_stream()
-
-    def stop(self) -> None:
-        if self._stream is not None:
-            with contextlib.suppress(OSError):
-                self._stream.stop_stream()
-                self._stream.close()
-            self._stream = None
+        self._open(output=True, stream_callback=callback)
