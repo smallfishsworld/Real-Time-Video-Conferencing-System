@@ -249,6 +249,9 @@ type participant interface {
 	sendVideo(frame []byte, t tag) error
 	sendAudio(seq uint32) error
 	receive(ctx context.Context, rec *recorder)
+	// controlLost reports whether the participant's control connection has ended, in
+	// which case the server has removed it from its room.
+	controlLost() bool
 	close()
 }
 
@@ -284,6 +287,7 @@ type result struct {
 	LoadgenCPUSeconds    float64            `json:"loadgen_cpu_seconds"`
 	LoadgenCPUUtil       float64            `json:"loadgen_cpu_utilisation"`
 	LoadgenGOMAXPROCS    int                `json:"loadgen_gomaxprocs"`
+	ControlLost          int                `json:"control_connections_lost"`
 	StartedUTC           string             `json:"started_utc"`
 }
 
@@ -377,7 +381,6 @@ func run(args []string) error {
 
 	var cpu0, cpu1 float64
 	var haveCPU bool
-	selfCPU0 := selfCPUSeconds()
 	sleepUntil(clk, winStart)
 	if cfg.ServerPID > 0 {
 		if v, err := procCPUSeconds(cfg.ServerPID); err == nil {
@@ -394,10 +397,15 @@ func run(args []string) error {
 		}
 	}
 	selfWin1 := selfCPUSeconds()
+	lost := 0
+	for _, p := range parts {
+		if p.controlLost() {
+			lost++
+		}
+	}
 	swg.Wait()
 	recvCancel()
 	rwg.Wait()
-	_ = selfCPU0
 
 	res := result{
 		Label:             cfg.Label,
@@ -411,6 +419,7 @@ func run(args []string) error {
 		AvgFrameBytes:     math.Round(avg),
 		OfferedUpMbps:     cfg.offeredMbps(avg),
 		LoadgenGOMAXPROCS: runtime.GOMAXPROCS(0),
+		ControlLost:       lost,
 		StartedUTC:        clk.start.UTC().Format(time.RFC3339),
 	}
 	if cfg.Wire == "v2" {
@@ -438,7 +447,10 @@ func run(args []string) error {
 				// One mixed stream per receiver: a frame every 20 ms while others talk.
 				res.AudioExpected += int64(cfg.Duration / audioPeriod)
 			} else {
-				res.AudioExpected += int64(cfg.Duration/audioPeriod) * int64(members-1)
+				// Every chunk a sender sends in the window goes to each other member.
+				// Receivers count chunks by arrival time, so a stream can be off by one
+				// chunk at each window edge.
+				res.AudioExpected += stats[i].audioInWin.Load() * int64(members-1)
 			}
 		}
 	}

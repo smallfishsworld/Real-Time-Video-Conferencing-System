@@ -94,6 +94,27 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
         audio["gap_fraction_after_concealment"] = ticks.count("silent") / len(ticks) if ticks else None
         audio["fec_recovered_packets"] = recv.get("fec_recovered")
 
+    frag: dict[str, Any] = {}
+    frag_file = d / f"{tag}.frag.txt"
+    if frag_file.exists():
+        samples = [tuple(map(float, line.split())) for line in frag_file.read_text().splitlines() if line]
+        high = net.get("ipfrag_high_thresh")
+        frag = {
+            "samples": len(samples),
+            "max_bytes": int(max((b for _, _, b in samples), default=0)),
+            "max_queues": int(max((q for _, q, _ in samples), default=0)),
+            "ipfrag_high_thresh": high,
+            "ipfrag_time_s": net.get("ipfrag_time"),
+            # Seconds from the first video frame until the memory first reached 90 % of
+            # the high threshold (None if it never did).
+            "first_near_limit_s": next(
+                (round(t - t_first, 1) for t, _, b in samples if high and b >= 0.9 * high), None
+            ),
+            "series_s_mib": [
+                [round(t - t_first, 1), round(b / 2**20, 3)] for t, _, b in samples if t >= t_first
+            ][::2],
+        }
+
     nft = net["nft"]
     measured = nft["udp_drop"] / nft["udp_in"] if nft.get("udp_in") else None
     ip = net["snmp_rcv"]["Ip"]
@@ -124,6 +145,7 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
             "udp_in_datagrams": udp["InDatagrams"],
             "udp_rcvbuf_errors": udp["RcvbufErrors"],
         },
+        "receiver_frag_memory": frag,
     }
 
 

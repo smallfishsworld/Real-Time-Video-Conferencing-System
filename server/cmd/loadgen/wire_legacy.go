@@ -100,6 +100,7 @@ type legacyParticipant struct {
 	clk      clock
 	mainConn net.Conn
 	confConn net.Conn
+	confDone chan struct{} // closed when the conference connection ends
 	conn     *net.UDPConn
 	pc       *ipv4.PacketConn
 	relay    *net.UDPAddr
@@ -127,7 +128,7 @@ func setupLegacy(ctx context.Context, cfg config, clk clock, server netip.Addr, 
 	rooms := (len(parts) + cfg.RoomSize - 1) / cfg.RoomSize
 	errs := make([]error, rooms)
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 16) // rooms set up concurrently
+	sem := make(chan struct{}, 4) // rooms set up concurrently
 	for room := 0; room < rooms; room++ {
 		wg.Add(1)
 		go func(room int) {
@@ -177,46 +178,73 @@ func joinLegacy(ctx context.Context, cfg config, server, ip netip.Addr, idx, con
 	for k := range p.chunk {
 		p.chunk[k] = byte(k * 7)
 	}
-	d := net.Dialer{LocalAddr: net.TCPAddrFromAddrPort(netip.AddrPortFrom(ip, 0)), Timeout: 5 * time.Second}
-	p.mainConn, err = d.DialContext(ctx, "tcp", netip.AddrPortFrom(server, uint16(cfg.Port)).String())
-	if err != nil {
-		p.close()
-		return nil, err
-	}
 	cmd := "join"
 	if create {
 		cmd = "create"
 	}
-	// The MainServer reads each 10-byte field with its own recv(); pause between them
-	// so that they arrive as separate segments.
-	for _, f := range []string{cmd, strconv.Itoa(id), strconv.Itoa(conf)} {
-		if _, err := p.mainConn.Write(rjust10(f)); err != nil {
-			p.close()
-			return nil, err
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	_ = p.mainConn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	reply := make([]byte, 1024)
-	n, err := p.mainConn.Read(reply)
+	p.mainConn, err = requestMain(ctx, cfg, server, ip, cmd, id, conf)
 	if err != nil {
 		p.close()
 		return nil, err
 	}
-	if !strings.HasPrefix(string(reply[:n]), "200:") {
-		p.close()
-		return nil, fmt.Errorf("legacy server answered %q", reply[:n])
-	}
-	_ = p.mainConn.SetReadDeadline(time.Time{})
 	cd := net.Dialer{LocalAddr: net.TCPAddrFromAddrPort(netip.AddrPortFrom(ip, uint16(20000+id))), Timeout: 5 * time.Second}
 	p.confConn, err = cd.DialContext(ctx, "tcp", netip.AddrPortFrom(server, uint16(10000+conf)).String())
 	if err != nil {
 		p.close()
 		return nil, err
 	}
-	go func(c net.Conn) { _, _ = io.Copy(io.Discard, c) }(p.confConn)
+	p.confDone = make(chan struct{})
+	go func(c net.Conn) {
+		_, _ = io.Copy(io.Discard, c)
+		close(p.confDone)
+	}(p.confConn)
 	go func(c net.Conn) { _, _ = io.Copy(io.Discard, c) }(p.mainConn)
 	return p, nil
+}
+
+// requestMain sends one create/join request to the MainServer and waits for its
+// "200:" reply. The MainServer reads the command with recv(1024) and then each 10-byte
+// field with its own recv(10), so the command must arrive alone: if the next field is
+// already in the socket buffer when the command is read, the server cannot parse it
+// and never answers. The pause after the command makes that unlikely; when it happens
+// anyway (a busy server), the request is retried on a new connection.
+func requestMain(ctx context.Context, cfg config, server, ip netip.Addr, cmd string, id, conf int) (net.Conn, error) {
+	var lastErr error
+	for attempt := 0; attempt < 4; attempt++ {
+		d := net.Dialer{LocalAddr: net.TCPAddrFromAddrPort(netip.AddrPortFrom(ip, 0)), Timeout: 5 * time.Second}
+		conn, err := d.DialContext(ctx, "tcp", netip.AddrPortFrom(server, uint16(cfg.Port)).String())
+		if err != nil {
+			return nil, err
+		}
+		reply, err := mainExchange(conn, cmd, id, conf)
+		if err == nil && strings.HasPrefix(reply, "200:") {
+			return conn, nil
+		}
+		_ = conn.Close()
+		if err == nil {
+			return nil, fmt.Errorf("legacy server answered %q", reply)
+		}
+		lastErr = err
+	}
+	return nil, fmt.Errorf("no answer from the legacy server after 4 attempts: %w", lastErr)
+}
+
+func mainExchange(conn net.Conn, cmd string, id, conf int) (string, error) {
+	pauses := []time.Duration{50 * time.Millisecond, 10 * time.Millisecond, 0}
+	for i, f := range []string{cmd, strconv.Itoa(id), strconv.Itoa(conf)} {
+		if _, err := conn.Write(rjust10(f)); err != nil {
+			return "", err
+		}
+		time.Sleep(pauses[i])
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	reply := make([]byte, 1024)
+	n, err := conn.Read(reply)
+	if err != nil {
+		return "", err
+	}
+	_ = conn.SetReadDeadline(time.Time{})
+	return string(reply[:n]), nil
 }
 
 func (p *legacyParticipant) send(kind int, data []byte) error {
@@ -272,6 +300,15 @@ func (p *legacyParticipant) receive(ctx context.Context, rec *recorder) {
 				rec.otherPackets++
 			}
 		}
+	}
+}
+
+func (p *legacyParticipant) controlLost() bool {
+	select {
+	case <-p.confDone:
+		return true
+	default:
+		return false
 	}
 }
 

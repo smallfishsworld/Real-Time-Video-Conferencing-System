@@ -40,12 +40,29 @@ def row(r: dict[str, Any]) -> dict[str, Any]:
         "packets_sent",
         "send_errors",
         "incomplete_frames",
+        "control_connections_lost",
         "window_seconds",
     )
     return {k: r.get(k) for k in keys} | {"pass": passes(r)}
 
 
+def check(path: Path) -> int:
+    """Print one run's verdict for the sweep log; exit status 0 = pass, 3 = fail."""
+    r = json.loads(path.read_text())
+    lat = r["latency_ms"]
+    print(
+        "PASS" if passes(r) else "FAIL",
+        f"delivery={r['delivery_ratio']:.4f} p99={lat.get('p99', float('nan')):.1f}ms "
+        f"server_cpu={r.get('server_cpu_utilisation', float('nan')):.2f} "
+        f"loadgen_cpu={r['loadgen_cpu_utilisation']:.2f} control_lost={r.get('control_connections_lost')}",
+        file=sys.stderr,
+    )
+    return 0 if passes(r) else 3
+
+
 def main() -> None:
+    if len(sys.argv) == 3 and sys.argv[1] == "--check":
+        sys.exit(check(Path(sys.argv[2])))
     ap = argparse.ArgumentParser()
     ap.add_argument("dir", type=Path)
     ap.add_argument("out", type=Path, nargs="?", default=RESULTS / "b3_capacity.json")

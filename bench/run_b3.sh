@@ -17,7 +17,7 @@ set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 
 WIRES=${WIRES:-"v2 legacy"}
-SIZES=${SIZES:-"8 16 32 48 64 96 128 160 192 256 320 384 448"}
+SIZES=${SIZES:-"8 16 32 48 64 96 128 160 192 224 256 320 384 448"}
 FIXED=${FIXED:-16}             # participants for the CPU-per-participant-minute run
 MTU=${MTU:-65536}              # loopback MTU (65536 is the Linux default; 1500 = Ethernet)
 WINDOW=${WINDOW:-20s}
@@ -49,32 +49,31 @@ start_server() {
   fi
 }
 
+# run_point WIRE N WINDOW LABEL: one load-generator run against a fresh server. Returns
+# 0 if the size passes, 3 if it fails the criteria, 2 if the run itself failed twice.
 run_point() {
-  local wire=$1 n=$2 window=$3 label=$4 out pid port=6100
+  local wire=$1 n=$2 window=$3 label=$4 out pid port=6100 attempt
   out="$OUT_DIR/$wire-$n-$label.json"
-  setup_ns
-  pid=$(start_server "$wire" "$OUT_DIR/$wire-$n-$label.server.log")
+  rm -f "$out"
   [ "$wire" = legacy ] && port=8888
-  wait_tcp "$NS" 127.0.0.1 "$port"
-  # ip netns exec runs the command directly, so $pid is the server process itself.
-  log "B3 $wire participants=$n ($label, window $window, lo mtu $MTU)"
-  if ! ip netns exec "$NS" taskset -c "$LOADGEN_CPUS" "$LOADGEN" -wire "$wire" -participants "$n" \
-    -frames "$BENCH/data/frames" -duration "$window" -server-pid "$pid" -label "$label" \
-    -max-mbps 4000 -out "$out" 2>"$OUT_DIR/$wire-$n-$label.loadgen.log"; then
-    log "loadgen failed for $wire n=$n (see $OUT_DIR/$wire-$n-$label.loadgen.log)"
-  fi
-  kill "$pid" 2>/dev/null || true
-  wait "$pid" 2>/dev/null || true
-  cleanup_netns
-  [ -f "$out" ] && "$PY" - "$out" <<'EOF'
-import json, sys
-r = json.load(open(sys.argv[1]))
-ok = r["delivery_ratio"] >= 0.99 and r["latency_ms"].get("p99", 1e9) < 100
-print("PASS" if ok else "FAIL", f'delivery={r["delivery_ratio"]:.4f} p99={r["latency_ms"].get("p99", float("nan")):.1f}ms '
-      f'server_cpu={r.get("server_cpu_utilisation", float("nan")):.2f} loadgen_cpu={r["loadgen_cpu_utilisation"]:.2f}',
-      file=sys.stderr)
-sys.exit(0 if ok else 3)
-EOF
+  for attempt in 1 2; do
+    setup_ns
+    pid=$(start_server "$wire" "$OUT_DIR/$wire-$n-$label.server.log")
+    wait_tcp "$NS" 127.0.0.1 "$port"
+    # ip netns exec runs the command directly, so $pid is the server process itself.
+    log "B3 $wire participants=$n ($label, window $window, lo mtu $MTU)"
+    if ! ip netns exec "$NS" taskset -c "$LOADGEN_CPUS" "$LOADGEN" -wire "$wire" -participants "$n" \
+      -frames "$BENCH/data/frames" -duration "$window" -server-pid "$pid" -label "$label" \
+      -max-mbps 4000 -out "$out" 2>"$OUT_DIR/$wire-$n-$label.loadgen.log"; then
+      log "loadgen failed for $wire n=$n, attempt $attempt (see $OUT_DIR/$wire-$n-$label.loadgen.log)"
+    fi
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    cleanup_netns
+    [ -f "$out" ] && break
+  done
+  [ -f "$out" ] || return 2
+  "$PY" "$BENCH/analyze_b3.py" --check "$out"
 }
 
 sweep() {
@@ -84,6 +83,10 @@ sweep() {
     run_point "$wire" "$n" "$WINDOW" sweep
     status=$?
     set -e
+    if [ "$status" -eq 2 ]; then
+      log "$wire: the run at n=$n failed twice; stopping the sweep"
+      break
+    fi
     if [ "$status" -eq 0 ]; then fails=0; else fails=$((fails + 1)); fi
     if [ "$fails" -ge 2 ]; then
       log "$wire failed twice in a row; stopping the sweep"

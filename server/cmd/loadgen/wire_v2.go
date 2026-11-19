@@ -90,10 +90,17 @@ func setupV2(ctx context.Context, cfg config, clk clock, server netip.Addr, part
 		for k := range p.pcm { // low-level noise rather than digital silence
 			p.pcm[k] = byte(k * 7)
 		}
-		go func() { // events are not needed; read them so the buffer never fills
+		go func() {
+			// Events are not needed; read them so the buffer never fills. Ping like the
+			// real client does, or the server closes the connection after its 60 s idle
+			// timeout and the participant leaves the room in the middle of a long run.
+			ping := time.NewTicker(15 * time.Second)
+			defer ping.Stop()
 			for {
 				select {
 				case <-ctrl.Events():
+				case <-ping.C:
+					_ = ctrl.Send(map[string]any{"type": protocol.TypePing})
 				case <-ctrl.Done():
 					return
 				}
@@ -293,6 +300,15 @@ func (p *v2Participant) receive(ctx context.Context, rec *recorder) {
 				rec.otherPackets++ // FEC parity (not used for repair here) and anything else
 			}
 		}
+	}
+}
+
+func (p *v2Participant) controlLost() bool {
+	select {
+	case <-p.ctrl.Done():
+		return true
+	default:
+		return false
 	}
 }
 
