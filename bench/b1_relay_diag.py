@@ -158,6 +158,15 @@ def diagnose(d: Path, tag: str) -> list[str]:
         )
     need = needs_nack(first_drop, frame_of, parity)
     missing = [pos for pos, idx in enumerate(sent_order) if idx not in completed and pos + 1 < len(order)]
+    # When the first repair of each lost fragment of those frames passed the relay, and
+    # the next frame's first fragment, in ms after the frame's first fragment.
+    first_repairs = sorted(
+        1000 * min(t for t, i, _ in frames[order[pos]].repairs if i == lost) - 1000 * frames[order[pos]].first
+        for pos in missing
+        for lost in frames[order[pos]].lost
+        if any(i == lost for _, i, _ in frames[order[pos]].repairs)
+    )
+    next_first = sorted(1000 * (frames[order[pos + 1]].first - frames[order[pos]].first) for pos in missing)
     clean_next = sum(not need[order[pos + 1]] for pos in missing)
     clean_all = sum(not need[fid] for fid in order)
     share = 100 * clean_all / len(order)
@@ -165,7 +174,19 @@ def diagnose(d: Path, tag: str) -> list[str]:
         f"  of the {len(missing)} frames never completed (next frame seen), the next frame needed no "
         f"NACK for {clean_next}; of all {len(order)} frames, {clean_all} ({share:.1f} %) needed none"
     )
+    if first_repairs and next_first:
+        out.append(
+            f"  in those frames, the first repair of each lost fragment passed the relay "
+            f"{_median(first_repairs):.0f} ms (median; {first_repairs[0]:.0f}-{first_repairs[-1]:.0f}) after "
+            f"the frame's first fragment, and the next frame's first fragment "
+            f"{_median(next_first):.0f} ms ({next_first[0]:.0f}-{next_first[-1]:.0f}) after it"
+        )
     return out
+
+
+def _median(xs: list[float]) -> float:
+    m = len(xs) // 2
+    return xs[m] if len(xs) % 2 else (xs[m - 1] + xs[m]) / 2
 
 
 def main() -> None:
