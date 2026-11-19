@@ -1,0 +1,1024 @@
+{
+  "benchmark": "churn",
+  "label": "after",
+  "description": "Forwarding latency of a 50 packet/s video stream between two members of one room while 1024 members send keepalives and other rooms churn the control plane (server/internal/media/churn_test.go).",
+  "command": "LABEL=after RUNS=3 SECONDS_PER_CONFIG=20 CHURN_CPUS=1,2 bench/run_churn.sh",
+  "rundir": "bench/tmp/churn/after-20261119T091443Z",
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "kernel_config": {
+      "CONFIG_IRQ_TIME_ACCOUNTING": "n",
+      "CONFIG_VIRT_CPU_ACCOUNTING_GEN": "n",
+      "CONFIG_TICK_CPU_ACCOUNTING": "y",
+      "CONFIG_HZ": "250"
+    },
+    "loadavg": "0.93 1.87 2.01 5/171 3692",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "d4eacfd",
+    "git_dirty": false,
+    "git_dirty_files": [],
+    "build": {
+      "git_commit": "5bd8ad0",
+      "utc": "2026-11-19T09:14:43Z",
+      "git_dirty_files": [],
+      "git_diff_sha256": null,
+      "binaries": {
+        "media.test": "abab319d3e34195b007ca29b0454877ea4f1b587890f140c04ce4f4aabea2af7"
+      }
+    },
+    "utc": "2026-11-19T09:23:24Z"
+  },
+  "summary": {
+    "keepalives": {
+      "runs": 3,
+      "sent_per_run": 1000,
+      "delivered": {
+        "median": 1000.0,
+        "min": 1000.0,
+        "max": 1000.0
+      },
+      "latency_ms": {
+        "p50": {
+          "median": 0.099846,
+          "min": 0.097749,
+          "max": 0.104546
+        },
+        "p90": {
+          "median": 0.146511,
+          "min": 0.14618,
+          "max": 0.153609
+        },
+        "p99": {
+          "median": 0.230139,
+          "min": 0.225174,
+          "max": 0.231503
+        },
+        "max": {
+          "median": 1.567578,
+          "min": 0.940708,
+          "max": 2.185183
+        }
+      }
+    },
+    "keepalives+media_state": {
+      "runs": 3,
+      "sent_per_run": 1000,
+      "delivered": {
+        "median": 1000.0,
+        "min": 1000.0,
+        "max": 1000.0
+      },
+      "latency_ms": {
+        "p50": {
+          "median": 0.122969,
+          "min": 0.117851,
+          "max": 0.219737
+        },
+        "p90": {
+          "median": 0.203117,
+          "min": 0.183751,
+          "max": 3.264182
+        },
+        "p99": {
+          "median": 5.387279,
+          "min": 4.079508,
+          "max": 7.265987
+        },
+        "max": {
+          "median": 15.013312,
+          "min": 8.677058,
+          "max": 27.373423
+        }
+      }
+    },
+    "keepalives+media_state+rebinds": {
+      "runs": 3,
+      "sent_per_run": 1000,
+      "delivered": {
+        "median": 1000.0,
+        "min": 1000.0,
+        "max": 1000.0
+      },
+      "latency_ms": {
+        "p50": {
+          "median": 0.125213,
+          "min": 0.11914,
+          "max": 0.127995
+        },
+        "p90": {
+          "median": 0.182627,
+          "min": 0.179267,
+          "max": 0.714708
+        },
+        "p99": {
+          "median": 2.75056,
+          "min": 2.339338,
+          "max": 2.904509
+        },
+        "max": {
+          "median": 13.463634,
+          "min": 7.778024,
+          "max": 25.897765
+        }
+      }
+    },
+    "keepalives+register_flood": {
+      "runs": 3,
+      "sent_per_run": 1000,
+      "delivered": {
+        "median": 1000.0,
+        "min": 1000.0,
+        "max": 1000.0
+      },
+      "latency_ms": {
+        "p50": {
+          "median": 0.100651,
+          "min": 0.089384,
+          "max": 0.110222
+        },
+        "p90": {
+          "median": 0.165779,
+          "min": 0.15533,
+          "max": 0.171638
+        },
+        "p99": {
+          "median": 0.255858,
+          "min": 0.251718,
+          "max": 0.384793
+        },
+        "max": {
+          "median": 2.925545,
+          "min": 1.496008,
+          "max": 6.09517
+        }
+      }
+    },
+    "keepalives+media_state+rebinds_all_served": {
+      "runs": 3,
+      "sent_per_run": 1000,
+      "delivered": {
+        "median": 1000.0,
+        "min": 1000.0,
+        "max": 1000.0
+      },
+      "latency_ms": {
+        "p50": {
+          "median": 0.134235,
+          "min": 0.13331,
+          "max": 0.198237
+        },
+        "p90": {
+          "median": 0.227462,
+          "min": 0.214858,
+          "max": 4.31733
+        },
+        "p99": {
+          "median": 4.47739,
+          "min": 2.414046,
+          "max": 8.949434
+        },
+        "max": {
+          "median": 11.928468,
+          "min": 9.246967,
+          "max": 35.876628
+        }
+      }
+    }
+  },
+  "runs": [
+    [
+      {
+        "bindings": 0,
+        "config": "keepalives",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 0,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204.8,
+        "latency_ms": {
+          "max": 0.940708,
+          "p50": 0.097749,
+          "p90": 0.14618,
+          "p99": 0.230139
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4302,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4302,
+          "register_challenge": 0,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 280,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 0,
+        "table_rebuilds": 155
+      },
+      {
+        "bindings": 0,
+        "config": "keepalives+media_state",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 0,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204.8,
+        "latency_ms": {
+          "max": 27.373423,
+          "p50": 0.219737,
+          "p90": 3.264182,
+          "p99": 7.265987
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4301,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4301,
+          "register_challenge": 0,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 258,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 137
+      },
+      {
+        "bindings": 96,
+        "config": "keepalives+media_state+rebinds",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 228,
+          "register_limited": 260,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204,
+        "latency_ms": {
+          "max": 25.897765,
+          "p50": 0.127995,
+          "p90": 0.714708,
+          "p99": 2.904509
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 5192,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4380,
+          "register_challenge": 584,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 4,
+        "rebinds": 584,
+        "rebinds_completed": 96,
+        "room_rebuilds": 369,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 249
+      },
+      {
+        "bindings": 4,
+        "config": "keepalives+register_flood",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 3,
+          "register_limited": 31369,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 1500,
+        "keepalives_per_s": 204.6,
+        "latency_ms": {
+          "max": 6.09517,
+          "p50": 0.089384,
+          "p90": 0.165779,
+          "p99": 0.384793
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4527,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4426,
+          "register_challenge": 98,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 254,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 0,
+        "table_rebuilds": 131
+      },
+      {
+        "bindings": 268,
+        "config": "keepalives+media_state+rebinds_all_served",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 372,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204,
+        "latency_ms": {
+          "max": 35.876628,
+          "p50": 0.198237,
+          "p90": 4.31733,
+          "p99": 8.949434
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 5191,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4551,
+          "register_challenge": 640,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 4,
+        "rebinds": 640,
+        "rebinds_completed": 268,
+        "room_rebuilds": 541,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 416
+      }
+    ],
+    [
+      {
+        "bindings": 0,
+        "config": "keepalives",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 0,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204.8,
+        "latency_ms": {
+          "max": 1.567578,
+          "p50": 0.099846,
+          "p90": 0.146511,
+          "p99": 0.225174
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4302,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4302,
+          "register_challenge": 0,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 264,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 0,
+        "table_rebuilds": 146
+      },
+      {
+        "bindings": 0,
+        "config": "keepalives+media_state",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 0,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204.8,
+        "latency_ms": {
+          "max": 15.013312,
+          "p50": 0.117851,
+          "p90": 0.203117,
+          "p99": 5.387279
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4301,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4301,
+          "register_challenge": 0,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 257,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 136
+      },
+      {
+        "bindings": 96,
+        "config": "keepalives+media_state+rebinds",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 228,
+          "register_limited": 264,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204,
+        "latency_ms": {
+          "max": 13.463634,
+          "p50": 0.125213,
+          "p90": 0.182627,
+          "p99": 2.339338
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 5196,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4380,
+          "register_challenge": 588,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 4,
+        "rebinds": 588,
+        "rebinds_completed": 96,
+        "room_rebuilds": 378,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 259
+      },
+      {
+        "bindings": 4,
+        "config": "keepalives+register_flood",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 3,
+          "register_limited": 31385,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 1500,
+        "keepalives_per_s": 204.6,
+        "latency_ms": {
+          "max": 1.496008,
+          "p50": 0.100651,
+          "p90": 0.15533,
+          "p99": 0.255858
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4527,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4410,
+          "register_challenge": 114,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 248,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 0,
+        "table_rebuilds": 131
+      },
+      {
+        "bindings": 268,
+        "config": "keepalives+media_state+rebinds_all_served",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 374,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204,
+        "latency_ms": {
+          "max": 11.928468,
+          "p50": 0.13331,
+          "p90": 0.214858,
+          "p99": 4.47739
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 5194,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4552,
+          "register_challenge": 642,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 4,
+        "rebinds": 642,
+        "rebinds_completed": 268,
+        "room_rebuilds": 517,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 393
+      }
+    ],
+    [
+      {
+        "bindings": 0,
+        "config": "keepalives",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 0,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204.8,
+        "latency_ms": {
+          "max": 2.185183,
+          "p50": 0.104546,
+          "p90": 0.153609,
+          "p99": 0.231503
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4301,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4301,
+          "register_challenge": 0,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 266,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 0,
+        "table_rebuilds": 148
+      },
+      {
+        "bindings": 0,
+        "config": "keepalives+media_state",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 0,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204.8,
+        "latency_ms": {
+          "max": 8.677058,
+          "p50": 0.122969,
+          "p90": 0.183751,
+          "p99": 4.079508
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4301,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4301,
+          "register_challenge": 0,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 265,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 142
+      },
+      {
+        "bindings": 96,
+        "config": "keepalives+media_state+rebinds",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 228,
+          "register_limited": 263,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204,
+        "latency_ms": {
+          "max": 7.778024,
+          "p50": 0.11914,
+          "p90": 0.179267,
+          "p99": 2.75056
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 5195,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4380,
+          "register_challenge": 587,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 4,
+        "rebinds": 587,
+        "rebinds_completed": 96,
+        "room_rebuilds": 341,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 219
+      },
+      {
+        "bindings": 4,
+        "config": "keepalives+register_flood",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 3,
+          "register_limited": 31405,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 1500,
+        "keepalives_per_s": 204.6,
+        "latency_ms": {
+          "max": 2.925545,
+          "p50": 0.110222,
+          "p90": 0.171638,
+          "p99": 0.251718
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 4526,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4389,
+          "register_challenge": 134,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 0,
+        "rebinds": 0,
+        "rebinds_completed": 0,
+        "room_rebuilds": 253,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 0,
+        "table_rebuilds": 132
+      },
+      {
+        "bindings": 268,
+        "config": "keepalives+media_state+rebinds_all_served",
+        "delivered": 1000,
+        "drops": {
+          "addr_mismatch": 0,
+          "bad_payload": 0,
+          "bad_token": 0,
+          "bind_queue_full": 0,
+          "ingress_limited": 0,
+          "late": 0,
+          "malformed": 0,
+          "nack_limited": 0,
+          "oversize": 0,
+          "p2p_mode": 0,
+          "rebind_limited": 0,
+          "register_limited": 376,
+          "rtx_budget": 0,
+          "unknown_ssrc": 0,
+          "write_error": 0
+        },
+        "flood_per_s": 0,
+        "keepalives_per_s": 204,
+        "latency_ms": {
+          "max": 9.246967,
+          "p50": 0.134235,
+          "p90": 0.227462,
+          "p99": 2.414046
+        },
+        "members": 1024,
+        "packets_in": {
+          "audio": 0,
+          "audio_fec": 0,
+          "nack": 0,
+          "register": 5196,
+          "video": 1000,
+          "video_fec": 0
+        },
+        "packets_out": {
+          "audio": 0,
+          "audio_fec": 0,
+          "register_ack": 4552,
+          "register_challenge": 644,
+          "video": 15000,
+          "video_rtx": 0
+        },
+        "rebinders": 4,
+        "rebinds": 644,
+        "rebinds_completed": 268,
+        "room_rebuilds": 520,
+        "seconds": 20,
+        "sent": 1000,
+        "spammers": 20,
+        "table_rebuilds": 400
+      }
+    ]
+  ]
+}

@@ -1,0 +1,200 @@
+diff --git a/bench/lib/common.sh b/bench/lib/common.sh
+index cb7f7cb..9685a9f 100644
+--- a/bench/lib/common.sh
++++ b/bench/lib/common.sh
+@@ -50,18 +50,24 @@ prepare() {
+   fi
+ }
+ 
+-# write_build_record OUT [BINARY...]: what the binaries were built from (commit and the
+-# uncommitted paths outside bench/results), when, and each binary's SHA-256. The
+-# analysis scripts copy it into the result files.
++# write_build_record OUT [BINARY...]: what the binaries were built from (commit, the
++# uncommitted paths outside bench/results and the SHA-256 of their diff against the
++# commit, null when there is none), when, and each binary's SHA-256. The analysis
++# scripts copy it into the result files.
+ write_build_record() {
+-  local out=$1 first=1 bin
++  local out=$1 first=1 bin diff
+   shift
++  diff=$(git -C "$ROOT" diff HEAD -- server client bench legacy ':!bench/results')
+   {
+     printf '{"git_commit": "%s", "utc": "%s", "git_dirty_files": [' \
+       "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+     git -C "$ROOT" status --porcelain -- server client bench legacy ':!bench/results' |
+       sed 's/\\/\\\\/g; s/"/\\"/g; s/.*/"&"/' | paste -sd, -
+-    printf '], "binaries": {'
++    if [ -n "$diff" ]; then
++      printf '], "git_diff_sha256": "%s", "binaries": {' "$(printf '%s\n' "$diff" | sha256sum | cut -c1-64)"
++    else
++      printf '], "git_diff_sha256": null, "binaries": {'
++    fi
+     for bin in "$@"; do
+       [ $first -eq 1 ] || printf ', '
+       first=0
+diff --git a/server/internal/media/churn_test.go b/server/internal/media/churn_test.go
+index 72771e7..a90db21 100644
+--- a/server/internal/media/churn_test.go
++++ b/server/internal/media/churn_test.go
+@@ -18,16 +18,22 @@ import (
+ )
+ 
+ // TestChurnForwarding measures how control-plane churn delays forwarding. The server
+-// holds 64 rooms of 16 members (1024, the default -max-clients). Every member except
+-// the measured pair keeps its binding alive with a REGISTER every 5 s, as clients do
+-// (about 205 keepalives/s in total). Member A streams 50 video packets/s to member B
+-// of the same room for CHURN_SECONDS, and the test records each packet's forwarding
+-// latency (A's send to B's receipt, both on loopback). Churn comes from "spammers",
+-// members of other rooms that toggle media_state 50 times a second (the default
+-// per-connection request budget); from "rebinders", members of other rooms that move
+-// their binding between two sockets every 100 ms and wait for each move to complete;
++// holds 64 rooms of 16 members (1024, the default -max-clients). The members of a room
++// share one UDP socket, as members behind one NAT would, and every member keeps its
++// binding alive with a REGISTER every 5 s, as clients do (about 204 keepalives/s in
++// total). Member A streams 50 video packets/s to member B of the same room for
++// CHURN_SECONDS, and the test records each packet's forwarding latency (A's send to
++// B's receipt, both on loopback). Churn comes from "spammers", members of other rooms
++// that toggle media_state 50 times a second (the default per-connection request
++// budget); from "rebinders", members of other rooms that try every 100 ms to move
++// their binding to their other socket and wait (up to 50 ms) for the move to complete;
+ // and from one "flooder", a member that sends REGISTERs alternately from two sockets
+-// at 1500/s without waiting (below the server-wide 2000/s REGISTER cap).
++// at 1500/s without waiting (below the server-wide 2000/s REGISTER cap). Rebinders and
++// the flooder send no other keepalives.
++//
++// This is the harness of the fixed version (bench/results/churn_after.json) applied to
++// the code before the fix: the code of that time has no REGISTER challenge, so a move
++// completes with the first acknowledgement.
+ //
+ // It is a measurement, not a pass/fail test: it runs only when CONFSERVER_CHURN_OUT
+ // names a file, and appends one JSON line per configuration to it
+@@ -73,9 +79,13 @@ type churnMember struct {
+ 
+ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[string]any {
+ 	s := newTestServer(t, func(rc *room.Config) { rc.MaxClients = 4096 }, nil)
+-	sink, sinkAddr := churnSocket(t)
+-	go churnDrain(sink)
+ 	const rooms, size = 64, 16
++	var sinks [rooms]*net.UDPConn
++	var sinkAddrs [rooms]netip.AddrPort
++	for r := range rooms {
++		sinks[r], sinkAddrs[r] = churnSocket(t)
++		go churnDrain(sinks[r])
++	}
+ 	var all [rooms][size]churnMember
+ 	for r := range rooms {
+ 		var roomID uint32
+@@ -106,19 +116,25 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
+ 	}
+ 	a, aAddr := churnSocket(t)
+ 	b, bAddr := churnSocket(t)
+-	var keep [][]byte
++	type keepalive struct {
++		conn *net.UDPConn
++		pkt  []byte
++	}
++	var keep []keepalive
+ 	for r := range rooms {
+ 		for m := range size {
+-			addr := sinkAddr
++			conn, addr := sinks[r], sinkAddrs[r]
+ 			switch {
+ 			case r == 0 && m == 0:
+-				addr = aAddr
++				conn, addr = a, aAddr
+ 			case r == 0 && m == 1:
+-				addr = bAddr
++				conn, addr = b, bAddr
+ 			}
+ 			churnBind(t, s, all[r][m].token, addr)
+-			if addr == sinkAddr {
+-				keep = append(keep, churnRegister(all[r][m].token, 1))
++			rebinder := m == 1 && r >= 40 && r < 40+rebinders
++			flooder := floodHz > 0 && r == 50 && m == 2
++			if !rebinder && !flooder {
++				keep = append(keep, keepalive{conn, churnRegister(all[r][m].token, 1)})
+ 			}
+ 		}
+ 	}
+@@ -147,7 +163,7 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
+ 	}
+ 	// Rebinders: the second member of rooms 40..40+rebinders-1, moving between two
+ 	// sockets every 100 ms and waiting (up to 50 ms) for each move to be acknowledged.
+-	var rebinds, rebindsAcked atomic.Int64
++	var rebinds, rebindsDone atomic.Int64
+ 	for k := range rebinders {
+ 		tok := all[40+k][1].token
+ 		socks := [2]*net.UDPConn{}
+@@ -156,6 +172,7 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
+ 		wg.Add(1)
+ 		go func() {
+ 			defer wg.Done()
++			target := 0
+ 			for i := 0; ; i++ {
+ 				select {
+ 				case <-stop:
+@@ -163,8 +180,9 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
+ 				case <-time.After(100 * time.Millisecond):
+ 				}
+ 				rebinds.Add(1)
+-				if churnRebind(socks[i%2], s.addr, tok, uint64(i)) {
+-					rebindsAcked.Add(1)
++				if churnRebind(socks[target], s.addr, tok, uint64(i)) {
++					rebindsDone.Add(1)
++					target = 1 - target
+ 				}
+ 			}
+ 		}()
+@@ -199,7 +217,7 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
+ 			}
+ 		}()
+ 	}
+-	// Keepalives: every sink-bound member once per 5 s, spread evenly.
++	// Keepalives: every other member once per 5 s, spread evenly.
+ 	wg.Add(1)
+ 	go func() {
+ 		defer wg.Done()
+@@ -211,7 +229,8 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
+ 				return
+ 			default:
+ 			}
+-			_, _ = sink.WriteToUDPAddrPort(keep[i%len(keep)], s.addr)
++			k := keep[i%len(keep)]
++			_, _ = k.conn.WriteToUDPAddrPort(k.pkt, s.addr)
+ 			next = next.Add(iv)
+ 			time.Sleep(time.Until(next))
+ 		}
+@@ -265,20 +284,22 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
+ 	}
+ 	snap := s.router.Stats().Snapshot()
+ 	return map[string]any{
+-		"members":          rooms * size,
+-		"spammers":         spammers,
+-		"rebinders":        rebinders,
+-		"rebinds":          rebinds.Load(),
+-		"rebinds_acked":    rebindsAcked.Load(),
+-		"flood_per_s":      floodHz,
+-		"keepalives_per_s": float64(len(keep)) / 5,
+-		"seconds":          seconds,
+-		"sent":             total,
+-		"delivered":        len(lat),
++		"members":           rooms * size,
++		"spammers":          spammers,
++		"rebinders":         rebinders,
++		"rebinds":           rebinds.Load(),
++		"rebinds_completed": rebindsDone.Load(),
++		"flood_per_s":       floodHz,
++		"keepalives_per_s":  float64(len(keep)) / 5,
++		"seconds":           seconds,
++		"sent":              total,
++		"delivered":         len(lat),
+ 		"latency_ms": map[string]float64{
+ 			"p50": q(0.5), "p90": q(0.9), "p99": q(0.99), "max": q(1),
+ 		},
+-		"drops": snap.Drops,
++		"drops":       snap.Drops,
++		"packets_in":  snap.PacketsIn,
++		"packets_out": snap.PacketsOut,
+ 	}
+ }
+ 
