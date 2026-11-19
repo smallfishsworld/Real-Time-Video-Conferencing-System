@@ -1,0 +1,60 @@
+goos: linux
+goarch: amd64
+pkg: github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkParseRTPVideoFragment   	177785546	         6.687 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	178876274	         6.660 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	179969959	         6.537 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	173043736	         7.295 ns/op	       0 B/op	       0 allocs/op
+BenchmarkParseRTPVideoFragment   	177831921	         6.729 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	195610428	         6.115 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	176709000	         6.787 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	194452640	         6.168 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	167828103	         6.621 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMarshalRTPHeader        	202838439	         5.883 ns/op	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 6262287	       194.9 ns/op	25040.66 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 6093651	       221.5 ns/op	22033.93 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 6145754	       202.1 ns/op	24141.06 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 6031214	       198.6 ns/op	24576.86 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECEncodeVideoGroup     	 6085237	       198.4 ns/op	24602.47 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 7801898	       159.7 ns/op	7637.05 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 7335656	       161.9 ns/op	7536.89 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 7807539	       154.5 ns/op	7894.01 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 7934989	       151.7 ns/op	8040.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkFECRecoverVideoFragment 	 7868355	       153.8 ns/op	7934.75 MB/s	       0 B/op	       0 allocs/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkMixerTick/members=3         	  312156	      3655 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  333330	      3686 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  330084	      3691 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  322918	      4091 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=3         	  300235	      3900 ns/op	         4.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  245610	      5055 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  244678	      4950 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  238166	      5012 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  228020	      5562 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=4         	  245364	      5032 ns/op	         6.000 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  196887	      6246 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  197716	      6369 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  183121	      6380 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  165514	      6410 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=5         	  198403	      6312 ns/op	         7.500 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   56748	     21171 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   55020	     21614 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   55730	     21133 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   56797	     21626 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixerTick/members=16        	   59355	     20193 ns/op	        24.00 packets/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  643431	      1863 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  634996	      1869 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  646654	      1861 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  642241	      1818 ns/op	       0 B/op	       0 allocs/op
+BenchmarkMixMinus                    	  667576	      1794 ns/op	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo                	  332678	      3620 ns/op	1011.16 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo                	  342470	      3782 ns/op	 967.75 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo                	  296306	      4025 ns/op	 909.32 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo                	  312210	      4453 ns/op	 821.99 MB/s	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo                	  310834	      4241 ns/op	 862.96 MB/s	       0 B/op	       0 allocs/op
+PASS

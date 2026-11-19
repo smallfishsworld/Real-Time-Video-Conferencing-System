@@ -1,0 +1,234 @@
+{
+  "benchmark": "Go microbenchmarks",
+  "command": "bench/run_micro.sh",
+  "note": "go test -bench . -benchmem -count 5 -cpu 1, pinned with taskset to one CPU",
+  "raw_output": "micro.txt",
+  "benchmarks": [
+    {
+      "name": "protocol.BenchmarkParseRTPVideoFragment",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6.687
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6.537
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 7.295
+      }
+    },
+    {
+      "name": "protocol.BenchmarkMarshalRTPHeader",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6.168
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 5.883
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6.787
+      }
+    },
+    {
+      "name": "protocol.BenchmarkFECEncodeVideoGroup",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 24576.86,
+        "allocs/op": 0.0,
+        "ns/op": 198.6
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 22033.93,
+        "allocs/op": 0.0,
+        "ns/op": 194.9
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 25040.66,
+        "allocs/op": 0.0,
+        "ns/op": 221.5
+      }
+    },
+    {
+      "name": "protocol.BenchmarkFECRecoverVideoFragment",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 7894.01,
+        "allocs/op": 0.0,
+        "ns/op": 154.5
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 7536.89,
+        "allocs/op": 0.0,
+        "ns/op": 151.7
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 8040.99,
+        "allocs/op": 0.0,
+        "ns/op": 161.9
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=3",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 3691.0,
+        "packets/op": 4.5
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 3655.0,
+        "packets/op": 4.5
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 4091.0,
+        "packets/op": 4.5
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=4",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 5032.0,
+        "packets/op": 6.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 4950.0,
+        "packets/op": 6.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 5562.0,
+        "packets/op": 6.0
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=5",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6369.0,
+        "packets/op": 7.5
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6246.0,
+        "packets/op": 7.5
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 6410.0,
+        "packets/op": 7.5
+      }
+    },
+    {
+      "name": "media.BenchmarkMixerTick/members=16",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 21171.0,
+        "packets/op": 24.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 20193.0,
+        "packets/op": 24.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 21626.0,
+        "packets/op": 24.0
+      }
+    },
+    {
+      "name": "media.BenchmarkMixMinus",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 1861.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 1794.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "allocs/op": 0.0,
+        "ns/op": 1869.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 909.32,
+        "allocs/op": 0.0,
+        "ns/op": 4025.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 821.99,
+        "allocs/op": 0.0,
+        "ns/op": 3620.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 1011.16,
+        "allocs/op": 0.0,
+        "ns/op": 4453.0
+      }
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "dcf2468",
+    "git_dirty": true,
+    "git_dirty_files": [
+      "?? bench/analyze_micro.py",
+      "?? bench/results/micro.txt",
+      "?? bench/run_micro.sh"
+    ],
+    "utc": "2026-11-19T02:14:34Z"
+  }
+}
