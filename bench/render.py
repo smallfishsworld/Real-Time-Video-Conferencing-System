@@ -52,7 +52,7 @@ WRITTEN: list[Path] = []  # the plots this invocation wrote
 # so every chart has a table with the same numbers.
 
 LABELS = {
-    "legacy": "legacy (original)",
+    "legacy": "2024 version",
     "v2": "v2",
     "v2-fec": "v2 with FEC",
     "v2-nofec": "v2 without FEC",
@@ -549,6 +549,38 @@ def table_b1(b1: dict[str, Any]) -> str:
                 f"{n['recovered']} | {n['abandoned']} | {a.get('superseded', 'n/a')} | "
                 f"{a.get('expired', 'n/a')} | {rng(g['video']['latency_ms_p99_per_run'], 1, unit=' ms')} |"
             )
+    split = [
+        g
+        for k in keys
+        for g in groups[k]
+        if g["video"].get("latency_by_assembly_time_per_run") and g["loss_percent"] > 0
+    ]
+    if split:
+        quick = next(
+            (r["video"]["quick_assembly_ms"] for r in b1["runs"] if "quick_assembly_ms" in r["video"]), 1.5
+        )
+        lines += [
+            "",
+            "Latency percentiles cover completed frames only, so systems that complete different shares of "
+            f"their frames are compared over different frames. Split by the time from a frame's first "
+            f"fragment to its completion ({quick:g} ms: too soon for any retransmission), per run, median "
+            "(range):",
+            "",
+            "| System | Packet loss | Frames completed | Assembled within "
+            f"{quick:g} ms: frames | p99 | Assembled later: frames | p50 | p99 |",
+            "|---|---|---|---|---|---|---|---|",
+        ]
+        for g in split:
+            q, later = (
+                g["video"]["latency_by_assembly_time_per_run"][part]
+                for part in ("within_quick_assembly", "later")
+            )
+            lines.append(
+                f"| {LABELS[g['system']]} | {g['loss_percent']:g} % | "
+                f"{rng(g['video']['frames_complete_per_run'], 0)} | "
+                f"{rng(q['frames'], 0)} | {rng(q['p99_ms'], 2, unit=' ms')} | {rng(later['frames'], 0)} | "
+                f"{rng(later['p50_ms'], 1, unit=' ms')} | {rng(later['p99_ms'], 1, unit=' ms')} |"
+            )
     return "\n".join(lines)
 
 
@@ -779,7 +811,7 @@ def summary_b2(b2: dict[str, Any]) -> str:
 
 B3_ORDER = ["legacy", "v2-gso", "v2-nogso", "v2-nobatch"]
 B3_CHART_LABELS = {
-    "legacy": "original",
+    "legacy": "2024 version",
     "v2-gso": "v2 default",
     "v2-nogso": "v2 without GSO",
     "v2-nobatch": "v2, 1 system call per datagram",
@@ -857,14 +889,33 @@ def _capacity(s: dict[str, Any]) -> str:
         sizes = {p["participants"] for p in s["sweep"]}
         return f"{caps} ({'the only size run' if len(sizes) == 1 else 'no size run failed'})"
     fails = "/".join("none" if f is None else str(f) for f in s["first_failing_by_repeat"])
+    last = s.get("capacity_last_pass_before_first_failure_by_repeat")
+    if last and last != s["capacity_by_repeat"]:
+        return (
+            f"{caps} (first failing: {fails}; last pass before the first failure: {'/'.join(map(str, last))})"
+        )
     return f"{caps} (first failing: {fails})"
+
+
+def _fixed_without_softirq(s: dict[str, Any]) -> str:
+    """CPU-s per participant-minute without the core's softirq, unless most fixed runs had
+    a core busier than the server (then the softirq was not the server's to subtract)."""
+    fixed = s.get("fixed") or {}
+    value = fixed.get("server_cpu_seconds_per_participant_minute_excluding_core_softirq")
+    flagged = sum("/fixed/" in f["label"] for f in s.get("flagged_points", []))
+    if not value:
+        return "n/a"
+    if flagged > fixed.get("runs", 0) / 2:
+        return "n/a (core busier than the server)"
+    return rng(value, 3)
 
 
 def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
     lines = [
         "| Loopback | System | Server flags | Largest size that passed, per repeat | Server CPU-s per "
-        "participant-minute at 16 participants | Server CPU at 16 participants |",
-        "|---|---|---|---|---|---|",
+        "participant-minute at 16 participants | the same without the core's softirq | core-seconds per "
+        "participant-minute | Server CPU at 16 participants | Core busy |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
         for k in B3_ORDER:
@@ -876,14 +927,17 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
             lines.append(
                 f"| {label} | {LABELS[k]} | {('`' + flags + '`') if flags.startswith('-') else flags} | "
                 f"{_capacity(s)} | {rng(fixed.get('server_cpu_seconds_per_participant_minute') or {}, 3)} | "
-                f"{rng(fixed.get('server_cpu_utilisation') or {}, 3)} |"
+                f"{_fixed_without_softirq(s)} | "
+                f"{rng(fixed.get('server_core_seconds_per_participant_minute') or {}, 3)} | "
+                f"{rng(fixed.get('server_cpu_utilisation') or {}, 3)} | "
+                f"{rng(fixed.get('server_core_utilisation') or {}, 3)} |"
             )
     lines += [
         "",
         "| Loopback | System | Participants | Runs passed | Frame delivery, median (lowest) "
-        "| p99 latency, median (highest) | Server CPU | Softirq share of the server's core "
-        "| Datagrams per read call | per send call | per GSO message |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| p99 latency, median (highest) | Server CPU | without the core's softirq | Core busy "
+        "| Softirq share of the server's core | Datagrams per read call | per send call | per GSO message |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
         for k in B3_ORDER:
@@ -896,6 +950,8 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
                     f"| {label} | {LABELS[k]} | {p['participants']} | {p['passes']}/{p['runs']} | "
                     f"{pct(d['median'], 2)} ({pct(d['min'], 2)}) | {_num(lat['median'], 1)} "
                     f"({_num(lat['max'], 1)}) ms | {rng(p['server_cpu_utilisation'], 2)} | "
+                    f"{rng(p['server_cpu_excluding_core_softirq'], 3)} | "
+                    f"{rng(p['server_core_utilisation'], 2)} | "
                     f"{rng_pct(p['server_core_softirq_share'], 0)} | "
                     f"{rng(p['datagrams_per_read_call'], 1)} | "
                     f"{rng(p['video_datagrams_per_send_call'], 1)} | "
@@ -907,8 +963,9 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
 def summary_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
     lines = [
         "| Loopback | System | Largest size that passed, per repeat | Server CPU at 128 participants "
-        "| Server CPU-s per participant-minute (16 participants) |",
-        "|---|---|---|---|---|",
+        "| without the core's softirq | Server CPU-s per participant-minute (16 participants) "
+        "| core-seconds per participant-minute |",
+        "|---|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
         for k in B3_ORDER:
@@ -919,8 +976,10 @@ def summary_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
             fixed = s.get("fixed") or {}
             lines.append(
                 f"| {label} | {LABELS[k]} | {_capacity(s)} | "
-                f"{rng(at128['server_cpu_utilisation'], 2) if at128 else 'not run'} | "
-                f"{rng(fixed.get('server_cpu_seconds_per_participant_minute') or {}, 3)} |"
+                f"{rng(at128['server_cpu_utilisation'], 3) if at128 else 'not run'} | "
+                f"{rng(at128['server_cpu_excluding_core_softirq'], 3) if at128 else 'not run'} | "
+                f"{rng(fixed.get('server_cpu_seconds_per_participant_minute') or {}, 3)} | "
+                f"{rng(fixed.get('server_core_seconds_per_participant_minute') or {}, 3)} |"
             )
     return "\n".join(lines)
 
@@ -1039,7 +1098,7 @@ def table_churn(before: dict[str, Any] | None, after: dict[str, Any]) -> str:
 
 
 JITTER_MEASURES = [
-    ("longest_unplayed_ms", "longest silence, ms"),
+    ("longest_unplayed_ms", "longest gap in played frames (silent or concealed ticks), ms"),
     ("gaps_over_60ms", "gaps > 60 ms"),
     ("late", "late frames"),
     ("latency_last_10s_median_ms", "median latency in the last 10 s, ms"),

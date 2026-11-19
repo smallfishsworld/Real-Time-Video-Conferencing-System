@@ -179,6 +179,8 @@ func simulateJitter(sc jitterScenario, seed uint64, delayFrames int) jitterSimRe
 		default:
 			res.Silent++
 		}
+		// A gap in played frames: concealed and silent ticks both count, so the longest
+		// gap is not the longest silence (Silent counts the ticks that played nothing).
 		run++
 		res.LongestUnplayedMS = max(res.LongestUnplayedMS, run*20)
 	}

@@ -138,6 +138,8 @@ def simulate(sc: dict[str, Any], seed: int, delay_frames: int) -> dict[str, Any]
             run = 0
             continue
         res["concealed" if status is PlayStatus.CONCEALED else "silent"] += 1
+        # A gap in played frames: concealed and silent ticks both count, so the longest
+        # gap is not the longest silence (see "silent" for ticks that played nothing).
         run += 1
         res["longest_unplayed_ms"] = max(res["longest_unplayed_ms"], run * 20)
     if run > 3:
