@@ -16,7 +16,7 @@ to it.
 | B2 multi-talker audio | `sudo bench/run_b2.sh` | `b2_audio.json` | 12 runs of 60 s |
 | B3 relay capacity | `sudo bench/run_b3.sh` | `b3_capacity.json` | 80 sweep points of 20 s and 12 fixed-load runs of 60 s |
 | CPU profiles under the B3 load | `sudo bench/profile_b3.sh` | `pprof_<variant>.{json,txt,pb.gz,metrics}` | 3 profiles of 15 s |
-| Forwarding under control-plane churn | `LABEL=after bench/run_churn.sh` (and `LABEL=before` on the code before the fix, with `churn_before_harness.patch`) | `churn_before.json`, `churn_after.json` | 3 runs of 4 configurations x 20 s each |
+| Forwarding under control-plane churn | `LABEL=after bench/run_churn.sh` (and `LABEL=before` on the code before the fix, with `churn_before_harness.patch`) | `churn_before.json`, `churn_after.json` | 3 runs of 5 configurations x 20 s each (4 before the fix) |
 | Jitter buffers, simulated time | `LABEL=after bench/run_jitter.sh` (and `LABEL=before` on the code before the fix) | `jitter_before.json`, `jitter_after.json` | simulated time (no lock) |
 | Go microbenchmarks | `bench/run_micro.sh` | `micro.json` (raw: `micro.txt`) | 5 runs of each benchmark |
 | Tables and plots | `(cd client && uv run --group bench python ../bench/render.py)` | `plots/`, `tables.md` | post-processing |
@@ -538,6 +538,64 @@ same size, which have three repeats.
   more than the core's softirq time (1.38 s of 14.26 s busy), and the B3 points at 128
   participants show no such gap (core 0.46-0.50, process 0.50-0.54). The process's own
   CPU time is the measure used here.
+
+## Forwarding under control-plane churn
+
+**What and why.** Review finding server-1: REGISTER keepalives took the room registry's
+lock on the media goroutine, and every control-plane change rebuilt the routing table
+there, so control traffic could stall forwarding. `TestChurnForwarding`
+(`server/internal/media/churn_test.go`, run by `bench/run_churn.sh`) holds 64 rooms of
+16 members (1024, the default `-max-clients`); every member sends a REGISTER keepalive
+every 5 s (about 204/s in all) and member A streams 50 video packets/s to member B of
+the same room for 20 s, 1000 packets, while other members churn the control plane:
+20 members toggling `media_state` 50 times a second (the per-connection request
+budget), 4 members moving their binding every 100 ms, or one member sending 1500
+REGISTERs/s. After the fix a fifth configuration repeats the third with the per-member
+rebind limit raised to 1000/s (`RebindsPerSec`, `RebindBurst`), because the fixed
+server refuses most of those moves. Latency is A's send to B's receipt, both on
+loopback. Each configuration ran three times, pinned to CPUs 1-2 with `GOMAXPROCS=2`,
+under the bench lock.
+"Before" is commit 34c714a (the code before the fix) with the measurement harness of
+the later commits applied (`bench/results/churn_before_harness.patch`); "after" is the
+current code, where a separate goroutine rebuilds the routing table and the media
+goroutine never takes the registry's lock.
+
+<!-- BEGIN GENERATED churn -->
+Median (min-max) of 3 runs of 1000 packets each.
+
+| Control-plane load besides the stream | Delivered, before | after | p50 ms, before | after | p99 ms, before | after |
+|---|---|---|---|---|---|---|
+| keepalives only (about 204/s) | 1000 | 1000 | 0.103 (0.0993-0.106) | 0.11 (0.109-0.11) | 0.222 (0.213-0.257) | 0.224 (0.224-0.241) |
+| + 20 members toggling media_state 50 times/s | 207 (195-220) | 1000 | 5,881 (4,817-6,347) | 0.131 (0.128-0.141) | 6,397 (6,127-6,700) | 3.03 (2.64-4.69) |
+| + media_state toggles + 4 members rebinding every 100 ms | 179 (178-181) | 1000 | 6,120 (6,114-6,126) | 0.143 (0.137-0.145) | 6,464 (6,425-6,543) | 4.29 (2.23-4.94) |
+| + one member sending 1500 REGISTERs/s | 670 (639-705) | 1000 | 198 (189-238) | 0.104 (0.104-0.113) | 265 (241-316) | 0.3 (0.256-0.31) |
+| as the third row, per-member rebind limit raised to 1000/s | not measured | 1000 | not measured | 0.159 (0.146-0.161) | not measured | 3.39 (2.99-6.54) |
+<!-- END GENERATED churn -->
+
+**Reading the results.** "After" is `churn_after.json` (raw lines in
+`bench/tmp/churn/after-20261119T125115Z/`, test binary built at a408133 with no
+uncommitted changes; the server code is the same as at the final commit), "before" is
+`churn_before.json`; median (min-max) of three runs.
+
+- Before the fix, 20 members toggling `media_state` stalled forwarding for every room:
+  of the 1000 packets of the measured stream, 207 (195-220) arrived, with a median
+  latency of 5.9 s and a p99 of 6.4 s. After it, all 1000 arrived in every run, with a
+  median of 0.13 ms and a p99 of 3.0 ms (2.6-4.7). With keepalives alone the p99 was
+  0.22 ms before and after.
+- One member sending 1500 REGISTERs a second cut delivery to 670 (639-705) of 1000
+  before, with a p99 of 265 ms. After, all 1000 arrived with a p99 of 0.30 ms; the
+  fixed server refuses most of that flood at its per-member and per-address REGISTER
+  limits (31 366-31 401 `register_limited` drops per run).
+- With `media_state` toggles and four members moving their binding every 100 ms, 179
+  (178-181) packets arrived before and 1000 after (p99 4.3 ms, 2.2-4.9), but the loads
+  are not equal: the fixed server completed 96 moves per run and refused the rest at
+  its rebind and REGISTER limits, and the old server read only part of what was sent
+  (in its first run, 237 of the stream's 1000 video packets reached it at all). With
+  the rebind limit raised to 1000/s, 268 moves completed per run, every packet still
+  arrived, and the p99 was 3.4 ms (3.0-6.5).
+- Hypothesis, not measured: the milliseconds of p99 that remain with the `media_state`
+  load come from sharing the two CPUs with the signaling work (1000 requests a
+  second), since the forwarding goroutine no longer waits for the registry.
 
 ## Jitter buffers under clock drift, bursts and delay steps
 
