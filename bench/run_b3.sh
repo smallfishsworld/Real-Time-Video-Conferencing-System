@@ -15,9 +15,12 @@
 # offers and that is charged to the server's CPU (loopback receive work runs in
 # softirq on the sending CPU). So lo's gso_max_segs is 1 by default: the kernel splits
 # every GSO message before lo, as it does in front of a NIC without UDP segmentation
-# offload, and every variant's datagrams take the same receive path. The run checks
-# this with bench/lib/gso_split.py. GSO_MAX_SEGS=0 keeps lo's default (whole
-# messages), which is how the first B3 runs were made.
+# offload, and every variant's datagrams are received one by one. The run checks this
+# with bench/lib/gso_split.py. GSO_MAX_SEGS=0 keeps lo's default (whole messages),
+# which is how the first B3 runs were made. The receive work is still done in softirq
+# on the server's core and charged to the server, and how much of it lands there
+# differs between variants, so analyze_b3.py also reports the server's CPU minus the
+# core's softirq time.
 #
 # Every v2 variant (VARIANTS: name=flags, flags joined by commas) and the legacy relay
 # run REPEATS times. Points are interleaved by repeat, size and variant, so slow drifts

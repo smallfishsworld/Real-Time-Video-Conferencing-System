@@ -3,10 +3,21 @@
 A point passes when its frame delivery is >= 99 % and its p99 frame latency < 100 ms.
 For each system (a v2 variant or the legacy relay) the result has, per swept size,
 how many repeats ran and passed and the median, minimum and maximum of each measure;
-per repeat, the largest passing size (the sweep stops after two consecutive failures);
-and the median, minimum and maximum of those capacities. The fixed-load runs give CPU
-time per participant-minute. Only files of the run in RUNDIR are read, and a point
-whose label names another run is an error.
+per repeat, the largest passing size (the sweep stops after two consecutive failures)
+and the last passing size before the first failure, which differ when a repeat fails a
+size and then passes a larger one; and the median, minimum and maximum of those
+capacities. The fixed-load runs give CPU time per participant-minute.
+
+CPU: the server process's utime + stime, and the busy and softirq time of the core it
+is pinned to. On loopback the receivers' IP receive path runs in softirq on the sending
+CPU, and without IRQ time accounting the kernel charges it to the server process, so
+each point also gives the process CPU minus the core's softirq time, an estimate of the
+server's own work. A point whose core was busier than the server process by more than
+CORE_GAP of a core (other work on the pinned CPU, or softirq run outside the process)
+is listed under flagged_points; such points were not re-run.
+
+Only files of the run in RUNDIR are read, and a point whose label names another run is
+an error.
 
 Usage: analyze_b3.py RUNDIR OUT.json [--build BUILD.json]
        analyze_b3.py --check POINT.json      (one point's verdict, exit 0 pass / 3 fail)
@@ -27,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import environment, parse_metrics, spread, syscall_summary, write_json
 
 DELIVERY, P99_MS = 0.99, 100.0
+CORE_GAP = 0.03  # fraction of a core
 POINT = re.compile(r"^(?P<system>.+)-(?P<n>\d+)-(?P<label>sweep|fixed)-r(?P<rep>\d+)\.json$")
 
 
@@ -62,6 +74,16 @@ def row(r: dict[str, Any], metrics: Path) -> dict[str, Any]:
         # The part of the server core's busy time that the kernel accounted as softirq
         # (on loopback, mostly the receivers' IP receive path; see environment.kernel_config).
         out["server_core_softirq_share"] = core["softirq_seconds"] / core["busy_seconds"]
+        window = r["window_seconds"]
+        softirq = core["softirq_seconds"] / window  # fraction of a core
+        out["server_core_softirq_utilisation"] = softirq
+        if r.get("server_cpu_utilisation") is not None:
+            own = r["server_cpu_utilisation"] - softirq
+            out["server_cpu_excluding_core_softirq"] = own
+            minutes = r["participants"] * window / 60
+            out["server_cpu_seconds_per_participant_minute_excluding_core_softirq"] = own * window / minutes
+            out["server_core_seconds_per_participant_minute"] = core["busy_seconds"] / minutes
+            out["server_core_minus_process"] = core["utilisation"] - r["server_cpu_utilisation"]
     if metrics.exists():
         out["server_counters"] = syscall_summary(parse_metrics(metrics.read_text()))
     return out
@@ -101,6 +123,10 @@ def per_size(points: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "server_core_utilisation": spread((p.get("server_core") or {}).get("utilisation") for p in points),
         "server_core_softirq_share": spread(p.get("server_core_softirq_share") for p in points),
+        "server_core_softirq_utilisation": spread(p.get("server_core_softirq_utilisation") for p in points),
+        "server_cpu_excluding_core_softirq": spread(
+            p.get("server_cpu_excluding_core_softirq") for p in points
+        ),
         "datagrams_per_read_call": spread(counter("datagrams_per_read_call")),
         "video_datagrams_per_send_call": spread(counter("video_datagrams_per_send_call")),
         "video_datagrams_per_message": spread(counter("video_datagrams_per_message")),
@@ -113,26 +139,44 @@ def system_summary(sweep: list[dict[str, Any]], fixed: list[dict[str, Any]], rep
     for p in sweep:
         by_size[p["participants"]].append(p)
     sizes = [per_size(sorted(by_size[n], key=lambda p: p["repeat"])) for n in sorted(by_size)]
-    capacity, first_fail = [], []
+    capacity, first_fail, before_fail = [], [], []
     for rep in range(1, repeats + 1):
         mine = sorted((p for p in sweep if p["repeat"] == rep), key=lambda p: p["participants"])
         if not mine:
             continue
         ok = [p["participants"] for p in mine if p["pass"]]
         capacity.append(max(ok) if ok else 0)
-        first_fail.append(next((p["participants"] for p in mine if not p["pass"]), None))
+        fail = next((p["participants"] for p in mine if not p["pass"]), None)
+        first_fail.append(fail)
+        before_fail.append(max((n for n in ok if fail is None or n < fail), default=0))
     all_passed = [s["participants"] for s in sizes if s["passes"] == s["runs"] == repeats]
     gauges = {}
     for k in ("udp_batching_enabled", "udp_gso_enabled"):
         seen = {(p.get("server_counters") or {}).get(k) for p in sweep + fixed}
         gauges[k] = sorted(v for v in seen if v is not None)
+    flagged = [
+        {
+            "label": p["label"],
+            "participants": p["participants"],
+            "server_core_utilisation": p["server_core"]["utilisation"],
+            "server_cpu_utilisation": p["server_cpu_utilisation"],
+            "server_core_minus_process": p["server_core_minus_process"],
+        }
+        for p in sorted(sweep + fixed, key=lambda p: (p["participants"], p["repeat"]))
+        if (p.get("server_core_minus_process") or 0) > CORE_GAP
+    ]
     return {
+        # The largest passing size of each repeat, and the last passing size before
+        # its first failure (they differ when a repeat fails a size, then passes a larger one).
         "capacity_by_repeat": capacity,
+        "capacity_last_pass_before_first_failure_by_repeat": before_fail,
         "capacity_participants": spread(capacity),
         "first_failing_by_repeat": first_fail,
         # The largest size at which every repeat ran and passed.
         "largest_size_every_repeat_passed": max(all_passed, default=0),
         "server_gauges_seen": gauges,
+        # Points whose pinned core was busier than the server process by more than CORE_GAP.
+        "flagged_points": flagged,
         "sweep": sizes,
         "fixed": {
             "runs": len(fixed),
@@ -141,6 +185,13 @@ def system_summary(sweep: list[dict[str, Any]], fixed: list[dict[str, Any]], rep
                 p.get("server_cpu_seconds_per_participant_minute") for p in fixed
             ),
             "server_cpu_utilisation": spread(p.get("server_cpu_utilisation") for p in fixed),
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": spread(
+                p.get("server_cpu_seconds_per_participant_minute_excluding_core_softirq") for p in fixed
+            ),
+            "server_core_seconds_per_participant_minute": spread(
+                p.get("server_core_seconds_per_participant_minute") for p in fixed
+            ),
+            "server_core_utilisation": spread((p.get("server_core") or {}).get("utilisation") for p in fixed),
             "server_core_softirq_share": spread(p.get("server_core_softirq_share") for p in fixed),
             "delivery_ratio": spread(p["delivery_ratio"] for p in fixed),
             "points": sorted(fixed, key=lambda p: p["repeat"]),
@@ -188,7 +239,11 @@ def main() -> None:
             "run_id": run_id,
             "command": settings["command"],
             "raw_files": str(args.rundir.relative_to(Path(__file__).resolve().parents[1])),
-            "criteria": {"delivery_ratio_min": DELIVERY, "p99_latency_ms_max": P99_MS},
+            "criteria": {
+                "delivery_ratio_min": DELIVERY,
+                "p99_latency_ms_max": P99_MS,
+                "flag_core_busier_than_process_by": CORE_GAP,
+            },
             "setup": settings
             | {
                 "room_size": sorted(room_sizes),
@@ -198,7 +253,8 @@ def main() -> None:
                 "interleaved by repeat, size and system, each under the bench lock; v2 frame delivery counts "
                 "only frames whose every fragment arrived (the load generator does not use FEC repair); "
                 "server CPU is the process's utime+stime from /proc, which on loopback includes the softirq "
-                "receive work of the packets it sends (kernel_config: no IRQ_TIME_ACCOUNTING)",
+                "receive work of the packets it sends (kernel_config: no IRQ_TIME_ACCOUNTING); "
+                "server_cpu_excluding_core_softirq subtracts the pinned core's softirq time from it",
             },
             "systems": systems,
             "environment": environment(args.build),

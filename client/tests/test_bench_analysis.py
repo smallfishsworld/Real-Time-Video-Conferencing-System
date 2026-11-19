@@ -134,10 +134,37 @@ def test_b3_capacity_is_the_largest_passing_size_of_each_repeat() -> None:
     s = analyze_b3.system_summary(sweep, [], repeats=3)
     assert s["capacity_by_repeat"] == [144, 160, 160]
     assert s["first_failing_by_repeat"] == [160, 144, 176]
+    # Repeat 2 failed 144 and then passed 160: its last pass before the first failure is 128.
+    assert s["capacity_last_pass_before_first_failure_by_repeat"] == [144, 128, 160]
     assert s["capacity_participants"] == spread([144, 160, 160])
     assert s["largest_size_every_repeat_passed"] == 128
     at_160 = next(x for x in s["sweep"] if x["participants"] == 160)
     assert (at_160["runs"], at_160["passes"]) == (3, 2)
+
+
+def test_b3_flags_a_point_whose_core_was_busier_than_the_server() -> None:
+    def point(n: int, rep: int, process: float, core: float, softirq_s: float) -> dict[str, Any]:
+        r = {
+            "participants": n,
+            "window_seconds": 20,
+            "delivery_ratio": 1.0,
+            "latency_ms": {"p99": 5.0},
+            "server_cpu_utilisation": process,
+            "server_core": {"busy_seconds": 20 * core, "softirq_seconds": softirq_s, "utilisation": core},
+            "loadgen_cpu_utilisation": 0.5,
+            "label": f"run/v2/sweep/r{rep}",
+        }
+        return analyze_b3.row(r, Path("/nonexistent")) | {"repeat": rep}
+
+    quiet, busy = point(128, 1, 0.50, 0.49, 2.0), point(128, 2, 0.50, 0.60, 2.0)
+    # 2 s of softirq in a 20 s window is 0.1 of the core, charged to the server process.
+    assert quiet["server_cpu_excluding_core_softirq"] == pytest.approx(0.40)
+    assert quiet["server_cpu_seconds_per_participant_minute_excluding_core_softirq"] == pytest.approx(
+        0.40 * 20 / (128 * 20 / 60)
+    )
+    s = analyze_b3.system_summary([quiet, busy], [], repeats=2)
+    assert [p["label"] for p in s["flagged_points"]] == ["run/v2/sweep/r2"]
+    assert s["flagged_points"][0]["server_core_minus_process"] == pytest.approx(0.10)
 
 
 def test_micro_parses_go_benchmark_lines() -> None:
