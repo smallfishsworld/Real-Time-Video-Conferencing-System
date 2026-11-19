@@ -1,0 +1,36 @@
+load: 128 participants (v2), delivery 1.0000, p99 4.2 ms, server CPU 0.69
+Duration: 15.15s, Total samples = 9.41s (62.09%)
+Showing nodes accounting for 9.01s, 95.75% of 9.41s total
+
+share of profiled CPU time by code path (cumulative):
+  receive loop (read + route + forward)       93.1 %
+    forwarding video (sendto per copy)        77.7 %
+    reading packets (recvfrom)                10.9 %
+  audio mixers (20 ms ticks)                   5.5 %
+    mixed-stream sends                         3.6 %
+  all system calls (Syscall6)                 87.6 %
+  Go scheduler and netpoller                   1.4 %
+  garbage collector                            0.0 %
+
+top functions by own time:
+      flat  flat%   sum%        cum   cum%
+     7.91s 84.06% 84.06%      7.91s 84.06%  internal/runtime/syscall.Syscall6
+     0.10s  1.06% 85.12%      0.10s  1.06%  runtime.casgstatus
+     0.08s  0.85% 85.97%      0.09s  0.96%  runtime.exitsyscallfast
+     0.08s  0.85% 86.82%      0.08s  0.85%  runtime.nanotime (inline)
+     0.08s  0.85% 87.67%      0.08s  0.85%  time.runtimeNow
+     0.07s  0.74% 88.42%      0.07s  0.74%  internal/poll.(*fdMutex).rwunlock
+     0.07s  0.74% 89.16%      0.07s  0.74%  internal/sync.(*Mutex).Unlock (inline)
+     0.06s  0.64% 89.80%      0.12s  1.28%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).push
+     0.06s  0.64% 90.44%      0.09s  0.96%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*tokenBucket).allow
+     0.05s  0.53% 90.97%      0.19s  2.02%  runtime.exitsyscall
+     0.05s  0.53% 91.50%      0.11s  1.17%  runtime.reentersyscall
+     0.04s  0.43% 91.92%      7.63s 81.08%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).handleRTP
+     0.04s  0.43% 92.35%      0.06s  0.64%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).insert
+     0.04s  0.43% 92.77%      7.90s 83.95%  syscall.RawSyscall6
+     0.03s  0.32% 93.09%      7.43s 78.96%  internal/poll.(*FD).WriteToInet4
+     0.03s  0.32% 93.41%      7.53s 80.02%  net.(*UDPConn).writeToAddrPort
+     0.02s  0.21% 93.62%      7.31s 77.68%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).forwardVideo
+     0.02s  0.21% 93.84%      0.06s  0.64%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).pop
+     0.02s  0.21% 94.05%      0.39s  4.14%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).send
+     0.02s  0.21% 94.26%      0.07s  0.74%  runtime.netpoll
