@@ -7,8 +7,12 @@ Usage (from the repository root):
 Writes bench/results/plots/<name>.png and <name>_dark.png, bench/results/tables.md, and
 replaces the blocks between "<!-- BEGIN GENERATED <table> -->" and
 "<!-- END GENERATED <table> -->" in README.md and docs/BENCHMARKS.md. Every number in
-the output is read from a results file; nothing is computed except ratios and unit
-conversions of measured values.
+the output is read from a results file; nothing is computed except ratios, unit
+conversions and the medians and ranges of repeated measurements.
+
+Repeated runs are shown as the median with the range (minimum-maximum) of the runs.
+B1's pooled frame ratios carry their Wilson 95 % score interval in square brackets,
+which treats every frame as an independent trial (see bench/analyze_b1.py).
 """
 
 from __future__ import annotations
@@ -39,11 +43,12 @@ RESULTS = ROOT / "bench" / "results"
 PLOTS = RESULTS / "plots"
 
 # --- theme ---------------------------------------------------------------------------
-# Chart chrome and the first three categorical slots of the validated reference
-# palette (dataviz skill, references/palette.md); colors follow the system, never the
-# rank, and are the same in every chart. Variants that only make sense as a factor of
-# another system (NACK on top of an FEC setting, B3's batching modes) either share
-# that system's colour in a panel of their own or appear in the tables only.
+# Chart chrome and the first four categorical slots of a validated colour-blind-safe
+# palette (worst adjacent CVD separation dE 9.1 light / 8.4 dark); colours follow the
+# system, never the rank, and are the same in every chart. NACK is a second factor on
+# top of an FEC setting, so the NACK runs share their FEC setting's colour in a panel
+# of their own. The light-mode aqua and yellow are below 3:1 contrast on the surface,
+# so every chart has a table with the same numbers.
 
 LABELS = {
     "legacy": "legacy (original)",
@@ -52,11 +57,9 @@ LABELS = {
     "v2-nofec": "v2 without FEC",
     "v2-nack": "v2 with NACK",
     "v2-fec-nack": "v2 with FEC and NACK",
-    "v2-unbatched": "v2 before batching existed",
+    "v2-gso": "v2 (batching and GSO, default)",
     "v2-nogso": "v2, recvmmsg/sendmmsg without GSO",
-    "v2-nogso-repeat": "v2, recvmmsg/sendmmsg without GSO (repeat)",
     "v2-nobatch": "v2, one system call per datagram",
-    "v2-nobatch-repeat": "v2, one system call per datagram (repeat)",
 }
 
 
@@ -87,7 +90,9 @@ LIGHT = Theme(
         "v2-nofec": "#1baf7a",
         "v2-nack": "#1baf7a",
         "v2-fec-nack": "#eb6834",
+        "v2-gso": "#eb6834",
         "v2-nobatch": "#1baf7a",
+        "v2-nogso": "#eda100",
     },
 )
 DARK = Theme(
@@ -105,7 +110,9 @@ DARK = Theme(
         "v2-nofec": "#199e70",
         "v2-nack": "#199e70",
         "v2-fec-nack": "#d95926",
+        "v2-gso": "#d95926",
         "v2-nobatch": "#199e70",
+        "v2-nogso": "#c98500",
     },
 )
 
@@ -155,7 +162,9 @@ def new_chart(theme: Theme, title: str, subtitle: str, ncols: int = 1) -> tuple[
     return fig, out
 
 
-def legend(fig: Figure, theme: Theme, keys: Sequence[str], kind: str = "line") -> None:
+def legend(
+    fig: Figure, theme: Theme, keys: Sequence[str], kind: str = "line", labels: dict[str, str] | None = None
+) -> None:
     handles = []
     for k in keys:
         if kind == "line":
@@ -175,7 +184,7 @@ def legend(fig: Figure, theme: Theme, keys: Sequence[str], kind: str = "line") -
             handles.append(Line2D([], [], color=theme.series[k], linewidth=0, marker="s", markersize=px(10)))
     leg = fig.legend(
         handles,
-        [LABELS[k] for k in keys],
+        [(labels or LABELS)[k] for k in keys],
         loc="upper left",
         bbox_to_anchor=(0.093, 0.83),
         ncol=len(keys),
@@ -275,6 +284,7 @@ def grouped_columns(
     values: dict[str, list[float | None]],
     fmt: Callable[[float], str],
     ymax: float,
+    ranges: dict[str, list[tuple[float, float] | None]] | None = None,
 ) -> None:
     ax.set_xlim(-0.6, len(groups) - 0.4)
     ax.set_ylim(0, ymax)
@@ -292,9 +302,14 @@ def grouped_columns(
             offset = (ki - (len(keys) - 1) / 2) * step
             x = to_data_x((cx + offset, 0))[0]
             rounded_bar(ax, theme, key, x, width_px, value)
+            top = value
+            span = (ranges or {}).get(key, [None] * len(groups))[gi]
+            if span is not None and span[1] > span[0]:
+                ax.plot([x, x], span, color=theme.ink2, linewidth=px(1.5), zorder=4, solid_capstyle="butt")
+                top = max(top, span[1])
             ax.annotate(
                 fmt(value),
-                (x, value),
+                (x, top),
                 xytext=(0, px(5) * DPI / 72),
                 textcoords="offset pixels",
                 ha="center",
@@ -316,56 +331,121 @@ def percent_axis(ax: Axes, step: float = 20) -> None:
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f} %"))
 
 
+def pct(v: float | None, digits: int = 1) -> str:
+    return "n/a" if v is None else f"{100 * v:.{digits}f} %"
+
+
+def _num(v: float | None, digits: int) -> str:
+    return "n/a" if v is None else f"{v:.{digits}f}"
+
+
+def _nice_ceiling(v: float) -> float:
+    """The smallest 'round' number (1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8 x 10^k) >= v."""
+    mag = 10.0 ** math.floor(math.log10(v))
+    return float(next((m * mag for m in (1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8) if m * mag >= v), 10 * mag))
+
+
+def ci(w: dict[str, Any], digits: int = 1) -> str:
+    """A pooled ratio with its Wilson 95 % interval: '99.5 % [99.1, 99.7]'."""
+    if w.get("p") is None:
+        return "n/a"
+    lo, hi = 100 * w["low"], 100 * w["high"]
+    return f"{100 * w['p']:.{digits}f} % [{lo:.{digits}f}, {hi:.{digits}f}]"
+
+
+def rng(s: dict[str, Any], digits: int = 1, scale: float = 1.0, unit: str = "") -> str:
+    """The median of repeated runs and their range: '0.52 (0.51-0.54)'."""
+    if s.get("median") is None:
+        return "n/a"
+    med, lo, hi = (scale * s[k] for k in ("median", "min", "max"))
+    if s.get("n", 0) <= 1 or f"{lo:.{digits}f}" == f"{hi:.{digits}f}":
+        return f"{med:.{digits}f}{unit}"
+    return f"{med:.{digits}f}{unit} ({lo:.{digits}f}-{hi:.{digits}f})"
+
+
+def rng_pct(s: dict[str, Any], digits: int = 1) -> str:
+    return rng(s, digits, 100.0, " %")
+
+
 # --- B1 ------------------------------------------------------------------------------
 
 # Tables: each v2 mechanism added in turn (v2-fec-nack is the client's default).
 B1_ORDER = ["legacy", "v2-nofec", "v2-fec", "v2-nack", "v2-fec-nack"]
-# Charts: one colour per FEC setting. NACK is a second factor on top of it, so the NACK
-# runs get a panel of their own in the colour of the FEC setting they use.
-B1_LEGEND = ["legacy", "v2-nofec", "v2-fec"]
+# Charts: one colour per FEC setting, NACK in a panel of its own.
 B1_PANELS = [
     ("Without retransmission", ["legacy", "v2-nofec", "v2-fec"]),
     ("v2 with NACK retransmission", ["legacy", "v2-nack", "v2-fec-nack"]),
 ]
+B1_CONDITION_TEXT = {
+    "downlink": "server-to-receiver loss only, sub-ms round trip",
+    "both-rtt50": "loss in both directions, +50 ms round trip",
+}
 
 
-def b1_runs(b1: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+def b1_groups(b1: dict[str, Any], condition: str) -> dict[str, list[dict[str, Any]]]:
     out: dict[str, list[dict[str, Any]]] = {}
-    for run in b1["runs"]:
-        out.setdefault(run["system"], []).append(run)
-    for runs in out.values():
-        runs.sort(key=lambda r: r["loss_percent"])
+    for g in b1["groups"]:
+        if g["condition"] == condition:
+            out.setdefault(g["system"], []).append(g)
+    for gs in out.values():
+        gs.sort(key=lambda g: g["loss_percent"])
     return out
 
 
-def plot_b1(b1: dict[str, Any], theme: Theme) -> None:
-    runs = b1_runs(b1)
-    keys = [k for k in B1_LEGEND if k in runs]
-    panels = [(t, [k for k in ks if k in runs]) for t, ks in B1_PANELS if any(k in runs for k in ks[1:])]
+def plot_b1(b1: dict[str, Any], theme: Theme, condition: str, name: str) -> None:
+    groups = b1_groups(b1, condition)
+    if not groups:
+        return
+    panels = [(t, [k for k in ks if k in groups]) for t, ks in B1_PANELS]
+    panels = [(t, ks) for t, ks in panels if ks]
+    keys = list(dict.fromkeys(k for _, ks in panels for k in ks))
+    # The colour is the FEC setting: the legend names it for the NACK runs as well.
+    fec_setting = {"v2-nack": "v2-nofec", "v2-fec-nack": "v2-fec"}
+    shown = {fec_setting.get(k, k) for k in keys}
+    legend_keys = [k for k in ("legacy", "v2-nofec", "v2-fec") if k in shown]
+    runs = max(g["runs"] for gs in groups.values() for g in gs)
     fig, axes = new_chart(
         theme,
         "Video frames delivered under random packet loss",
-        "Complete frames within 200 ms; 480x480 JPEG at 15.6 fps over a 1500-byte-MTU link",
+        f"Complete within 200 ms; {B1_CONDITION_TEXT.get(condition, condition)}; "
+        f"{runs} run{'s' if runs != 1 else ''} pooled, bars: 95 % interval",
         ncols=len(panels),
     )
-    legend(fig, theme, keys)
+    legend(fig, theme, legend_keys)
+    xmax = max(g["loss_percent"] for gs in groups.values() for g in gs)
     for ax, (title, panel_keys) in zip(axes, panels, strict=True):
-        ends = {}
+        ends: dict[str, tuple[float, float]] = {}
         for k in panel_keys:
-            xs = [r["loss_percent"] for r in runs[k]]
-            ys = [100 * r["video"]["delivery_ratio"] for r in runs[k]]
+            xs = [g["loss_percent"] for g in groups[k]]
+            ws = [g["video"]["delivery_ratio"] for g in groups[k]]
+            ys = [100 * w["p"] for w in ws]
+            for x, w in zip(xs, ws, strict=True):
+                ax.plot(
+                    [x, x],
+                    [100 * w["low"], 100 * w["high"]],
+                    color=theme.series[k],
+                    linewidth=px(1.5),
+                    zorder=2,
+                )
             plot_line(ax, theme, k, xs, ys)
             ends[k] = (xs[-1], ys[-1])
         ax.set_ylim(0, 105)
-        ax.set_xlim(-0.3, 11.5 if len(panels) == 1 else 12.5)
+        ax.set_xlim(-0.3, xmax * 1.15 + 0.5)
         percent_axis(ax)
-        ax.set_xticks([0, 1, 2, 5, 10], ["0 %", "1 %", "2 %", "5 %", "10 %"])
-        ax.set_xlabel("Packet loss on the server-to-receiver link")
+        ticks = sorted({g["loss_percent"] for gs in groups.values() for g in gs})
+        ax.set_xticks(ticks, [f"{t:g} %" for t in ticks])
+        ax.set_xlabel("Packet loss" + (" per direction" if condition == "both-rtt50" else ""))
         if len(panels) > 1:
             ax.set_title(title, color=theme.ink2, fontsize=px(11.5), loc="left", pad=px(6))
         end_labels(ax, theme, ends, lambda v: f"{v:.0f} %")
-    save(fig, "b1_video_delivery", theme)
+    save(fig, name, theme)
 
+
+def plot_b1_audio(b1: dict[str, Any], theme: Theme) -> None:
+    groups = b1_groups(b1, "downlink")
+    keys = [k for k in ("legacy", "v2-nofec", "v2-fec") if k in groups]
+    if not keys:
+        return
     # NACK covers video only; the NACK runs' audio repeats their FEC setting's (tables).
     fig, (ax,) = new_chart(
         theme,
@@ -373,90 +453,203 @@ def plot_b1(b1: dict[str, Any], theme: Theme) -> None:
         "Share of the talker's audio frames never played (legacy: 64 ms chunks; v2: 20 ms frames)",
     )
     legend(fig, theme, keys)
-    ends = {}
+    ends: dict[str, tuple[float, float]] = {}
     for k in keys:
-        xs = [r["loss_percent"] for r in runs[k]]
-        ys = [100 * r["audio"]["residual_loss"] for r in runs[k]]
+        xs = [g["loss_percent"] for g in groups[k]]
+        ys = [100 * g["audio"]["residual_loss"]["p"] for g in groups[k]]
         plot_line(ax, theme, k, xs, ys)
         ends[k] = (xs[-1], ys[-1])
-    ax.set_ylim(0, 80)
-    ax.set_xlim(-0.3, 11.5)
-    percent_axis(ax)
-    ax.set_xticks([0, 1, 2, 5, 10], ["0 %", "1 %", "2 %", "5 %", "10 %"])
+    top = max(y for k in keys for y in [100 * g["audio"]["residual_loss"]["p"] for g in groups[k]])
+    ax.set_ylim(0, _nice_ceiling(max(top * 1.1, 1)))
+    xmax = max(g["loss_percent"] for k in keys for g in groups[k])
+    ax.set_xlim(-0.3, xmax * 1.15 + 0.5)
+    percent_axis(ax, 20 if top > 40 else 10)
+    ticks = sorted({g["loss_percent"] for k in keys for g in groups[k]})
+    ax.set_xticks(ticks, [f"{t:g} %" for t in ticks])
     ax.set_xlabel("Packet loss on the server-to-receiver link")
     end_labels(ax, theme, ends, lambda v: f"{v:.1f} %")
     save(fig, "b1_audio_loss", theme)
 
 
-def pct(v: float | None, digits: int = 1) -> str:
-    return "n/a" if v is None else f"{100 * v:.{digits}f} %"
+def _b1_grid(
+    groups: dict[str, list[dict[str, Any]]], keys: list[str], cell: Callable[[dict[str, Any]], str], head: str
+) -> list[str]:
+    by = {(k, g["loss_percent"]): g for k in keys for g in groups[k]}
+    losses = sorted({loss for _, loss in by})
+    lines = [f"| {head} | " + " | ".join(LABELS[k] for k in keys) + " |", "|---" * (len(keys) + 1) + "|"]
+    for loss in losses:
+        cells = [cell(by[(k, loss)]) if (k, loss) in by else "n/a" for k in keys]
+        lines.append(f"| {loss:g} % | " + " | ".join(cells) + " |")
+    return lines
 
 
 def table_b1(b1: dict[str, Any]) -> str:
-    runs = b1_runs(b1)
-    keys = [k for k in B1_ORDER if k in runs]
-    losses = sorted({r["loss_percent"] for rs in runs.values() for r in rs})
-    by = {(k, r["loss_percent"]): r for k in keys for r in runs[k]}
+    groups = b1_groups(b1, "downlink")
+    keys = [k for k in B1_ORDER if k in groups]
+    frames = sorted({g["video"]["frames_sent"] for gs in groups.values() for g in gs})
+    runs = sorted({g["runs"] for gs in groups.values() for g in gs})
     lines = [
-        "| Packet loss | " + " | ".join(f"{LABELS[k]}: video frames on time (model)" for k in keys) + " |",
+        f"Video frames on time, pooled over {'/'.join(map(str, runs))} runs per cell "
+        f"({frames[0]}-{frames[-1]} frames), with the Wilson 95 % interval:",
+        "",
+    ]
+    lines += _b1_grid(groups, keys, lambda g: ci(g["video"]["delivery_ratio"]), "Packet loss")
+    lines += ["", "The same per run: median (range), and the independent-loss model:", ""]
+    lines += _b1_grid(
+        groups,
+        keys,
+        lambda g: (
+            f"{rng_pct(g['video']['delivery_ratio_per_run'])}; model "
+            f"{pct(g['video']['model_ratio_independent_loss'])}"
+        ),
+        "Packet loss",
+    )
+    lines += ["", "Audio frames lost, pooled, with the Wilson 95 % interval:", ""]
+    lines += _b1_grid(groups, keys, lambda g: ci(g["audio"]["residual_loss"], 2), "Packet loss")
+    lines += ["", "Measured UDP packet loss (nftables drops / matches), median (range) of the runs:", ""]
+    lines += _b1_grid(groups, keys, lambda g: rng_pct(g["measured_udp_packet_loss"], 2), "Packet loss")
+    lines += [
+        "",
+        "| System | Packet loss | Run | Video on time, first half | second half | IP reassembly failures "
+        "| Peak reassembly memory |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for r in b1["runs"]:
+        if r["condition"] != "downlink" or r["system"] != "legacy":
+            continue
+        v, kern = r["video"], r["receiver_kernel"]
+        peak = (r.get("receiver_frag_memory") or {}).get("max_bytes")
+        peak_s = "n/a" if peak is None else f"{peak / 2**20:.2f} MiB"
+        lines.append(
+            f"| {LABELS['legacy']} | {r['loss_percent']:g} % | {r['repeat']} | "
+            f"{pct(v['delivery_ratio_first_half'])} | {pct(v['delivery_ratio_second_half'])} | "
+            f"{kern['ip_reasm_fails']} | {peak_s} |"
+        )
+    nack = [g for k in keys for g in groups[k] if g["video"].get("nack_totals") and g["loss_percent"] > 0]
+    if nack:
+        lines += [
+            "",
+            "| System | Packet loss | NACKs sent | Packets requested (with repeats) | Received or rebuilt "
+            "after a request | Given up | Frames superseded | Frames expired "
+            "| p99 frame latency, median (range) |",
+            "|---|---|---|---|---|---|---|---|---|",
+        ]
+        for g in nack:
+            n, a = g["video"]["nack_totals"], g["video"].get("assembler_totals") or {}
+            lines.append(
+                f"| {LABELS[g['system']]} | {g['loss_percent']:g} % | {n['nacks_sent']} | {n['requested']} | "
+                f"{n['recovered']} | {n['abandoned']} | {a.get('superseded', 'n/a')} | "
+                f"{a.get('expired', 'n/a')} | {rng(g['video']['latency_ms_p99_per_run'], 1, unit=' ms')} |"
+            )
+    return "\n".join(lines)
+
+
+def table_b1_hard(b1: dict[str, Any]) -> str | None:
+    groups = b1_groups(b1, "both-rtt50")
+    keys = [k for k in B1_ORDER if k in groups]
+    if not keys:
+        return None
+    lines = ["Video frames on time, pooled, with the Wilson 95 % interval:", ""]
+    lines += _b1_grid(groups, keys, lambda g: ci(g["video"]["delivery_ratio"]), "Loss per direction")
+    lines += ["", "Per run, median (range):", ""]
+    lines += _b1_grid(
+        groups, keys, lambda g: rng_pct(g["video"]["delivery_ratio_per_run"]), "Loss per direction"
+    )
+    lines += [
+        "",
+        "| System | Loss per direction | Runs | Frames | Measured loss, receiver to server / server to "
+        "receiver | p50 / p99 frame latency (median of runs) | Frames superseded / expired | Audio lost |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    runs = [r for r in b1["runs"] if r["condition"] == "both-rtt50"]
+    for k in keys:
+        for g in groups[k]:
+            mine = [r for r in runs if r["system"] == k and r["loss_percent"] == g["loss_percent"]]
+            up = spread_of(r["relay"]["measured_loss_upstream"] for r in mine if r.get("relay"))
+            down = spread_of(r["relay"]["measured_loss_downstream"] for r in mine if r.get("relay"))
+            a = g["video"].get("assembler_totals") or {}
+            lines.append(
+                f"| {LABELS[k]} | {g['loss_percent']:g} % | {g['runs']} | {g['video']['frames_sent']} | "
+                f"{rng_pct(up, 2)} / {rng_pct(down, 2)} | "
+                f"{_num(g['video']['latency_ms_p50_per_run']['median'], 1)} / "
+                f"{_num(g['video']['latency_ms_p99_per_run']['median'], 1)} ms | "
+                f"{a.get('superseded', 'n/a')} / {a.get('expired', 'n/a')} | "
+                f"{ci(g['audio']['residual_loss'], 2)} |"
+            )
+    return "\n".join(lines)
+
+
+def table_b1_long(b1: dict[str, Any]) -> str | None:
+    runs = [r for r in b1["runs"] if r["condition"] == "downlink-long"]
+    if not runs:
+        return None
+    lines = []
+    for r in runs:
+        frag = r.get("receiver_frag_memory") or {}
+        bins = r["video"]["delivery_by_30s"]
+        lines += [
+            f"{LABELS[r['system']]} at {r['loss_percent']:g} % loss, {r['seconds']} s run "
+            f"(repeat {r['repeat']}): {ci_counts(r['video']['frames_on_time'], r['video']['frames_sent'])} "
+            f"of video frames on time and {pct(r['audio']['residual_loss'], 1)} of audio lost over the "
+            f"whole run; reassembly memory first reached 90 % of its "
+            f"{_num((frag.get('ipfrag_high_thresh') or 0) / 2**20, 0)} MiB limit after "
+            f"{frag.get('first_near_limit_s', 'n/a')} s.",
+            "",
+            "| Send time | " + " | ".join(f"{b['from_s']}-{b['from_s'] + 30} s" for b in bins) + " |",
+            "|---" * (len(bins) + 1) + "|",
+            "| Video frames on time | "
+            + " | ".join(pct(b["on_time"] / b["frames"] if b["frames"] else None, 0) for b in bins)
+            + " |",
+            "",
+        ]
+    return "\n".join(lines).rstrip()
+
+
+def spread_of(values: Any) -> dict[str, Any]:
+    v = [float(x) for x in values if x is not None]
+    if not v:
+        return {"n": 0, "median": None, "min": None, "max": None}
+    v.sort()
+    mid = len(v) // 2
+    med = v[mid] if len(v) % 2 else (v[mid - 1] + v[mid]) / 2
+    return {"n": len(v), "median": med, "min": v[0], "max": v[-1]}
+
+
+def ci_counts(k: int, n: int) -> str:
+    return f"{k}/{n} ({pct(k / n if n else None)})"
+
+
+def summary_b1(b1: dict[str, Any]) -> str:
+    groups = b1_groups(b1, "downlink")
+    keys = [k for k in B1_ORDER if k in groups]
+    by = {(k, g["loss_percent"]): g for k in keys for g in groups[k]}
+    losses = sorted({loss for _, loss in by if loss > 0})
+    lines = [
+        "| Random packet loss | " + " | ".join(LABELS[k] for k in keys) + " |",
         "|---" * (len(keys) + 1) + "|",
     ]
     for loss in losses:
-        cells = []
-        for k in keys:
-            r = by.get((k, loss))
-            if r is None:
-                cells.append("n/a")
-                continue
-            v = r["video"]
-            cells.append(f"{pct(v['delivery_ratio'])} ({pct(v['model_ratio_independent_loss'])})")
+        cells = [
+            pct(by[(k, loss)]["video"]["delivery_ratio"]["p"]) if (k, loss) in by else "n/a" for k in keys
+        ]
         lines.append(f"| {loss:g} % | " + " | ".join(cells) + " |")
-    lines += [
-        "",
-        "| Packet loss | " + " | ".join(f"{LABELS[k]}: audio lost" for k in keys) + " | measured UDP loss |",
-        "|---" * (len(keys) + 2) + "|",
+    return "\n".join(lines)
+
+
+def summary_b1_hard(b1: dict[str, Any]) -> str | None:
+    groups = b1_groups(b1, "both-rtt50")
+    keys = [k for k in B1_ORDER if k in groups]
+    if not keys:
+        return None
+    by = {(k, g["loss_percent"]): g for k in keys for g in groups[k]}
+    losses = sorted({loss for _, loss in by if loss > 0})
+    lines = [
+        "| Loss in each direction, +50 ms round trip | " + " | ".join(LABELS[k] for k in keys) + " |",
+        "|---" * (len(keys) + 1) + "|",
     ]
     for loss in losses:
-        cells = []
-        measured = []
-        for k in keys:
-            r = by.get((k, loss))
-            if r is None:
-                cells.append("n/a")
-                continue
-            cells.append(pct(r["audio"]["residual_loss"], 2))
-            measured.append(pct(r["measured_udp_packet_loss"], 2))
-        lines.append(f"| {loss:g} % | " + " | ".join(cells) + " | " + " / ".join(measured) + " |")
-    lines += [
-        "",
-        "| System | Packet loss | Video frames on time, first half | second half | IP reassembly failures"
-        " | peak reassembly memory |",
-        "|---|---|---|---|---|---|",
-    ]
-    for k in keys:
-        for r in runs[k]:
-            v, kern = r["video"], r["receiver_kernel"]
-            peak = r.get("receiver_frag_memory", {}).get("max_bytes")
-            peak_s = "n/a" if peak is None else f"{peak / 2**20:.2f} MiB"
-            lines.append(
-                f"| {LABELS[k]} | {r['loss_percent']:g} % | {pct(v['delivery_ratio_first_half'])} | "
-                f"{pct(v['delivery_ratio_second_half'])} | {kern['ip_reasm_fails']} | {peak_s} |"
-            )
-    nack_runs = [r for k in keys for r in runs[k] if r["video"].get("nack")]
-    if nack_runs:
-        lines += [
-            "",
-            "| System | Packet loss | NACK packets sent | Packets requested (with repeats) | Received"
-            " or rebuilt after a request | Given up | Video frames on time | p99 frame latency |",
-            "|---|---|---|---|---|---|---|---|",
-        ]
-        for r in nack_runs:
-            n = r["video"]["nack"]
-            lines.append(
-                f"| {LABELS[r['system']]} | {r['loss_percent']:g} % | {n['nacks_sent']} | {n['requested']} | "
-                f"{n['recovered']} | {n['abandoned']} | {pct(r['video']['delivery_ratio'])} | "
-                f"{_num(r['video']['latency_ms'].get('p99'), 1)} ms |"
-            )
+        cells = [ci(by[(k, loss)]["video"]["delivery_ratio"]) if (k, loss) in by else "n/a" for k in keys]
+        lines.append(f"| {loss:g} % | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
@@ -464,7 +657,7 @@ def table_b1(b1: dict[str, Any]) -> str:
 
 
 def b2_index(b2: dict[str, Any]) -> dict[tuple[str, int], dict[str, Any]]:
-    return {(r["system"], r["participants"]): r for r in b2["runs"]}
+    return {(g["system"], g["participants"]): g for g in b2["groups"]}
 
 
 def plot_b2(b2: dict[str, Any], theme: Theme) -> None:
@@ -472,164 +665,189 @@ def plot_b2(b2: dict[str, Any], theme: Theme) -> None:
     sizes = sorted({n for _, n in idx})
     keys = [k for k in ("legacy", "v2") if any((k, n) in idx for n in sizes)]
     groups = [f"{n} parties" for n in sizes]
+    runs = max(g["runs"] for g in idx.values())
 
-    def series(get: Callable[[dict[str, Any]], float]) -> dict[str, list[float | None]]:
-        return {k: [get(idx[(k, n)]) if (k, n) in idx else None for n in sizes] for k in keys}
+    def series(field: str, scale: float = 1.0) -> tuple[dict[str, list[float | None]], Any]:
+        med: dict[str, list[float | None]] = {}
+        spans: dict[str, list[tuple[float, float] | None]] = {}
+        for k in keys:
+            med[k], spans[k] = [], []
+            for n in sizes:
+                s = idx[(k, n)][field] if (k, n) in idx else None
+                if s is None or s.get("median") is None:
+                    med[k].append(None)
+                    spans[k].append(None)
+                else:
+                    med[k].append(scale * s["median"])
+                    spans[k].append((scale * s["min"], scale * s["max"]))
+        return med, spans
 
     charts = [
         (
             "b2_audio_latency",
-            "Mouth-to-speaker audio latency",
-            "Median over all receivers; everybody talks and sends video",
-            series(lambda r: r["audio_latency_ms"]["p50"]),
+            "Capture-to-playout audio latency",
+            f"Median over all receivers; everybody talks and sends video; median of {runs} runs, bars: range",
+            "capture_to_playout_ms_p50",
+            1.0,
             lambda v: f"{v:.0f}",
             "Latency (ms)",
         ),
         (
             "b2_downstream_audio",
             "Downstream audio bandwidth per receiver",
-            "IP-level bit rate into each receiver; v2 includes its audio FEC (k=2)",
-            series(lambda r: r["downstream_audio_kbit_per_s_mean"]),
+            f"IP-level bit rate into each receiver; v2 includes its audio FEC (k=2); median of {runs} runs",
+            "downstream_audio_kbit_per_s_mean",
+            1.0,
             lambda v: f"{v:.0f}",
             "kbit/s",
         ),
         (
             "b2_video_shown",
             "Video frames that reached the receiver application",
-            "Share of the other participants' frames that the receiving client processed",
-            series(lambda r: 100 * _mean(rc["video"]["delivery_ratio"] for rc in r["receivers"])),
+            f"Share of the other participants' frames that the receivers processed; median of {runs} runs",
+            "video_delivery_ratio",
+            100.0,
             lambda v: f"{v:.0f}%",
             "",
         ),
     ]
-    for name, title, subtitle, values, fmt, ylabel in charts:
+    for name, title, subtitle, field, scale, fmt, ylabel in charts:
+        values, spans = series(field, scale)
         fig, (ax,) = new_chart(theme, title, subtitle)
         legend(fig, theme, keys, kind="bar")
-        top = max(v for vs in values.values() for v in vs if v is not None)
+        top = max(
+            max(v for vs in values.values() for v in vs if v is not None),
+            max(s[1] for ss in spans.values() for s in ss if s is not None),
+        )
         ymax = 105 if name == "b2_video_shown" else _nice_ceiling(top * 1.18)
-        grouped_columns(fig, ax, theme, groups, keys, values, fmt, ymax)
+        grouped_columns(fig, ax, theme, groups, keys, values, fmt, ymax, spans)
         if name == "b2_video_shown":
             percent_axis(ax)
         ax.set_ylabel(ylabel)
         save(fig, name, theme)
 
 
-def _mean(xs: Any) -> float:
-    vals = list(xs)
-    return sum(vals) / len(vals)
-
-
-def _nice_ceiling(v: float) -> float:
-    """The smallest 'round' number (1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8 x 10^k) >= v."""
-    mag = 10 ** math.floor(math.log10(v))
-    return next((m * mag for m in (1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8) if m * mag >= v), 10 * mag)
-
-
 def table_b2(b2: dict[str, Any]) -> str:
     lines = [
-        "| System | Parties | Audio latency p50 / p95 (ms) | Audio delivered (worst talker) "
-        "| Downstream audio per receiver (kbit/s) | Video frames processed | Longest video freeze "
-        "| Video time frozen > 0.5 s |",
-        "|---|---|---|---|---|---|---|---|",
+        "| System | Parties | Runs | Capture-to-playout p50 (ms) | p95 (ms) | Rise over the window (ms) "
+        "| Worst talker's audio played | Video frames processed | Downstream audio per receiver (kbit/s) |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
-    for (system, n), r in sorted(b2_index(b2).items(), key=lambda kv: (kv[0][0] != "legacy", kv[0][1])):
-        recs = r["receivers"]
-        worst = min(min(rc["audio_delivery_by_talker"].values()) for rc in recs)
-        down = r["downstream_audio_kbit_per_s_mean"]
-        nofec = [rc["downstream_audio"].get("kbit_per_s_without_fec") for rc in recs]
-        down_s = f"{down:.0f}"
-        if all(x is not None for x in nofec):
-            down_s += f" ({_mean(nofec):.0f} without FEC)"
-        video = _mean(rc["video"]["delivery_ratio"] for rc in recs)
-        gap = max(rc["video"]["longest_gap_s"] for rc in recs)
-        stalled = _mean(rc["video"]["stalled_fraction"] for rc in recs)
-        lat = r["audio_latency_ms"]
+    for (system, n), g in sorted(b2_index(b2).items(), key=lambda kv: (kv[0][0] != "legacy", kv[0][1])):
         lines.append(
-            f"| {LABELS[system]} | {n} | {lat['p50']:.0f} / {lat['p95']:.0f} | {pct(worst)} | {down_s} | "
-            f"{pct(video)} | {gap:.2f} s | {pct(stalled)} |"
+            f"| {LABELS[system]} | {n} | {g['runs']} | {rng(g['capture_to_playout_ms_p50'], 0)} | "
+            f"{rng(g['capture_to_playout_ms_p95'], 0)} | {rng(g['capture_to_playout_growth_ms'], 0)} | "
+            f"{rng_pct(g['audio_delivery_min_pair'])} | {rng_pct(g['video_delivery_ratio'])} | "
+            f"{rng(g['downstream_audio_kbit_per_s_mean'], 0)} |"
         )
+    return "\n".join(lines)
+
+
+def summary_b2(b2: dict[str, Any]) -> str:
+    idx = b2_index(b2)
+    cols = sorted(idx, key=lambda k: (k[1], k[0] != "legacy"))
+    rows: list[tuple[str, Callable[[dict[str, Any]], str]]] = [
+        ("Capture-to-playout latency, median", lambda g: rng(g["capture_to_playout_ms_p50"], 0, unit=" ms")),
+        ("Audio played, worst talker", lambda g: rng_pct(g["audio_delivery_min_pair"])),
+        (
+            "Downstream audio per receiver",
+            lambda g: rng(g["downstream_audio_kbit_per_s_mean"], 0, unit=" kbit/s"),
+        ),
+        ("Video frames processed", lambda g: rng_pct(g["video_delivery_ratio"])),
+    ]
+    head = "| | " + " | ".join(f"{n} parties, {LABELS[s]}" for s, n in cols) + " |"
+    lines = [head, "|---" * (len(cols) + 1) + "|"]
+    for name, get in rows:
+        lines.append(f"| {name} | " + " | ".join(get(idx[c]) for c in cols) + " |")
     return "\n".join(lines)
 
 
 # --- B3 ------------------------------------------------------------------------------
 
+B3_ORDER = ["legacy", "v2-gso", "v2-nogso", "v2-nobatch"]
+B3_CHART_LABELS = {
+    "legacy": "original",
+    "v2-gso": "v2 default",
+    "v2-nogso": "v2 without GSO",
+    "v2-nobatch": "v2, 1 system call per datagram",
+}
 
-# Tables: the original, v2, then v2 with GSO and with all batching switched off on the
-# same binary, and v2 at the commit before batching existed (a cross-check).
-B3_ORDER = ["legacy", "v2", "v2-nogso", "v2-nogso-repeat", "v2-nobatch", "v2-nobatch-repeat", "v2-unbatched"]
-# Charts and the README summary: the original, v2 and the same binary with one system
-# call per datagram, so that nothing but the batching differs.
-B3_CHART = ["legacy", "v2", "v2-nobatch"]
 
-
-def plot_b3(variants: list[tuple[str, dict[str, Any]]], theme: Theme) -> None:
-    keys = [k for k in B3_CHART if any(k in b3["systems"] for _, b3 in variants)]
+def plot_b3(b3: dict[str, Any], theme: Theme, name: str, label: str) -> None:
+    keys = [k for k in B3_ORDER if k in b3["systems"]]
+    repeats = b3["setup"].get("repeats")
     metrics = [
         (
-            "b3_delivery",
-            "Relay capacity: frame delivery",
-            "Rooms of 4, 15 fps per participant, server pinned to one CPU",
-            lambda r: 100 * r["delivery_ratio"],
-            (0, 105),
-            "linear",
-        ),
-        (
-            "b3_p99_latency",
-            "Relay capacity: 99th-percentile frame latency",
-            "Send to last byte received; the pass limit is 100 ms",
-            lambda r: max(r["latency_ms"].get("p99", float("nan")), 0.1),
-            (0.1, 20000),
-            "log",
-        ),
-        (
-            "b3_server_cpu",
+            f"{name}_server_cpu",
             "Relay capacity: server CPU",
-            "CPU time of the server process / wall time (1.0 = the one CPU it is pinned to)",
-            lambda r: r["server_cpu_utilisation"],
+            f"Server process CPU / wall time (1.0 = its one pinned CPU); {label}; median and range of "
+            f"{repeats} runs",
+            "server_cpu_utilisation",
             (0, 1.1),
             "linear",
         ),
+        (
+            f"{name}_delivery",
+            "Relay capacity: frame delivery",
+            f"Rooms of 4, 15 fps per participant; {label}; the pass limit is 99 %",
+            "delivery_ratio",
+            (0.8, 1.005),
+            "linear",
+        ),
+        (
+            f"{name}_p99_latency",
+            "Relay capacity: 99th-percentile frame latency",
+            f"Send to last byte received; {label}; the pass limit is 100 ms",
+            "p99_latency_ms",
+            (0.5, 2000),
+            "log",
+        ),
     ]
-    for name, title, subtitle, get, ylim, scale in metrics:
-        fig, axes = new_chart(theme, title, subtitle, ncols=len(variants))
-        legend(fig, theme, keys)
-        xmax = max(
-            r["participants"]
-            for _, b3 in variants
-            for k, s in b3["systems"].items()
-            if k in keys
-            for r in s["sweep"]
-        )
-        for ax, (label, b3) in zip(axes, variants, strict=True):
-            for k in keys:
-                s = b3["systems"].get(k)
-                if not s:
-                    continue
-                xs = [r["participants"] for r in s["sweep"]]
-                ys = [get(r) for r in s["sweep"]]
-                plot_line(ax, theme, k, xs, ys)
-            ax.set_yscale(scale)
-            ax.set_ylim(*ylim)
-            ax.set_xlim(0, xmax * 1.05)
-            ax.set_title(label, color=theme.ink2, fontsize=px(11.5), loc="left", pad=px(6))
-            ax.set_xlabel("Participants")
-            if name == "b3_delivery":
-                percent_axis(ax)
-            if name == "b3_p99_latency":
-                ax.yaxis.set_major_locator(LogLocator(base=10))
-                ax.yaxis.set_minor_formatter(NullFormatter())
-                ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g} ms"))
-                ax.axhline(100, color=theme.muted, linewidth=px(1), linestyle=(0, (4, 3)), zorder=2)
-            if name == "b3_server_cpu":
-                ax.yaxis.set_major_locator(MultipleLocator(0.25))
-        save(fig, name, theme)
+    for out, title, subtitle, field, ylim, scale in metrics:
+        fig, (ax,) = new_chart(theme, title, subtitle)
+        legend(fig, theme, keys, labels=B3_CHART_LABELS)
+        xs_all = [p["participants"] for k in keys for p in b3["systems"][k]["sweep"]]
+        for k in keys:
+            sweep = b3["systems"][k]["sweep"]
+            xs = [p["participants"] for p in sweep]
+            meds = [p[field]["median"] for p in sweep]
+            lows = [p[field]["min"] for p in sweep]
+            highs = [p[field]["max"] for p in sweep]
+            if len(xs) > 1:
+                ax.fill_between(xs, lows, highs, color=theme.series[k], alpha=0.18, linewidth=0, zorder=1)
+            plot_line(ax, theme, k, xs, meds)
+        ax.set_yscale(scale)
+        if field == "delivery_ratio":  # from the next 5 % step below the lowest run, at most 95 %
+            lowest = min(p[field]["min"] for k in keys for p in b3["systems"][k]["sweep"])
+            ylim = (min(0.95, max(0.0, math.floor(lowest * 20) / 20)), 1.005)
+        ax.set_ylim(*ylim)
+        ax.set_xlim(min(xs_all) - 16, max(xs_all) + 16)
+        ax.set_xlabel("Participants (rooms of 4)")
+        if field == "delivery_ratio":
+            ax.yaxis.set_major_locator(MultipleLocator(0.05))
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{100 * v:.0f} %"))
+            ax.axhline(0.99, color=theme.muted, linewidth=px(1), linestyle=(0, (4, 3)), zorder=2)
+        if field == "p99_latency_ms":
+            ax.yaxis.set_major_locator(LogLocator(base=10))
+            ax.yaxis.set_minor_formatter(NullFormatter())
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g} ms"))
+            ax.axhline(100, color=theme.muted, linewidth=px(1), linestyle=(0, (4, 3)), zorder=2)
+        if field == "server_cpu_utilisation":
+            ax.yaxis.set_major_locator(MultipleLocator(0.25))
+        save(fig, out, theme)
+
+
+def _capacity(s: dict[str, Any]) -> str:
+    caps = "/".join(str(c) for c in s["capacity_by_repeat"])
+    fails = "/".join("none" if f is None else str(f) for f in s["first_failing_by_repeat"])
+    return f"{caps} (first failing: {fails})"
 
 
 def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
     lines = [
-        "| Loopback MTU | System | Built from | Capacity (participants) | First failing | CPU s per"
-        " participant-minute (fixed run) | Server CPU in fixed run | Load generator CPU in fixed run |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Loopback | System | Server flags | Largest size that passed, per repeat | Server CPU-s per "
+        "participant-minute at 16 participants | Server CPU at 16 participants |",
+        "|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
         for k in B3_ORDER:
@@ -637,61 +855,67 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
             if not s:
                 continue
             fixed = s.get("fixed") or {}
-            first = s.get("first_failing_participants")
-            cap = s["capacity_participants"]
-            last_swept = max(r["participants"] for r in s["sweep"])
-            cap_s = f"{cap}" if first is not None else f">= {cap} (largest size swept: {last_swept})"
+            flags = s.get("server_args") or ("(defaults)" if k.startswith("v2") else "")
             lines.append(
-                f"| {label} | {LABELS[k]} | `{s.get('commit') or 'n/a'}` | {cap_s} | "
-                f"{first if first is not None else 'none'} | "
-                f"{_num(fixed.get('server_cpu_seconds_per_participant_minute'), 3)} "
-                f"(N={fixed.get('participants', 'n/a')}) | {_num(fixed.get('server_cpu_utilisation'), 3)} | "
-                f"{_num(fixed.get('loadgen_cpu_utilisation'), 2)} |"
+                f"| {label} | {LABELS[k]} | {('`' + flags + '`') if flags.startswith('-') else flags} | "
+                f"{_capacity(s)} | {rng(fixed.get('server_cpu_seconds_per_participant_minute') or {}, 3)} | "
+                f"{rng(fixed.get('server_cpu_utilisation') or {}, 3)} |"
             )
     lines += [
         "",
-        "| Loopback MTU | System | Participants | Offered upstream (Mbit/s) | Frame delivery "
-        "| p50 / p99 latency (ms) | Audio delivery | Server CPU | Load generator CPU | Pass |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| Loopback | System | Participants | Runs passed | Frame delivery, median (lowest) "
+        "| p99 latency, median (highest) | Server CPU | Softirq share of the server's core "
+        "| Datagrams per read call | per send call | per GSO message |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
         for k in B3_ORDER:
             s = b3["systems"].get(k)
             if not s:
                 continue
-            for r in s["sweep"]:
-                lat = r["latency_ms"]
+            for p in s["sweep"]:
+                d, lat = p["delivery_ratio"], p["p99_latency_ms"]
                 lines.append(
-                    f"| {label} | {LABELS[k]} | {r['participants']} | {r['offered_upstream_mbps']:.0f} | "
-                    f"{pct(r['delivery_ratio'], 2)} | "
-                    f"{_num(lat.get('p50'), 1)} / {_num(lat.get('p99'), 1)} | "
-                    f"{pct(r.get('audio_delivery_ratio'), 1)} | {_num(r['server_cpu_utilisation'], 2)} | "
-                    f"{_num(r['loadgen_cpu_utilisation'], 2)} | {'yes' if r['pass'] else 'no'} |"
+                    f"| {label} | {LABELS[k]} | {p['participants']} | {p['passes']}/{p['runs']} | "
+                    f"{pct(d['median'], 2)} ({pct(d['min'], 2)}) | {_num(lat['median'], 1)} "
+                    f"({_num(lat['max'], 1)}) ms | {rng(p['server_cpu_utilisation'], 2)} | "
+                    f"{rng_pct(p['server_core_softirq_share'], 0)} | "
+                    f"{rng(p['datagrams_per_read_call'], 1)} | "
+                    f"{rng(p['video_datagrams_per_send_call'], 1)} | "
+                    f"{rng(p['video_datagrams_per_message'], 1)} |"
                 )
     return "\n".join(lines)
 
 
-def tag_commit(data: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Record in each system the commit its binaries were built from."""
-    if data is not None:
-        env = data["environment"]
-        commit = (env.get("build") or {}).get("git_commit") or env.get("git_commit")
-        for s in data["systems"].values():
-            s.setdefault("commit", commit)
-    return data
+def summary_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
+    lines = [
+        "| Loopback | System | Largest size that passed, per repeat | Server CPU at 128 participants "
+        "| Server CPU-s per participant-minute (16 participants) |",
+        "|---|---|---|---|---|",
+    ]
+    for label, b3 in variants:
+        for k in B3_ORDER:
+            s = b3["systems"].get(k)
+            if not s:
+                continue
+            at128 = next((p for p in s["sweep"] if p["participants"] == 128), None)
+            fixed = s.get("fixed") or {}
+            lines.append(
+                f"| {label} | {LABELS[k]} | {_capacity(s)} | "
+                f"{rng(at128['server_cpu_utilisation'], 2) if at128 else 'not run'} | "
+                f"{rng(fixed.get('server_cpu_seconds_per_participant_minute') or {}, 3)} |"
+            )
+    return "\n".join(lines)
 
 
-def _num(v: float | None, digits: int) -> str:
-    return "n/a" if v is None else f"{v:.{digits}f}"
+# --- CPU profiles ----------------------------------------------------------------------
 
-
-# CPU profiles of the v2 server at 128 participants (bench/profile_b3.sh), as summarised
-# by bench/analyze_pprof.py: (file, server build and flags).
+# Profiles of the v2 server at 128 participants (bench/profile_b3.sh), as summarised by
+# bench/analyze_pprof.py into pprof_<name>.json.
 PROFILES = [
-    ("pprof_v2.txt", "before batching (commit ef8982e)"),
-    ("pprof_v2-unbatched.txt", "`-udp-batch 1`"),
-    ("pprof_v2-sendmmsg.txt", "`-udp-gso=false`"),
-    ("pprof_v2-gso.txt", "default (batching + GSO)"),
+    ("v2-unbatched", "`-udp-batch=1`"),
+    ("v2-sendmmsg", "`-udp-gso=false`"),
+    ("v2-gso", "defaults (batching + GSO)"),
 ]
 PROFILE_PATHS = [
     "forwarding video (sending the copies)",
@@ -706,26 +930,29 @@ def table_profiles() -> str | None:
     lines = [
         "| Server | Server CPU | p99 latency | Forwarding | Reading | Audio mixers | of which mixer sends"
         " | All system calls | Datagrams per read call | Copies per send call | Datagrams per message"
-        " | File |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        " | Built from | Files |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for name, label in PROFILES:
-        path = RESULTS / name
+        path = RESULTS / f"pprof_{name}.json"
         if not path.exists():
             continue
-        text = path.read_text()
-        head = re.search(r"p99 ([\d.]+) ms, server CPU ([\d.]+)", text)
-        shares = dict(re.findall(r"^ {2,}(\S.*?)\s{2,}([\d.]+) %$", text, re.MULTILINE))
-        per_read = re.search(r"\(([\d.]+) datagrams per call\)", text)
-        per_send = re.search(r"\(([\d.]+) per call\)", text)
-        per_msg = re.search(r"\(([\d.]+) datagrams per message\)", text)
-        if head is None or any(k not in shares for k in PROFILE_PATHS):
-            print(f"skip: {path} has no summary")
-            continue
-        cells = [f"{shares[k]} %" for k in PROFILE_PATHS]
-        cells += [m.group(1) if m else "n/a" for m in (per_read, per_send, per_msg)]
+        prof = json.loads(path.read_text())
+        load, shares, c = prof["load"], prof["share_of_profile_percent"], prof["server_counters"] or {}
+        build = prof["environment"].get("build") or {}
+        cells = [f"{shares[k]:.1f} %" for k in PROFILE_PATHS]
+        cells += [
+            _num(c.get(k), 1)
+            for k in (
+                "datagrams_per_read_call",
+                "video_datagrams_per_send_call",
+                "video_datagrams_per_message",
+            )
+        ]
         lines.append(
-            f"| {label} | {head.group(2)} | {head.group(1)} ms | " + " | ".join(cells) + f" | `{name}` |"
+            f"| {label} | {load['server_cpu_utilisation']:.3f} | {load['latency_ms']['p99']:.1f} ms | "
+            + " | ".join(cells)
+            + f" | `{build.get('git_commit', 'n/a')}` | `pprof_{name}.{{json,txt,pb.gz}}` |"
         )
     return "\n".join(lines) if len(lines) > 2 else None
 
@@ -734,78 +961,89 @@ def table_profiles() -> str | None:
 
 
 def table_micro(micro: dict[str, Any]) -> str:
-    lines = ["| Benchmark | ns/op (median of 5) | MB/s | B/op | allocs/op |", "|---|---|---|---|---|"]
+    runs = sorted({b["runs"] for b in micro["benchmarks"]})
+    lines = [
+        f"| Benchmark | ns/op, median ({'/'.join(map(str, runs))} runs) | range | MB/s | B/op | allocs/op |",
+        "|---|---|---|---|---|---|",
+    ]
     for b in micro["benchmarks"]:
-        m = b["median"]
+        m, lo, hi = b["median"], b["min"], b["max"]
         mbs = f"{m['MB/s']:.0f}" if "MB/s" in m else ""
         extra = f" ({m['packets/op']:.2f} packets/op)" if "packets/op" in m else ""
         lines.append(
-            f"| `{b['name']}`{extra} | {m['ns/op']:.1f} | {mbs} | "
+            f"| `{b['name']}`{extra} | {m['ns/op']:.1f} | {lo['ns/op']:.1f}-{hi['ns/op']:.1f} | {mbs} | "
             f"{m.get('B/op', 0):.0f} | {m.get('allocs/op', 0):.0f} |"
         )
     return "\n".join(lines)
 
 
-# --- README summaries ----------------------------------------------------------------
+CHURN_LABELS = {
+    "keepalives": "keepalives only (about 204/s)",
+    "keepalives+media_state": "+ 20 members toggling media_state 50 times/s",
+    "keepalives+media_state+rebinds": "+ media_state toggles + 4 members rebinding every 100 ms",
+    "keepalives+register_flood": "+ one member sending 1500 REGISTERs/s",
+    "keepalives+media_state+rebinds_all_served": "as the third row, with every rebind served",
+}
 
 
-def summary_b1(b1: dict[str, Any]) -> str:
-    runs = b1_runs(b1)
-    keys = [k for k in B1_ORDER if k in runs]
-    by = {(k, r["loss_percent"]): r for k in keys for r in runs[k]}
-    losses = sorted({r["loss_percent"] for rs in runs.values() for r in rs if r["loss_percent"] > 0})
+def _ms(v: float) -> str:
+    return f"{v:,.0f}" if v >= 100 else f"{v:.3g}"
+
+
+def _churn_cell(summary: dict[str, Any] | None, key: str) -> str:
+    if summary is None:
+        return "not measured"
+    s = summary["delivered"] if key == "delivered" else summary["latency_ms"][key]
+    fmt = (lambda v: f"{v:.0f}") if key == "delivered" else _ms
+    return f"{fmt(s['median'])} ({fmt(s['min'])}-{fmt(s['max'])})"
+
+
+def table_churn(before: dict[str, Any] | None, after: dict[str, Any]) -> str:
+    """Forwarding under control-plane churn (bench/run_churn.sh), before and after the fix."""
+    old = (before or {}).get("summary", {})
+    runs = sorted({s["runs"] for s in after["summary"].values()} | {s["runs"] for s in old.values()})
     lines = [
-        "| Random packet loss | " + " | ".join(LABELS[k] for k in keys) + " |",
-        "|---" * (len(keys) + 1) + "|",
+        f"Median (min-max) of {'/'.join(map(str, runs))} runs of 1000 packets each.",
+        "",
+        "| Control-plane load besides the stream | Delivered, before | after | p50 ms, before | after "
+        "| p99 ms, before | after |",
+        "|---|---|---|---|---|---|---|",
     ]
-    for loss in losses:
-        cells = [pct(by[(k, loss)]["video"]["delivery_ratio"]) if (k, loss) in by else "n/a" for k in keys]
-        lines.append(f"| {loss:g} % | " + " | ".join(cells) + " |")
+    for name, a in after["summary"].items():
+        b = old.get(name)
+        cells = [f"{_churn_cell(b, k)} | {_churn_cell(a, k)}" for k in ("delivered", "p50", "p99")]
+        lines.append(f"| {CHURN_LABELS.get(name, name)} | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
-def summary_b2(b2: dict[str, Any]) -> str:
-    idx = b2_index(b2)
-    cols = sorted(idx, key=lambda k: (k[1], k[0] != "legacy"))
-    rows: list[tuple[str, Callable[[dict[str, Any]], str]]] = [
-        ("Audio latency, median", lambda r: f"{r['audio_latency_ms']['p50']:.0f} ms"),
-        (
-            "Audio played, worst talker",
-            lambda r: pct(min(min(rc["audio_delivery_by_talker"].values()) for rc in r["receivers"])),
-        ),
-        ("Downstream audio per receiver", lambda r: f"{r['downstream_audio_kbit_per_s_mean']:.0f} kbit/s"),
-        (
-            "Video frames processed",
-            lambda r: pct(_mean(rc["video"]["delivery_ratio"] for rc in r["receivers"])),
-        ),
-    ]
-    head = "| | " + " | ".join(f"{n} parties, {LABELS[s]}" for s, n in cols) + " |"
-    lines = [head, "|---" * (len(cols) + 1) + "|"]
-    for name, get in rows:
-        lines.append(f"| {name} | " + " | ".join(get(idx[c]) for c in cols) + " |")
-    return "\n".join(lines)
+JITTER_MEASURES = [
+    ("longest_unplayed_ms", "longest silence, ms"),
+    ("gaps_over_60ms", "gaps > 60 ms"),
+    ("late", "late frames"),
+    ("latency_last_10s_median_ms", "median latency in the last 10 s, ms"),
+]
 
 
-def summary_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
-    lines = [
-        "| Loopback MTU | System | Participants sustained (largest size swept that passed) "
-        "| Server CPU-seconds per participant-minute (16 participants) |",
-        "|---|---|---|---|",
-    ]
-    for label, b3 in variants:
-        for k in B3_CHART:
-            s = b3["systems"].get(k)
-            if not s:
-                continue
-            first = s.get("first_failing_participants")
-            cap = s["capacity_participants"]
-            cap_s = f"{cap} (fails at {first})" if first is not None else f"{cap} (every size swept passed)"
-            fixed = s.get("fixed") or {}
-            lines.append(
-                f"| {label} | {LABELS[k]} | {cap_s} | "
-                f"{_num(fixed.get('server_cpu_seconds_per_participant_minute'), 3)} |"
-            )
-    return "\n".join(lines)
+def _whole(v: float | None) -> str:
+    return "n/a" if v is None else f"{v:.0f}" if float(v).is_integer() else f"{v:.1f}"
+
+
+def table_jitter(before: dict[str, Any], after: dict[str, Any]) -> str:
+    """Jitter-buffer simulations (bench/run_jitter.sh): each cell is before -> after."""
+    out = []
+    for side, title in (("server", "Server mixer"), ("client", "Client")):
+        lines = [
+            f"**{title}**, before -> after:",
+            "",
+            "| Scenario | " + " | ".join(label for _, label in JITTER_MEASURES) + " |",
+            "|---|" + "---|" * len(JITTER_MEASURES),
+        ]
+        for name, a in after["summary"][side].items():
+            b = before["summary"][side].get(name, {})
+            cells = [f"{_whole(b.get(k))} -> {_whole(a.get(k))}" for k, _ in JITTER_MEASURES]
+            lines.append(f"| `{name}` | " + " | ".join(cells) + " |")
+        out.append("\n".join(lines))
+    return "\n\n".join(out)
 
 
 # --- output --------------------------------------------------------------------------
@@ -821,7 +1059,11 @@ def replace_blocks(path: Path, blocks: dict[str, str]) -> None:
             rf"(<!-- END GENERATED {re.escape(name)} -->)",
             re.DOTALL,
         )
-        text = pattern.sub(lambda m, body=body: m.group(1) + body + "\n" + m.group(2), text)
+
+        def fill(m: re.Match[str], body: str = body) -> str:
+            return m.group(1) + body + "\n" + m.group(2)
+
+        text = pattern.sub(fill, text)
     path.write_text(text)
 
 
@@ -838,39 +1080,26 @@ def main() -> None:
         )
         if data is not None
     ]
-    for _, data in variants:
-        tag_commit(data)
-    if variants:
-        main_b3 = variants[0][1]
-        # v2 at the commit before batching, and the same binary as main_b3 with batching
-        # or GSO turned off, all on the default loopback MTU.
-        unbatched = tag_commit(load("b3_capacity_unbatched.json"))
-        if (
-            unbatched is not None
-            and "v2" in unbatched["systems"]
-            and main_b3["environment"]["git_commit"] != unbatched["environment"]["git_commit"]
-        ):
-            main_b3["systems"]["v2-unbatched"] = unbatched["systems"]["v2"]
-        for key, name in (
-            ("v2-nogso", "b3_capacity_nogso.json"),
-            ("v2-nogso-repeat", "b3_capacity_nogso_repeat.json"),
-            ("v2-nobatch", "b3_capacity_nobatch.json"),
-            ("v2-nobatch-repeat", "b3_capacity_nobatch_repeat.json"),
-        ):
-            ablation = tag_commit(load(name))
-            if ablation is not None and "v2" in ablation["systems"]:
-                main_b3["systems"][key] = ablation["systems"]["v2"]
     micro = load("micro.json")
     for theme in (LIGHT, DARK):
         if b1:
-            plot_b1(b1, theme)
+            plot_b1(b1, theme, "downlink", "b1_video_delivery")
+            plot_b1(b1, theme, "both-rtt50", "b1_video_delivery_rtt50")
+            plot_b1_audio(b1, theme)
         if b2:
             plot_b2(b2, theme)
         if variants:
-            plot_b3(variants, theme)
+            plot_b3(variants[0][1], theme, "b3", variants[0][0])
     if b1:
         blocks["b1"] = table_b1(b1)
         blocks["summary_b1"] = summary_b1(b1)
+        for key, body in (
+            ("b1_hard", table_b1_hard(b1)),
+            ("summary_b1_hard", summary_b1_hard(b1)),
+            ("b1_long", table_b1_long(b1)),
+        ):
+            if body:
+                blocks[key] = body
     if b2:
         blocks["b2"] = table_b2(b2)
         blocks["summary_b2"] = summary_b2(b2)
@@ -882,6 +1111,12 @@ def main() -> None:
         blocks["b3_profile"] = profiles
     if micro:
         blocks["micro"] = table_micro(micro)
+    churn_after = load("churn_after.json")
+    if churn_after:
+        blocks["churn"] = table_churn(load("churn_before.json"), churn_after)
+    jitter_before, jitter_after = load("jitter_before.json"), load("jitter_after.json")
+    if jitter_before and jitter_after:
+        blocks["jitter"] = table_jitter(jitter_before, jitter_after)
     (RESULTS / "tables.md").write_text(
         "# Generated benchmark tables\n\n"
         "Generated by `bench/render.py` from the JSON files in this directory.\n\n"
