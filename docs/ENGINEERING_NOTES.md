@@ -147,9 +147,9 @@ over three runs) and with five (119-124), with every talker's audio played and e
 video frame processed (`bench/results/b2_audio.json`). The 119 ms is about what v2 is
 configured to buffer (40 ms in the server's per-sender jitter buffer, up to 20 ms to the
 next mixer tick, the client's 60 ms jitter buffer, up to 20 ms to the next device
-period); the mix does not make audio faster, it adds the server's 40 ms. What keeps the
-latency flat is a receive path that never waits for playback and playout paced by a
-clock. Downstream audio per receiver is constant in the number of talkers: 415 and
+period); the mix does not make audio faster, it adds the server's 40 ms. By design,
+what keeps the latency flat is a receive path that never waits for playback and playout
+paced by a clock; no experiment isolated that. Downstream audio per receiver is constant in the number of talkers: 415 and
 420 kbit/s including audio FEC (275 and 278 kbit/s without it), against 525 and
 1 050 kbit/s for the 2024 version, which forwards every talker's stream separately.
 

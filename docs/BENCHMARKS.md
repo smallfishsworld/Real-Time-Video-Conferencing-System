@@ -564,10 +564,11 @@ built at 4fe5eca); medians of three runs with the range in brackets.
   (119-124), flat over the window. That is about the sum of its configured buffering:
   40 ms in the server's per-sender jitter buffer, up to 20 ms of mixer tick phase, the
   client's 60 ms jitter buffer and up to 20 ms of device period (a sum from the
-  configuration, not a per-stage measurement). The latency stays there because v2's
-  receive path never waits for playback and its playout is paced by a clock, not
-  because of the mix: mixing on the server adds its 40 ms buffer and tick phase, and
-  mixing separate streams on the client was not measured. The downstream audio rate
+  configuration, not a per-stage measurement). The mix is not what keeps it there:
+  mixing on the server adds its 40 ms buffer and tick phase. By design v2's receive
+  path never waits for playback and its playout is paced by a clock, the likely reason;
+  no experiment isolated it, and mixing separate streams on the client was not
+  measured. The downstream audio rate
   (415 and 420 kbit/s per receiver with FEC parity, 275 and 278 without) does not grow
   with the number of talkers, because every receiver gets one mix-minus stream; the
   2024 version's rate, one stream per other talker, doubles from three parties to five

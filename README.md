@@ -93,8 +93,9 @@ sound card whose `write()` blocks while the previous chunk plays (see
 server (mix-minus) and sends each receiver one stream. Its 119 ms is the buffering it is
 configured for (40 ms in the server's jitter buffer, up to 20 ms to the next mixer tick,
 60 ms of client playout delay, up to 20 ms to the next playout tick); mixing does not
-make audio faster, it adds the server's 40 ms. What keeps v2's latency flat is a
-receive path that never waits for playback and playout paced by a clock.
+make audio faster, it adds the server's 40 ms. What keeps v2's latency flat is, by
+design, a receive path that never waits for playback and playout paced by a clock (no
+experiment isolated it).
 
 **Relay capacity (B3).** Rooms of four, 15 fps per participant, the server pinned to
 one CPU, on loopback:
