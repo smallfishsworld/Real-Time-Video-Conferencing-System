@@ -67,6 +67,7 @@ print(json.dumps({c["counter"]["name"]: c["counter"]["packets"] for c in data if
 
 run_one() {
   local system=$1 loss=$2 tag="$1-$2" end_at server_pid
+  rm -f "$OUT_DIR/$tag".* # files of an earlier run of this system and loss rate
   setup_ns "$loss"
   log "B1 $system loss=${loss}/1000"
   if [ "$system" = legacy ]; then

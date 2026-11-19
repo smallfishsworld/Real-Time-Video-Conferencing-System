@@ -85,6 +85,7 @@ run_point() {
 
 sweep() {
   local wire=$1 n fails=0 status
+  rm -f "$OUT_DIR/$wire"-*-sweep.* "$OUT_DIR/$wire"-*-fixed.* # results of an earlier sweep
   for n in $SIZES; do
     set +e
     run_point "$wire" "$n" "$WINDOW" sweep
