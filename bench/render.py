@@ -634,9 +634,7 @@ def summary_b1(b1: dict[str, Any]) -> str:
         "|---" * (len(keys) + 1) + "|",
     ]
     for loss in losses:
-        cells = [
-            pct(by[(k, loss)]["video"]["delivery_ratio"]["p"]) if (k, loss) in by else "n/a" for k in keys
-        ]
+        cells = [ci(by[(k, loss)]["video"]["delivery_ratio"]) if (k, loss) in by else "n/a" for k in keys]
         lines.append(f"| {loss:g} % | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
