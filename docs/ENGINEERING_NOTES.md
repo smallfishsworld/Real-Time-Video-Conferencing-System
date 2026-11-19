@@ -100,12 +100,15 @@ blocking output stream. In the benchmark that stream is a fake PyAudio device
 (`bench/legacy_harness/stubs.py`) whose `write()` blocks until the previous chunk has
 played, which is how a blocking sound device behaves. With two remote talkers the
 receiver must play 2 x real time of audio, so its UDP socket buffer overflows and the
-latency settles at the buffer depth: median mouth-to-speaker latency was 593 ms with
-three parties and 999 ms with five. Only 41-59 % (three parties) and 15-37 % (five
-parties) of each talker's chunks were played, and because the same thread receives
-video, the receivers processed 25.0 % (three parties) and 8.1 % (five parties) of the video
-frames; with five parties some senders' video never reached some receivers during the
-whole 62 s window.
+latency settles at the buffer depth: median capture-to-playout latency was 594 ms
+(589-614 over three runs) with three parties and 978 ms (952-1024) with five, where it
+was still rising at the end of the 62 s window. Only 41-59 % (three parties) and
+15-38 % (five parties) of each talker's chunks were played, and because the same thread
+receives video, the receivers processed 25.0 % (three parties) and 8.2 % (five parties,
+median of three runs) of the video frames; with five parties, in 14 of 15 receiver
+runs one sender's video never arrived during the whole window. Both ends are
+simulated (synthetic microphones, stand-in speakers, loopback), and the original's
+numbers depend on its stand-in speaker (`docs/BENCHMARKS.md`, B2).
 
 **Fix.** The server runs one 20 ms mixer per room. Each sender's audio goes through a
 small jitter buffer (2 frames); every tick the mixer sums all active senders in int32
@@ -115,14 +118,16 @@ gets one stream with a CSRC list naming the talkers in it. The client plays it t
 60 ms jitter buffer with packet-loss concealment (repeat the last frame at half
 amplitude, at most three times).
 
-**Measured.** v2 median mouth-to-speaker latency: 119 ms (three parties) and 131 ms
-(five parties), with every talker's audio delivered and every video frame processed.
-Downstream audio per receiver is constant in the number of talkers: 415 and 420 kbit/s
-including audio FEC (275 and 278 kbit/s without it), against 525 and 1 050 kbit/s for the
-original, which forwards every talker's stream separately.
+**Measured.** v2 median capture-to-playout latency: 119 ms with three parties (117-119
+over three runs) and with five (119-124), with every talker's audio played and every
+video frame processed (`bench/results/b2_audio.json`). Downstream audio per receiver is
+constant in the number of talkers: 415 and 420 kbit/s including audio FEC (275 and
+278 kbit/s without it), against 525 and 1 050 kbit/s for the original, which forwards
+every talker's stream separately.
 
-**Trade-off.** The server now decodes and re-encodes audio (cheap for L16: 5.2 µs per
-4-member tick in the microbenchmark) and adds a mixer jitter buffer of 40 ms. A receiver
+**Trade-off.** The server now decodes and re-encodes audio (cheap for L16: a median of
+7.4 µs per 4-member tick in the microbenchmark, `bench/results/micro.json`) and adds a
+mixer jitter buffer of 40 ms. A receiver
 cannot mute individual talkers locally any more.
 
 ### 2.5 Identity by SSRC and token, not by IP address (fixes 5 and 6)

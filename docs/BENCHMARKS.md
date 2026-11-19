@@ -243,27 +243,36 @@ counter.
 interface (each original participant on its own 127.0.0.x address, because the original
 relay skips receivers with the sender's IP). Everybody talks and sends video (corpus at
 15.625 fps) for the whole run. The measurement window starts 2.5 s after the last
-participant joined and lasts about 61 s.
+participant joined and lasts 60 s; each configuration runs three times.
 
-The original participants run the original `keep_share` and `keep_recv` threads. Their
-sound card is a stand-in (`bench/legacy_harness/stubs.py`) that models a blocking audio
-device: `read(1024)` returns when 1024 samples of real time have passed, and `write()`
-returns only once the previous chunk has finished playing, so a receiver that is handed
-more than real time of audio blocks in `write()` for one chunk duration per chunk. That
-is how PyAudio's blocking stream behaves once its buffer is full, and it is the
-assumption behind the original's numbers here. v2 participants run the real client with
-the server's mix-minus stream and the client's 60 ms jitter buffer; their speaker is a
-thread that pulls one 20 ms frame every 20 ms.
+Both ends are simulated: the microphones are synthetic tones and the speakers are
+stand-ins, and these stand-ins decide the original's numbers. The original participants
+run the original `keep_share` and `keep_recv` threads, and their sound card is
+`bench/legacy_harness/stubs.py`, a blocking device with room for one chunk: `read(1024)`
+returns when 1024 samples of real time have passed, and `write()` returns only once the
+previous chunk has finished playing. That is how PyAudio's blocking stream behaves once
+its buffer is full; a receiver handed more than real time of audio blocks in `write()`
+for one chunk duration per chunk, and the datagrams queue in its socket's receive
+buffer, whose size is this host's default (`net.core.rmem_default`, 212 992 bytes; the
+original sets only `SO_SNDBUF`). v2 participants run the real client with the server's
+mix-minus stream and the client's 60 ms jitter buffer; their speaker is a thread that
+takes one 20 ms frame every 20 ms.
 
-**Metrics.** Audio latency: from the end of a frame's capture at the talker to the
-moment the receiver's (fake) sound card starts playing it. Audio delivered: share of
-each talker's frames that were played, worst talker shown. Downstream audio: IP-level
-bit rate into each receiver (original: nftables counters on the receiver's port for
-datagrams under 4000 bytes; v2: client receive counters plus 28 bytes of IP and UDP
-header per packet). Video frames processed: frames of the other participants that the
-receiving application got (original: stored after decompression; v2: completed by the
-frame assembler), against frames sent. Video frozen: per sender, the time covered by gaps
-longer than 0.5 s between consecutive frames, as a share of the window.
+**Metrics.** Capture-to-playout latency: from the end of a frame's capture at the
+talker to the moment the receiver's stand-in sound card starts playing it (median over
+all frames played in the window, then the median of the three runs). Audio delivered:
+share of each talker's frames that were played, worst and best talker shown. Downstream
+audio: IP-level bit rate into each receiver (original: nftables counters on the
+receiver's port for datagrams under 4000 bytes; v2: client receive counters plus
+28 bytes of IP and UDP header per packet). Video frames processed: frames of the other
+participants that the receiving application got in the window (original: stored after
+decompression; v2: completed by the frame assembler), against frames sent in the
+window; a frame sent just before the window and received in it makes the ratio exceed
+100 % by one frame. Rise over the window: the receiver's median latency over the last
+5 s of the window minus that over the first 5 s. The JSON also has, per receiver, the
+longest gap between two frames of one sender (`longest_gap_s`), the share of the window
+covered by gaps longer than 0.5 s (`stalled_fraction`) and the latency series
+(`capture_to_playout_series`, 0.5 s bins).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b2_audio_latency_dark.png">
@@ -281,33 +290,43 @@ longer than 0.5 s between consecutive frames, as a share of the window.
 </picture>
 
 <!-- BEGIN GENERATED b2 -->
-| System | Parties | Audio latency p50 / p95 (ms) | Audio delivered (worst talker) | Downstream audio per receiver (kbit/s) | Video frames processed | Longest video freeze | Video time frozen > 0.5 s |
-|---|---|---|---|---|---|---|---|
-| legacy (original) | 3 | 593 / 671 | 41.4 % | 525 | 25.0 % | 0.64 s | 19.5 % |
-| legacy (original) | 5 | 999 / 1210 | 15.2 % | 1050 | 8.1 % | 61.98 s | 70.9 % |
-| v2 | 3 | 119 / 125 | 100.0 % | 415 (275 without FEC) | 100.0 % | 0.10 s | 0.0 % |
-| v2 | 5 | 131 / 152 | 100.0 % | 420 (278 without FEC) | 100.0 % | 0.09 s | 0.0 % |
+| System | Parties | Runs | Capture-to-playout p50 (ms) | p95 (ms) | Rise over the window (ms) | Worst talker's audio played | Video frames processed | Downstream audio per receiver (kbit/s) |
+|---|---|---|---|---|---|---|---|---|
+| legacy (original) | 3 | 3 | 594 (589-614) | 682 (665-684) | 3 (-7 to 5) | 41.3 % (41.3-41.7) | 25.0 % | 525 |
+| legacy (original) | 5 | 3 | 978 (952-1024) | 1199 (1190-1204) | 364 (157-395) | 15.1 % (15.0-15.7) | 8.2 % (7.8-8.8) | 1050 |
+| v2 | 3 | 3 | 119 (117-119) | 128 (126-128) | 0 | 100.0 % | 100.0 % (99.9-100.0) | 415 |
+| v2 | 5 | 3 | 119 (119-124) | 135 (131-135) | 0 | 100.0 % | 100.0 % | 420 |
 <!-- END GENERATED b2 -->
 
-**Reading the results.**
+**Reading the results.** Numbers from `b2_audio.json` (run 20261119T115303Z-29601,
+built at 4fe5eca); medians of three runs with the range in brackets.
 
-- The original receiver has to play (n - 1) x real time of audio. Its receive thread
-  blocks in `write()`, the socket buffer fills (the kernel counted 7 532 receive-buffer
-  drops in the 3-party run and 34 315 in the 5-party run), and latency settles at the
-  depth of that buffer: a median of 593 ms with three parties and 999 ms with five,
-  while 41-59 % (three parties) and 63-85 % (five parties) of each talker's audio is
-  never played.
-- Because video arrives on the same socket and thread, video stalls with it: with five
-  parties each receiver processed 7.0-10.2 % of the others' frames, and every receiver
-  had a sender whose video did not arrive during the whole 62 s window (`longest_gap_s`).
-- v2's median latency (119 ms with three parties, 131 ms with five) is what its
-  configured buffers add up to: 40 ms in the server's per-sender jitter buffer, up to
-  20 ms of mixer tick phase, the client's 60 ms jitter buffer and up to 20 ms of device
-  period. It does not grow with the number of talkers, and neither does the downstream
-  audio rate, because every receiver gets one mixed stream.
-- v2's video costs more bandwidth than the original's: 20 587-20 590 kbit/s against
-  15 564-15 569 kbit/s per receiver with five parties (the `downstream_video` fields), from FEC
-  (25 %) and per-fragment headers.
+- The original receiver has to play (n - 1) x real time of audio through a speaker
+  that plays one. Its receive thread blocks in `write()`, the socket's receive buffer
+  fills (the kernel counted 7 522-7 533 receive-buffer drops per 3-party run and
+  34 125-34 382 per 5-party run, `Udp.RcvbufErrors` under `kernel`), and
+  capture-to-playout latency sits at the depth of that buffer: a median of 594 ms
+  (589-614) with three parties and 978 ms (952-1024) with five. With three parties it
+  is flat over the window (3 ms, -7 to 5); with five it was still rising at the end of
+  the window, by 364 ms (157-395). Of each talker's audio, 41.3-58.7 % was played with
+  three parties and 15.0-38.2 % with five (every receiver, talker and run); the rest
+  was never played.
+- Video arrives on the same socket and thread, so it stalls with the audio: each
+  receiver processed 25 % of the others' frames with three parties and 6.5-11.9 % with
+  five, and in 14 of the 15 five-party receiver runs one sender's video did not arrive
+  at all during the 62 s window (`longest_gap_s` 62 s).
+- v2 played every talker's audio in every run (100.0 %), with a median
+  capture-to-playout latency of 119 ms with three parties (117-119) and with five
+  (119-124), flat over the window. That is about the sum of its configured buffering:
+  40 ms in the server's per-sender jitter buffer, up to 20 ms of mixer tick phase, the
+  client's 60 ms jitter buffer and up to 20 ms of device period (a sum from the
+  configuration, not a per-stage measurement). Neither the latency nor the downstream
+  audio rate (415 and 420 kbit/s per receiver, FEC included) grows with the number of
+  talkers, because every receiver gets one mixed stream; the original's rate doubles
+  from three parties to five (525 and 1050 kbit/s).
+- v2's video costs more bandwidth than the original's: 20 580-20 590 kbit/s against
+  15 565-15 576 kbit/s per receiver with five parties (`downstream_video`), from FEC
+  (one parity packet per group of up to four fragments) and per-fragment headers.
 
 ## B3: relay capacity
 

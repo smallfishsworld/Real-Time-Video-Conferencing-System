@@ -52,18 +52,19 @@ frame arrives ([`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md#211-nack-
 <!-- BEGIN GENERATED summary_b2 -->
 | | 3 parties, legacy (original) | 3 parties, v2 | 5 parties, legacy (original) | 5 parties, v2 |
 |---|---|---|---|---|
-| Audio latency, median | 593 ms | 119 ms | 999 ms | 131 ms |
-| Audio played, worst talker | 41.4 % | 100.0 % | 15.2 % | 100.0 % |
+| Capture-to-playout latency, median | 594 ms (589-614) | 119 ms (117-119) | 978 ms (952-1024) | 119 ms (119-124) |
+| Audio played, worst talker | 41.3 % (41.3-41.7) | 100.0 % | 15.1 % (15.0-15.7) | 100.0 % |
 | Downstream audio per receiver | 525 kbit/s | 415 kbit/s | 1050 kbit/s | 420 kbit/s |
-| Video frames processed | 25.0 % | 100.0 % | 8.1 % | 100.0 % |
+| Video frames processed | 25.0 % | 100.0 % (99.9-100.0) | 8.2 % (7.8-8.8) | 100.0 % |
 <!-- END GENERATED summary_b2 -->
 
 The original plays every talker's chunks one after another on a blocking audio stream,
 so with two or more talkers playback falls behind real time and the same thread stops
-reading video. These numbers assume a sound card whose `write()` blocks while the
-previous chunk plays (a stand-in device, see [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b2-multi-talker-audio));
-no real audio hardware was available. v2 mixes on the server (mix-minus) and sends each
-receiver one stream.
+reading video. Both ends are simulated (synthetic tones as microphones, stand-in
+speakers; no audio hardware was available), and the original's numbers assume a sound
+card whose `write()` blocks while the previous chunk plays (see
+[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b2-multi-talker-audio)). v2 mixes on the
+server (mix-minus) and sends each receiver one stream.
 
 **Relay capacity (B3).** Rooms of four, 15 fps per participant, the server pinned to
 one CPU, on loopback:
