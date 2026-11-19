@@ -304,13 +304,13 @@ func (c *conn) dispatch(req *protocol.Request) bool {
 	case protocol.TypeCancelRoom:
 		err = reg.CancelRoom(c.client, req.Seq)
 	case protocol.TypeChat:
-		err = reg.Chat(c.client, req.Text)
+		err = reg.Chat(c.client, req.Text, req.Seq)
 	case protocol.TypeMediaState:
 		if req.Video == nil || req.Audio == nil {
 			c.sendError(req.Seq, protocol.CodeBadRequest, "media_state needs video and audio")
 			return true
 		}
-		err = reg.SetMediaState(c.client, *req.Video, *req.Audio)
+		err = reg.SetMediaState(c.client, *req.Video, *req.Audio, req.Seq)
 	case protocol.TypePing:
 		c.send(protocol.Pong{Type: protocol.TypePong, Seq: req.Seq, ServerTimeMS: time.Now().UnixMilli()})
 	default:

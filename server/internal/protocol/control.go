@@ -204,6 +204,7 @@ type RosterEntry struct {
 // Roster is sent to every member whenever membership or media state changes.
 type Roster struct {
 	Type         string        `json:"type"`
+	Seq          *int64        `json:"seq,omitempty"` // only on the requester's copy after media_state
 	RoomID       uint32        `json:"room_id"`
 	HostID       uint32        `json:"host_id"`
 	Participants []RosterEntry `json:"participants"`
@@ -228,6 +229,7 @@ type Mode struct {
 // Chat is a chat message stamped by the server.
 type Chat struct {
 	Type         string `json:"type"`
+	Seq          *int64 `json:"seq,omitempty"` // only on the sender's own copy
 	RoomID       uint32 `json:"room_id"`
 	FromID       uint32 `json:"from_id"`
 	FromName     string `json:"from_name"`

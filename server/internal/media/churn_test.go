@@ -29,6 +29,10 @@ import (
 // and from one "flooder", a member that sends REGISTERs alternately from two sockets
 // at 1500/s without waiting (below the server-wide 2000/s REGISTER cap).
 //
+// Every member answers the server's challenges as clients do: a rebinder or the
+// flooder echoes the nonce of each challenge it receives. The last configuration
+// raises the per-member rebind limit so that every rebind of the rebinders is served.
+//
 // It is a measurement, not a pass/fail test: it runs only when CONFSERVER_CHURN_OUT
 // names a file, and appends one JSON line per configuration to it
 // (bench/run_churn.sh runs it and collects the lines).
@@ -49,13 +53,15 @@ func TestChurnForwarding(t *testing.T) {
 	for _, c := range []struct {
 		name                         string
 		spammers, rebinders, floodHz int
+		unlimitedRebinds             bool
 	}{
-		{"keepalives", 0, 0, 0},
-		{"keepalives+media_state", 20, 0, 0},
-		{"keepalives+media_state+rebinds", 20, 4, 0},
-		{"keepalives+register_flood", 0, 0, 1500},
+		{"keepalives", 0, 0, 0, false},
+		{"keepalives+media_state", 20, 0, 0, false},
+		{"keepalives+media_state+rebinds", 20, 4, 0, false},
+		{"keepalives+register_flood", 0, 0, 1500, false},
+		{"keepalives+media_state+rebinds_all_served", 20, 4, 0, true},
 	} {
-		res := churnRun(t, c.spammers, c.rebinders, c.floodHz, seconds)
+		res := churnRun(t, c.spammers, c.rebinders, c.floodHz, c.unlimitedRebinds, seconds)
 		res["config"] = c.name
 		line, _ := json.Marshal(res)
 		if _, err := fmt.Fprintf(f, "%s\n", line); err != nil {
@@ -71,8 +77,12 @@ type churnMember struct {
 	token  protocol.Token
 }
 
-func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[string]any {
-	s := newTestServer(t, func(rc *room.Config) { rc.MaxClients = 4096 }, nil)
+func churnRun(t *testing.T, spammers, rebinders, floodHz int, unlimitedRebinds bool, seconds int) map[string]any {
+	s := newTestServer(t, func(rc *room.Config) { rc.MaxClients = 4096 }, func(mc *Config) {
+		if unlimitedRebinds {
+			mc.RebindsPerSec, mc.RebindBurst = 1000, 1000
+		}
+	})
 	sink, sinkAddr := churnSocket(t)
 	go churnDrain(sink)
 	const rooms, size = 64, 16
@@ -122,6 +132,7 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
 			}
 		}
 	}
+	s.router.Sync()
 	time.Sleep(200 * time.Millisecond)
 
 	stop := make(chan struct{})
@@ -139,7 +150,7 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
 					return
 				default:
 				}
-				_ = s.reg.SetMediaState(c, i%2 == 0, true)
+				_ = s.reg.SetMediaState(c, i%2 == 0, true, nil)
 				next = next.Add(20 * time.Millisecond)
 				time.Sleep(time.Until(next))
 			}
@@ -175,8 +186,8 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
 		tok := all[50][2].token
 		f1, _ := churnSocket(t)
 		f2, _ := churnSocket(t)
-		go churnDrain(f1)
-		go churnDrain(f2)
+		go churnEcho(f1, s.addr, tok)
+		go churnEcho(f2, s.addr, tok)
 		pkt := churnRegister(tok, 9)
 		wg.Add(1)
 		go func() {
@@ -212,6 +223,10 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
 			default:
 			}
 			_, _ = sink.WriteToUDPAddrPort(keep[i%len(keep)], s.addr)
+			if i%len(keep) == 0 { // the measured pair keeps its bindings too
+				_, _ = a.WriteToUDPAddrPort(churnRegister(all[0][0].token, 2), s.addr)
+				_, _ = b.WriteToUDPAddrPort(churnRegister(all[0][1].token, 2), s.addr)
+			}
 			next = next.Add(iv)
 			time.Sleep(time.Until(next))
 		}
@@ -278,7 +293,10 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz, seconds int) map[strin
 		"latency_ms": map[string]float64{
 			"p50": q(0.5), "p90": q(0.9), "p99": q(0.99), "max": q(1),
 		},
-		"drops": snap.Drops,
+		"drops":          snap.Drops,
+		"bindings":       s.router.Stats().Bindings.Load(),
+		"table_rebuilds": s.router.Stats().TableRebuilds.Load(),
+		"room_rebuilds":  s.router.Stats().RoomRebuilds.Load(),
 	}
 }
 
@@ -308,24 +326,54 @@ func churnRegister(tok protocol.Token, txID uint64) []byte {
 	return b[:n]
 }
 
-// churnRebind moves tok's binding to conn and reports whether the server acknowledged
-// the move within 50 ms.
+// churnRebind moves tok's binding to conn, echoing the server's challenge, and reports
+// whether the server acknowledged the move within 50 ms.
 func churnRebind(conn *net.UDPConn, server netip.AddrPort, tok protocol.Token, txID uint64) bool {
-	if _, err := conn.WriteToUDPAddrPort(churnRegister(tok, txID), server); err != nil {
-		return false
-	}
+	reg := protocol.Register{TxID: txID, Token: tok}
+	pkt := make([]byte, protocol.RegisterSize)
 	buf := make([]byte, 256)
 	deadline := time.Now().Add(50 * time.Millisecond)
-	for {
-		_ = conn.SetReadDeadline(deadline)
-		n, err := conn.Read(buf)
-		if err != nil {
+	for range 3 {
+		n, _ := reg.MarshalTo(pkt)
+		if _, err := conn.WriteToUDPAddrPort(pkt[:n], server); err != nil {
 			return false
 		}
 		var ack protocol.RegisterAck
-		if protocol.ParseRegisterAck(buf[:n], &ack) == nil && ack.TxID == txID {
+		for {
+			_ = conn.SetReadDeadline(deadline)
+			n, err := conn.Read(buf)
+			if err != nil {
+				return false
+			}
+			if protocol.ParseRegisterAck(buf[:n], &ack) == nil && ack.TxID == txID {
+				break
+			}
+		}
+		if !ack.Challenge {
 			return true
 		}
+		reg.HasNonce, reg.Nonce = true, ack.Nonce
+	}
+	return false
+}
+
+// churnEcho reads conn until it is closed and answers every challenge for tok by
+// echoing its nonce, as a client does.
+func churnEcho(conn *net.UDPConn, server netip.AddrPort, tok protocol.Token) {
+	buf := make([]byte, 256)
+	pkt := make([]byte, protocol.RegisterSize)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			return
+		}
+		var ack protocol.RegisterAck
+		if protocol.ParseRegisterAck(buf[:n], &ack) != nil || !ack.Challenge {
+			continue
+		}
+		reg := protocol.Register{TxID: ack.TxID, Token: tok, HasNonce: true, Nonce: ack.Nonce}
+		m, _ := reg.MarshalTo(pkt)
+		_, _ = conn.WriteToUDPAddrPort(pkt[:m], server)
 	}
 }
 

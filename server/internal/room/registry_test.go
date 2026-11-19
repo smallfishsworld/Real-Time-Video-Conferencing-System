@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/netip"
 	"strings"
 	"sync"
@@ -203,8 +204,8 @@ func TestRequestErrors(t *testing.T) {
 	}{
 		{"leave outside room", f.reg.LeaveRoom(a, nil), protocol.CodeNotInRoom},
 		{"cancel outside room", f.reg.CancelRoom(a, nil), protocol.CodeNotInRoom},
-		{"chat outside room", f.reg.Chat(a, "hi"), protocol.CodeNotInRoom},
-		{"media state outside room", f.reg.SetMediaState(a, true, true), protocol.CodeNotInRoom},
+		{"chat outside room", f.reg.Chat(a, "hi", nil), protocol.CodeNotInRoom},
+		{"media state outside room", f.reg.SetMediaState(a, true, true, nil), protocol.CodeNotInRoom},
 		{"join missing room", f.reg.JoinRoom(a, 99, nil), protocol.CodeRoomNotFound},
 		{"title too long", f.reg.CreateRoom(a, strings.Repeat("t", MaxTitleLen+1), nil), protocol.CodeBadRequest},
 	}
@@ -226,10 +227,10 @@ func TestRequestErrors(t *testing.T) {
 	if err := f.reg.JoinRoom(c, id, nil); code(err) != protocol.CodeRoomFull {
 		t.Errorf("join full room: %v", err)
 	}
-	if err := f.reg.Chat(a, ""); code(err) != protocol.CodeBadRequest {
+	if err := f.reg.Chat(a, "", nil); code(err) != protocol.CodeBadRequest {
 		t.Errorf("empty chat: %v", err)
 	}
-	if err := f.reg.Chat(a, strings.Repeat("x", MaxChatLen+1)); code(err) != protocol.CodeBadRequest {
+	if err := f.reg.Chat(a, strings.Repeat("x", MaxChatLen+1), nil); code(err) != protocol.CodeBadRequest {
 		t.Errorf("long chat: %v", err)
 	}
 	if rooms := f.reg.ListRooms(); rooms[0].Title != "a's room" {
@@ -331,7 +332,8 @@ func TestChatIsStampedAndIsolated(t *testing.T) {
 	cin.take()
 
 	f.now = f.now.Add(1500 * time.Millisecond)
-	if err := f.reg.Chat(b, "  hello\nworld  "); err != nil {
+	seq := int64(7)
+	if err := f.reg.Chat(b, "  hello\nworld  ", &seq); err != nil {
 		t.Fatal(err)
 	}
 	for name, in := range map[string]*inbox{"alice": ain, "bob": bin} {
@@ -343,6 +345,10 @@ func TestChatIsStampedAndIsolated(t *testing.T) {
 		if m["from_name"] != "bob" || m["from_id"] != float64(b.ID) || m["text"] != "hello\nworld" ||
 			m["server_time_ms"] != float64(f.now.UnixMilli()) {
 			t.Fatalf("%s got %v", name, m)
+		}
+		// Only the sender's copy is the reply to its request.
+		if got, want := m["seq"], map[string]any{"alice": nil, "bob": float64(7)}[name]; got != want {
+			t.Fatalf("%s: seq %v, want %v", name, got, want)
 		}
 	}
 	if msgs := cin.take(); len(msgs) != 0 {
@@ -477,13 +483,18 @@ func TestViewTracksMembershipAndState(t *testing.T) {
 	tok := tokenOf(t, ain.take())
 	addr := netip.MustParseAddrPort("[::1]:5000")
 	f.reg.Register(tok, addr)
-	_ = f.reg.SetMediaState(a, false, true)
+	before := f.reg.View()
+	// media_state changes nothing the media plane uses, so it publishes no view.
+	_ = f.reg.SetMediaState(a, false, true, nil)
 	v := f.reg.View()
+	if v != before {
+		t.Fatal("media_state published a view")
+	}
 	if len(v.Rooms) != 1 {
 		t.Fatalf("rooms = %d", len(v.Rooms))
 	}
 	m := v.Rooms[0].Members[0]
-	if m.ID != a.ID || m.Addr != addr || m.Video || !m.Audio || m.AudioSSRC == m.VideoSSRC || m.AudioSSRC == 0 {
+	if m.ID != a.ID || m.Addr != addr || m.Token != tok || m.AudioSSRC == m.VideoSSRC || m.AudioSSRC == 0 {
 		t.Fatalf("member view %+v", m)
 	}
 	if rooms, members := v.Stats(); rooms != 1 || members != 1 {
@@ -533,5 +544,104 @@ func TestCloseAll(t *testing.T) {
 	}
 	if len(f.reg.ListRooms()) != 0 {
 		t.Fatal("rooms left after CloseAll")
+	}
+}
+
+func TestMediaStateRepliesWithRosterCarryingSeq(t *testing.T) {
+	f := newFixture(t, nil)
+	a, ain := f.client("alice")
+	b, bin := f.client("bob")
+	_ = f.reg.CreateRoom(a, "", nil)
+	_ = f.reg.JoinRoom(b, a.InRoom(), nil)
+	ain.take()
+	bin.take()
+	seq := int64(41)
+	if err := f.reg.SetMediaState(a, false, true, &seq); err != nil {
+		t.Fatal(err)
+	}
+	for name, in := range map[string]*inbox{"alice": ain, "bob": bin} {
+		msgs := in.take()
+		if len(msgs) != 1 || msgs[0]["type"] != protocol.TypeRoster {
+			t.Fatalf("%s got %v", name, msgs)
+		}
+		if got, want := msgs[0]["seq"], map[string]any{"alice": float64(41), "bob": nil}[name]; got != want {
+			t.Fatalf("%s: seq %v, want %v", name, got, want)
+		}
+		p := msgs[0]["participants"].([]any)[0].(map[string]any)
+		if p["video"] != false || p["audio"] != true {
+			t.Fatalf("%s: roster entry %v", name, p)
+		}
+	}
+}
+
+func TestViewReusesUnchangedRooms(t *testing.T) {
+	f := newFixture(t, nil)
+	a, ain := f.client("a")
+	b, bin := f.client("b")
+	_ = f.reg.CreateRoom(a, "", nil)
+	_ = f.reg.CreateRoom(b, "", nil)
+	tokA, tokB := tokenOf(t, ain.take()), tokenOf(t, bin.take())
+	v1 := f.reg.View()
+	if len(v1.Rooms) != 2 || v1.Rooms[0].ID >= v1.Rooms[1].ID {
+		t.Fatalf("rooms not in ID order: %+v", v1.Rooms)
+	}
+	f.reg.Register(tokB, netip.MustParseAddrPort("127.0.0.1:2"))
+	v2 := f.reg.View()
+	if v2.Seq <= v1.Seq || v2.Rooms[0] != v1.Rooms[0] || v2.Rooms[1] == v1.Rooms[1] {
+		t.Fatalf("only b's room should have a new view: seq %d -> %d", v1.Seq, v2.Seq)
+	}
+	f.reg.Register(tokA, netip.MustParseAddrPort("127.0.0.1:1"))
+	if v3 := f.reg.View(); v3.Rooms[0] == v2.Rooms[0] || v3.Rooms[1] != v2.Rooms[1] {
+		t.Fatal("only a's room should have a new view")
+	}
+	f.reg.Goodbye(a)
+	if v4 := f.reg.View(); len(v4.Rooms) != 1 || v4.Rooms[0] != v2.Rooms[1] {
+		t.Fatalf("after a left: %+v", v4.Rooms)
+	}
+}
+
+func TestUnbindClearsOnlyTheCurrentBinding(t *testing.T) {
+	f := newFixture(t, nil)
+	a, ain := f.client("a")
+	_ = f.reg.CreateRoom(a, "", nil)
+	tok := tokenOf(t, ain.take())
+	old := netip.MustParseAddrPort("127.0.0.1:1")
+	cur := netip.MustParseAddrPort("127.0.0.1:2")
+	f.reg.Register(tok, old)
+	f.reg.Register(tok, cur)
+	ain.take()
+	if f.reg.Unbind(tok, old) {
+		t.Fatal("unbound a binding that had moved")
+	}
+	if !f.reg.Unbind(tok, cur) {
+		t.Fatal("did not unbind the current binding")
+	}
+	if m := f.reg.View().Rooms[0].Members[0]; m.Addr.IsValid() {
+		t.Fatalf("binding still %v", m.Addr)
+	}
+	msgs := ain.take()
+	if len(msgs) == 0 || msgs[0]["type"] != protocol.TypeRoster {
+		t.Fatalf("no roster after unbind: %v", msgs)
+	}
+	if p := msgs[0]["participants"].([]any)[0].(map[string]any); p["registered"] != false {
+		t.Fatalf("roster still registered: %v", p)
+	}
+	if !f.reg.Register(tok, old) {
+		t.Fatal("could not bind again after unbind")
+	}
+}
+
+func TestLargestRosterFitsOneMessage(t *testing.T) {
+	roster := protocol.Roster{Type: protocol.TypeRoster, RoomID: math.MaxUint32, HostID: math.MaxUint32}
+	name := strings.Repeat("\U0001D11E", MaxNameLen) // 4 bytes per character
+	for range MaxRoomSizeLimit {
+		roster.Participants = append(roster.Participants, protocol.RosterEntry{
+			ParticipantID: math.MaxUint32, Name: name, AudioSSRC: math.MaxUint32, VideoSSRC: math.MaxUint32,
+		})
+	}
+	seq := int64(math.MaxInt64)
+	roster.Seq = &seq
+	if _, err := protocol.EncodeFrame(roster); err != nil {
+		t.Fatalf("roster of %d members: %v", MaxRoomSizeLimit, err)
 	}
 }

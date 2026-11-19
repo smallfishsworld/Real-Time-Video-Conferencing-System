@@ -99,35 +99,62 @@ func (s *testServer) peer(name string, roomID uint32) *peer {
 	capt.mu.Lock()
 	p := &peer{t: s.t, client: c, joined: capt.joined, conn: conn}
 	capt.mu.Unlock()
+	// The router learns the new token from its next routing table.
+	s.router.Sync()
 	return p
 }
 
-// register performs the REGISTER / REGISTER_ACK exchange.
+// register performs the REGISTER exchange: a challenge, the echo of its nonce and the
+// final REGISTER_ACK.
 func (p *peer) register(server netip.AddrPort) {
 	p.t.Helper()
-	tok, err := protocol.ParseToken(p.joined.Token)
+	ack, challenges, err := registerConn(p.conn, server, p.joined.Token, 99)
 	if err != nil {
 		p.t.Fatal(err)
 	}
-	reg := protocol.Register{TxID: 99, Token: tok}
-	buf := make([]byte, protocol.RegisterSize)
-	n, _ := reg.MarshalTo(buf)
-	if _, err := p.conn.WriteToUDPAddrPort(buf[:n], server); err != nil {
-		p.t.Fatal(err)
-	}
-	ackBuf := make([]byte, 64)
-	_ = p.conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	m, err := p.conn.Read(ackBuf)
-	if err != nil {
-		p.t.Fatalf("no REGISTER_ACK: %v", err)
-	}
-	var ack protocol.RegisterAck
-	if err := protocol.ParseRegisterAck(ackBuf[:m], &ack); err != nil || ack.TxID != 99 {
-		p.t.Fatalf("bad ack %x: %v", ackBuf[:m], err)
+	if challenges != 1 {
+		p.t.Fatalf("%d challenges before the binding, want 1", challenges)
 	}
 	if ack.Observed != p.conn.LocalAddr().(*net.UDPAddr).AddrPort() {
 		p.t.Fatalf("observed %v, local %v", ack.Observed, p.conn.LocalAddr())
 	}
+}
+
+// registerConn sends REGISTER for token from conn, answers challenges by echoing their
+// nonce, and returns the final REGISTER_ACK and the number of challenges.
+func registerConn(conn *net.UDPConn, server netip.AddrPort, token string, txID uint64) (protocol.RegisterAck, int, error) {
+	tok, err := protocol.ParseToken(token)
+	if err != nil {
+		return protocol.RegisterAck{}, 0, err
+	}
+	reg := protocol.Register{TxID: txID, Token: tok}
+	buf := make([]byte, protocol.RegisterSize)
+	ackBuf := make([]byte, 64)
+	challenges := 0
+	for challenges < 4 {
+		n, _ := reg.MarshalTo(buf)
+		if _, err := conn.WriteToUDPAddrPort(buf[:n], server); err != nil {
+			return protocol.RegisterAck{}, challenges, err
+		}
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		var ack protocol.RegisterAck
+		for {
+			m, err := conn.Read(ackBuf)
+			if err != nil {
+				return protocol.RegisterAck{}, challenges, fmt.Errorf("no REGISTER_ACK: %w", err)
+			}
+			if protocol.ParseRegisterAck(ackBuf[:m], &ack) == nil && ack.TxID == txID {
+				break
+			}
+		}
+		_ = conn.SetReadDeadline(time.Time{})
+		if !ack.Challenge {
+			return ack, challenges, nil
+		}
+		challenges++
+		reg.HasNonce, reg.Nonce = true, ack.Nonce
+	}
+	return protocol.RegisterAck{}, challenges, fmt.Errorf("still challenged after %d echoes", challenges)
 }
 
 func (p *peer) videoPacket(frameID uint32) []byte {
@@ -522,10 +549,10 @@ func TestRouterRateLimitsSenders(t *testing.T) {
 	}
 	waitFor(t, "rate limit drops", func() bool {
 		st := s.router.Stats().Snapshot()
-		return st.Drops["rate_limited"]+st.PacketsIn["video"] == 40
+		return st.Drops["ingress_limited"]+st.PacketsIn["video"] == 40
 	})
 	st := s.router.Stats().Snapshot()
-	if st.Drops["rate_limited"] == 0 || st.PacketsIn["video"] == 0 {
+	if st.Drops["ingress_limited"] == 0 || st.PacketsIn["video"] == 0 {
 		t.Fatalf("expected some packets admitted and some dropped: %+v", st.Drops)
 	}
 }

@@ -2,7 +2,6 @@ package room
 
 import (
 	"net/netip"
-	"sort"
 	"time"
 
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
@@ -37,10 +36,13 @@ func DecideMode(members int, addrs []netip.AddrPort, p2pEnabled bool) Mode {
 	return ModeP2P
 }
 
-// View is an immutable snapshot of the rooms, published after every change. The
-// media plane builds its routing table from it.
+// View is an immutable snapshot of the rooms, published after every change that the
+// media plane needs (membership, bindings and modes; not media_state). A room that did
+// not change since the previous view keeps the same *RoomView, so the media plane only
+// rebuilds the rooms whose pointer changed.
 type View struct {
-	Rooms []RoomView // ordered by ID
+	Seq   uint64      // increases with every published view
+	Rooms []*RoomView // ordered by ID
 }
 
 // RoomView is the media-relevant state of one room.
@@ -59,43 +61,52 @@ func (rv *RoomView) Relaying(now time.Time) bool {
 
 // MemberView is the media-relevant state of one member.
 type MemberView struct {
-	ID        uint32
+	ID        uint32 // the client's ID, which outlives the membership
 	AudioSSRC uint32
 	VideoSSRC uint32
+	Token     protocol.Token
 	Addr      netip.AddrPort // zero until the member registers
-	Video     bool
-	Audio     bool
 }
 
-// buildView must be called with the lock held.
-func (r *Registry) buildView() *View {
-	v := &View{Rooms: make([]RoomView, 0, len(r.rooms))}
-	for _, rm := range r.rooms {
-		rv := RoomView{
-			ID:         rm.id,
-			Mode:       rm.mode,
-			RelayUntil: rm.relayUntil,
-			MixerSSRC:  rm.mixerSSRC,
-			Members:    make([]MemberView, len(rm.members)),
-		}
-		for i, m := range rm.members {
-			rv.Members[i] = MemberView{
-				ID:        m.client.ID,
-				AudioSSRC: m.audioSSRC,
-				VideoSSRC: m.videoSSRC,
-				Addr:      m.addr,
-				Video:     m.video,
-				Audio:     m.audio,
-			}
-		}
-		v.Rooms = append(v.Rooms, rv)
+// roomView returns rm's view, building it if rm changed since the last one. Lock must
+// be held.
+func (rm *Room) roomView() *RoomView {
+	if rm.view != nil {
+		return rm.view
 	}
-	sort.Slice(v.Rooms, func(i, j int) bool { return v.Rooms[i].ID < v.Rooms[j].ID })
+	rv := &RoomView{
+		ID:         rm.id,
+		Mode:       rm.mode,
+		RelayUntil: rm.relayUntil,
+		MixerSSRC:  rm.mixerSSRC,
+		Members:    make([]MemberView, len(rm.members)),
+	}
+	for i, m := range rm.members {
+		rv.Members[i] = MemberView{
+			ID:        m.client.ID,
+			AudioSSRC: m.audioSSRC,
+			VideoSSRC: m.videoSSRC,
+			Token:     m.token,
+			Addr:      m.addr,
+		}
+	}
+	rm.view = rv
+	return rv
+}
+
+// buildView must be called with the lock held. Rooms are kept in ID order.
+func (r *Registry) buildView() *View {
+	v := &View{Seq: r.seq, Rooms: make([]*RoomView, len(r.order))}
+	for i, rm := range r.order {
+		v.Rooms[i] = rm.roomView()
+	}
 	return v
 }
 
-// publish rebuilds the view and hands it to the observers. Lock must be held.
+// publish builds a new view and hands it to the observers. Only the rooms changed
+// since the last view are rebuilt. Lock must be held.
 func (r *Registry) publish() {
+	r.seq++
 	r.view = r.buildView()
 	for _, fn := range r.observers {
 		fn(r.view)

@@ -9,7 +9,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/netip"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -27,6 +29,10 @@ const (
 	MaxChatLen  = 2000
 )
 
+// MaxRoomSizeLimit is the largest MaxRoomSize a server may configure: a roster of that
+// many members with the longest names still fits one control message.
+const MaxRoomSizeLimit = 128
+
 // Notifier delivers encoded control frames to one client connection. Send is called
 // with the registry lock held, so it must never block.
 type Notifier interface {
@@ -42,6 +48,9 @@ type Config struct {
 	RelayGrace  time.Duration // how long the server keeps relaying after relay -> p2p
 	MediaPort   int           // UDP port advertised to clients
 	Now         func() time.Time
+	// Logger receives room life-cycle events (Info) and bindings (Debug); nil
+	// discards them.
+	Logger *slog.Logger
 }
 
 // DefaultConfig returns the server defaults.
@@ -108,6 +117,7 @@ type Room struct {
 	mode       Mode
 	modeKey    string
 	relayUntil time.Time
+	view       *RoomView // cached; nil after a change the media plane needs to see
 }
 
 // Registry is the control-plane state machine. Its methods are safe for concurrent use.
@@ -116,18 +126,23 @@ type Registry struct {
 	cfg       Config
 	clients   map[uint32]*Client
 	rooms     map[uint32]*Room
+	order     []*Room // the rooms in ID order
 	tokens    map[protocol.Token]*member
 	ssrcs     map[uint32]struct{}
 	lastID    uint32
 	lastRoom  uint32
 	observers []func(*View)
 	view      *View
+	seq       uint64 // of the last published view
 }
 
 // NewRegistry creates an empty registry.
 func NewRegistry(cfg Config) *Registry {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
+	}
+	if cfg.Logger == nil {
+		cfg.Logger = slog.New(slog.DiscardHandler)
 	}
 	r := &Registry{
 		cfg:     cfg,
@@ -140,8 +155,9 @@ func NewRegistry(cfg Config) *Registry {
 	return r
 }
 
-// Observe registers fn to receive every new View. fn runs with the registry lock held
-// and must not call back into the registry. It is called once immediately.
+// Observe registers fn to receive every new View. fn runs with the registry lock held,
+// so it must return quickly and must not call back into the registry. It is called
+// once immediately.
 func (r *Registry) Observe(fn func(*View)) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -250,6 +266,8 @@ func (r *Registry) CreateRoom(c *Client, title string, seq *int64) error {
 		rm.title = fmt.Sprintf("%s's room", c.Name)
 	}
 	r.rooms[rm.id] = rm
+	r.order = append(r.order, rm) // IDs only grow, so the order stays sorted
+	r.cfg.Logger.Info("room created", "room", rm.id, "host", c.ID)
 	r.addMember(c, rm, seq)
 	return nil
 }
@@ -313,8 +331,9 @@ func (r *Registry) CloseAll() {
 }
 
 // Chat broadcasts a chat message from c to every member of its room, stamped with the
-// sender's name and the server clock.
-func (r *Registry) Chat(c *Client, text string) error {
+// sender's name and the server clock. The sender's own copy carries seq, which makes it
+// the reply to the request.
+func (r *Registry) Chat(c *Client, text string, seq *int64) error {
 	text, err := cleanText(text, 1, MaxChatLen, true)
 	if err != nil {
 		return errorf(protocol.CodeBadRequest, "text: %v", err)
@@ -325,32 +344,38 @@ func (r *Registry) Chat(c *Client, text string) error {
 		return errorf(protocol.CodeNotInRoom, "not in a room")
 	}
 	rm := c.member.room
-	r.broadcast(rm, protocol.Chat{
+	msg := protocol.Chat{
 		Type:         protocol.TypeChat,
 		RoomID:       rm.id,
 		FromID:       c.ID,
 		FromName:     c.Name,
 		Text:         text,
 		ServerTimeMS: r.cfg.Now().UnixMilli(),
-	})
+	}
+	r.broadcastExcept(rm, msg, c)
+	msg.Seq = seq
+	r.send(c, msg)
 	return nil
 }
 
-// SetMediaState records whether c's camera and microphone are on.
-func (r *Registry) SetMediaState(c *Client, video, audio bool) error {
+// SetMediaState records whether c's camera and microphone are on and sends the room
+// the new roster; c's copy carries seq, which makes it the reply. The media plane does
+// not use these flags, so no view is published.
+func (r *Registry) SetMediaState(c *Client, video, audio bool, seq *int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if c.member == nil {
 		return errorf(protocol.CodeNotInRoom, "not in a room")
 	}
 	c.member.video, c.member.audio = video, audio
-	r.broadcastRoster(c.member.room)
-	r.publish()
+	r.sendRoster(c.member.room, c, seq)
 	return nil
 }
 
-// Register binds the UDP source address of a REGISTER packet to the member owning
-// token. It returns false for unknown tokens.
+// Register binds addr, the verified source address of a REGISTER, to the member
+// owning token. It returns false for unknown tokens. Only a changed binding takes
+// effect (and publishes a view); the media plane answers keepalives from the bound
+// address without calling Register.
 func (r *Registry) Register(token protocol.Token, addr netip.AddrPort) bool {
 	if !addr.IsValid() {
 		return false
@@ -365,10 +390,30 @@ func (r *Registry) Register(token protocol.Token, addr netip.AddrPort) bool {
 		return true
 	}
 	first := !m.addr.IsValid()
+	r.cfg.Logger.Debug("media binding", "room", m.room.id, "client", m.client.ID, "addr", addr, "first", first)
 	m.addr = addr
+	m.room.view = nil
 	if first {
 		r.broadcastRoster(m.room)
 	}
+	r.refreshMode(m.room, nil)
+	r.publish()
+	return true
+}
+
+// Unbind clears the binding of the member owning token if it is still addr, as when
+// the client stopped sending keepalives from it. It reports whether it did.
+func (r *Registry) Unbind(token protocol.Token, addr netip.AddrPort) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	m, ok := r.tokens[token]
+	if !ok || !addr.IsValid() || m.addr != addr {
+		return false
+	}
+	r.cfg.Logger.Info("media binding expired", "room", m.room.id, "client", m.client.ID, "addr", addr)
+	m.addr = netip.AddrPort{}
+	m.room.view = nil
+	r.broadcastRoster(m.room)
 	r.refreshMode(m.room, nil)
 	r.publish()
 	return true
@@ -385,8 +430,10 @@ func (r *Registry) addMember(c *Client, rm *Room, seq *int64) {
 		audio:     true,
 	}
 	rm.members = append(rm.members, m)
+	rm.view = nil
 	r.tokens[m.token] = m
 	c.member = m
+	r.cfg.Logger.Info("member joined", "room", rm.id, "client", c.ID, "members", len(rm.members))
 	r.send(c, protocol.Joined{
 		Type:            protocol.TypeJoined,
 		Seq:             seq,
@@ -415,10 +462,12 @@ func (r *Registry) removeMember(m *member) {
 			break
 		}
 	}
+	rm.view = nil
 	r.forget(m)
+	r.cfg.Logger.Info("member left", "room", rm.id, "client", m.client.ID, "members", len(rm.members))
 	if len(rm.members) == 0 {
-		delete(r.rooms, rm.id)
-		delete(r.ssrcs, rm.mixerSSRC)
+		r.cfg.Logger.Info("room closed", "room", rm.id, "reason", "empty")
+		r.dropRoom(rm)
 		return
 	}
 	if rm.hostID == m.client.ID {
@@ -438,8 +487,17 @@ func (r *Registry) closeRoom(rm *Room, reason string, requester *Client, seq *in
 		r.forget(m)
 	}
 	rm.members = nil
+	r.cfg.Logger.Info("room closed", "room", rm.id, "reason", reason)
+	r.dropRoom(rm)
+}
+
+// dropRoom forgets an empty room.
+func (r *Registry) dropRoom(rm *Room) {
 	delete(r.rooms, rm.id)
 	delete(r.ssrcs, rm.mixerSSRC)
+	if i := slices.Index(r.order, rm); i >= 0 {
+		r.order = slices.Delete(r.order, i, i+1)
+	}
 }
 
 func (r *Registry) forget(m *member) {
@@ -463,6 +521,8 @@ func (r *Registry) refreshMode(rm *Room, joined *member) {
 	}
 	changed := key != rm.modeKey
 	if changed {
+		rm.view = nil
+		r.cfg.Logger.Info("room mode", "room", rm.id, "mode", mode.String(), "members", len(rm.members))
 		if rm.mode == ModeRelay && mode == ModeP2P {
 			rm.relayUntil = r.cfg.Now().Add(r.cfg.RelayGrace)
 		}
@@ -487,7 +547,10 @@ func (r *Registry) refreshMode(rm *Room, joined *member) {
 	}
 }
 
-func (r *Registry) broadcastRoster(rm *Room) {
+func (r *Registry) broadcastRoster(rm *Room) { r.sendRoster(rm, nil, nil) }
+
+// sendRoster sends rm's roster to every member; requester's copy carries seq.
+func (r *Registry) sendRoster(rm *Room, requester *Client, seq *int64) {
 	roster := protocol.Roster{
 		Type:         protocol.TypeRoster,
 		RoomID:       rm.id,
@@ -505,23 +568,36 @@ func (r *Registry) broadcastRoster(rm *Room) {
 			Registered:    m.addr.IsValid(),
 		}
 	}
-	r.broadcast(rm, roster)
+	if requester == nil || seq == nil {
+		r.broadcast(rm, roster)
+		return
+	}
+	r.broadcastExcept(rm, roster, requester)
+	roster.Seq = seq
+	r.send(requester, roster)
 }
 
 // broadcast encodes msg once and queues it to every member of rm.
-func (r *Registry) broadcast(rm *Room, msg any) {
+func (r *Registry) broadcast(rm *Room, msg any) { r.broadcastExcept(rm, msg, nil) }
+
+// broadcastExcept encodes msg once and queues it to every member of rm but skip.
+func (r *Registry) broadcastExcept(rm *Room, msg any, skip *Client) {
 	frame, err := protocol.EncodeFrame(msg)
 	if err != nil {
+		r.cfg.Logger.Error("event not sent: cannot encode", "room", rm.id, "err", err)
 		return
 	}
 	for _, m := range rm.members {
-		m.client.notifier.Send(frame)
+		if m.client != skip {
+			m.client.notifier.Send(frame)
+		}
 	}
 }
 
 func (r *Registry) send(c *Client, msg any) {
 	frame, err := protocol.EncodeFrame(msg)
 	if err != nil {
+		r.cfg.Logger.Error("message not sent: cannot encode", "client", c.ID, "err", err)
 		return
 	}
 	c.notifier.Send(frame)

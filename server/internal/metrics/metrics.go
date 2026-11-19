@@ -90,7 +90,10 @@ type collector struct {
 	rooms, participants, controlConns, slowDisconnects *prometheus.Desc
 	controlConnsTotal                                  *prometheus.Desc
 	readCalls, videoSendCalls, videoSendMessages       *prometheus.Desc
-	rtxMisses                                          *prometheus.Desc
+	rtxMisses, readErrors                              *prometheus.Desc
+	udpBatching, udpGSO                                *prometheus.Desc
+	bindings, bindingsExpired, tableRebuilds           *prometheus.Desc
+	roomRebuilds                                       *prometheus.Desc
 }
 
 func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Server) *collector {
@@ -119,6 +122,13 @@ func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Serve
 		videoSendCalls:    d("video_send_syscalls_total", "System calls that sent forwarded video."),
 		videoSendMessages: d("video_send_messages_total", "Messages those calls carried; with UDP GSO a message holds several datagrams."),
 		rtxMisses:         d("video_rtx_misses_total", "NACKed video packets no longer in the sender's retransmission buffer."),
+		readErrors:        d("media_read_errors_total", "Failed receive system calls on the media socket."),
+		udpBatching:       d("udp_batching_enabled", "1 when the media socket uses recvmmsg/sendmmsg."),
+		udpGSO:            d("udp_gso_enabled", "1 while forwarded video is sent with UDP GSO."),
+		bindings:          d("media_bindings_total", "Verified media bindings made or moved."),
+		bindingsExpired:   d("media_bindings_expired_total", "Media bindings dropped after the binding timeout without keepalives."),
+		tableRebuilds:     d("routing_table_rebuilds_total", "Routing tables built from registry views."),
+		roomRebuilds:      d("routing_room_rebuilds_total", "Rooms whose routes were rebuilt (unchanged rooms are reused)."),
 	}
 }
 
@@ -127,7 +137,8 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 		c.packetsIn, c.bytesIn, c.packetsOut, c.bytesOut, c.drops,
 		c.mixerTicks, c.mixerOverruns, c.fecRecovered, c.concealed,
 		c.rooms, c.participants, c.controlConns, c.controlConnsTotal, c.slowDisconnects,
-		c.readCalls, c.videoSendCalls, c.videoSendMessages, c.rtxMisses,
+		c.readCalls, c.videoSendCalls, c.videoSendMessages, c.rtxMisses, c.readErrors,
+		c.udpBatching, c.udpGSO, c.bindings, c.bindingsExpired, c.tableRebuilds, c.roomRebuilds,
 	} {
 		ch <- d
 	}
@@ -160,6 +171,13 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	counter(c.videoSendCalls, st.VideoSendCalls.Load())
 	counter(c.videoSendMessages, st.VideoSendMessages.Load())
 	counter(c.rtxMisses, st.RTXMisses.Load())
+	counter(c.readErrors, st.ReadErrors.Load())
+	counter(c.bindings, st.Bindings.Load())
+	counter(c.bindingsExpired, st.BindingsExpired.Load())
+	counter(c.tableRebuilds, st.TableRebuilds.Load())
+	counter(c.roomRebuilds, st.RoomRebuilds.Load())
+	gauge(c.udpBatching, boolGauge(c.router.Batching()))
+	gauge(c.udpGSO, boolGauge(c.router.GSO()))
 
 	view := c.reg.View()
 	byMode := map[string]int{room.ModeRelay.String(): 0, room.ModeP2P.String(): 0}
@@ -175,4 +193,11 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	gauge(c.controlConns, float64(c.sig.ActiveConns()))
 	counter(c.controlConnsTotal, c.sig.TotalConns())
 	counter(c.slowDisconnects, c.sig.SlowDisconnects())
+}
+
+func boolGauge(b bool) float64 {
+	if b {
+		return 1
+	}
+	return 0
 }

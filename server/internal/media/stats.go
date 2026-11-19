@@ -31,15 +31,18 @@ type OutKind int
 
 // Sent datagram kinds.
 const (
-	OutRegisterAck OutKind = iota
-	OutVideo               // forwarded video fragments and their parity packets
-	OutAudio               // mixed audio frames
-	OutAudioFEC            // parity packets of mixed audio streams
-	OutVideoRTX            // video packets sent again in answer to a NACK
+	OutRegisterAck       OutKind = iota // REGISTER_ACKs for a binding (made, moved or kept)
+	OutVideo                            // forwarded video fragments and their parity packets
+	OutAudio                            // mixed audio frames
+	OutAudioFEC                         // parity packets of mixed audio streams
+	OutVideoRTX                         // video packets sent again in answer to a NACK
+	OutRegisterChallenge                // REGISTER_ACK challenges to a new source address
 	outKindCount
 )
 
-var outKindNames = [outKindCount]string{"register_ack", "video", "audio", "audio_fec", "video_rtx"}
+var outKindNames = [outKindCount]string{
+	"register_ack", "video", "audio", "audio_fec", "video_rtx", "register_challenge",
+}
 
 func (k OutKind) String() string { return outKindNames[k] }
 
@@ -48,13 +51,18 @@ type DropReason int
 
 // Drop reasons, in the order the router checks them.
 const (
-	DropMalformed DropReason = iota
-	DropOversize
-	DropBadToken
+	DropMalformed       DropReason = iota
+	DropOversize                   // larger than protocol.MaxDatagram
+	DropBadToken                   // REGISTER with a token no member holds
+	DropRegisterLimited            // REGISTER over the member, source or server budget
+	DropRebindLimited              // verified binding change over the member's budget
+	DropBindQueueFull              // verified binding change while the control queue was full
 	DropUnknownSSRC
-	DropAddrMismatch
+	DropAddrMismatch // media or NACK not from the SSRC owner's bound address
 	DropP2PMode
-	DropRateLimited
+	DropIngressLimited // media over the sender's ingress budget
+	DropNACKLimited    // NACK over the requester's ingress budget
+	DropRTXBudget      // retransmission over the requester's retransmission budget
 	DropBadPayload
 	DropLate
 	DropWriteError
@@ -62,8 +70,9 @@ const (
 )
 
 var dropNames = [dropReasonCount]string{
-	"malformed", "oversize", "bad_token", "unknown_ssrc", "addr_mismatch",
-	"p2p_mode", "rate_limited", "bad_payload", "late", "write_error",
+	"malformed", "oversize", "bad_token", "register_limited", "rebind_limited",
+	"bind_queue_full", "unknown_ssrc", "addr_mismatch", "p2p_mode", "ingress_limited",
+	"nack_limited", "rtx_budget", "bad_payload", "late", "write_error",
 }
 
 func (r DropReason) String() string { return dropNames[r] }
@@ -81,10 +90,17 @@ type Stats struct {
 	// returns many per call), sends of forwarded video, and the messages those sends
 	// carried (with UDP GSO, one message holds several datagrams).
 	ReadCalls         atomic.Uint64
+	ReadErrors        atomic.Uint64 // failed reads (other than the socket closing)
 	VideoSendCalls    atomic.Uint64
 	VideoSendMessages atomic.Uint64
 
 	RTXMisses atomic.Uint64 // NACKed packets no longer (or never) in the sender's buffer
+
+	// Control-plane work done for the media plane, off the Serve goroutine.
+	Bindings        atomic.Uint64 // verified bindings applied (first or moved)
+	BindingsExpired atomic.Uint64 // bindings dropped after BindingTimeout without keepalives
+	TableRebuilds   atomic.Uint64 // routing tables built
+	RoomRebuilds    atomic.Uint64 // rooms whose routes were rebuilt (unchanged rooms are reused)
 
 	MixerTicks     atomic.Uint64
 	FECRecovered   atomic.Uint64 // upstream audio packets rebuilt from parity

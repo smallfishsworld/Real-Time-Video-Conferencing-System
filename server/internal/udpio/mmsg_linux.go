@@ -339,6 +339,8 @@ func (w *Writer) resend(res *Result, mr msgRange) {
 		}
 		res.Messages++
 		w.count(res, i)
-		w.c.gso.Store(false)
+		if w.c.gso.Swap(false) && w.c.onGSOOff != nil {
+			w.c.onGSOOff()
+		}
 	}
 }

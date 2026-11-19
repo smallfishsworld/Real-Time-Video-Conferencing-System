@@ -36,6 +36,9 @@ const (
 type Options struct {
 	Batching bool // recvmmsg and sendmmsg
 	GSO      bool // UDP GSO for consecutive datagrams to one destination (needs Batching)
+	// OnGSOOff, if set, is called once when the kernel refuses GSO and the Conn falls
+	// back to one datagram per message.
+	OnGSOOff func()
 }
 
 // Message is one datagram slot for ReadBatch.
@@ -52,12 +55,14 @@ type Conn struct {
 	gso   atomic.Bool // UDP GSO in use; cleared if the kernel refuses a GSO message
 	inet6 bool        // AF_INET6 socket: destinations are written as IPv6 socket addresses
 	sys   sysConn
+
+	onGSOOff func()
 }
 
 // New wraps uc. Batching and GSO are used only where the platform and the kernel
 // support them; otherwise every datagram takes its own system call.
 func New(uc *net.UDPConn, opt Options) *Conn {
-	c := &Conn{uc: uc}
+	c := &Conn{uc: uc, onGSOOff: opt.OnGSOOff}
 	if opt.Batching {
 		c.mmsg = c.initSys()
 		c.gso.Store(c.mmsg && opt.GSO && c.gsoSupported())
