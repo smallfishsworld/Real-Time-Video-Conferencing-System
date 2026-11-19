@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import itertools
 import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -15,12 +16,18 @@ from confclient.jitter import AudioPlayout
 from confclient.media import MediaConfig, MediaSession
 from confclient.packetizer import AudioPacketizer, VideoPacketizer
 from confclient.protocol import (
+    PT_AUDIO,
     PT_FEC,
     TYPE_REGISTER,
+    RtpHeader,
+    build_nack,
     build_register,
     build_register_ack,
     fragment_count,
+    is_rtp,
     parse_register,
+    parse_rtp,
+    seq_diff,
 )
 from confclient.testpattern import TestPattern, encode_jpeg
 
@@ -292,6 +299,89 @@ def test_send_cap_drops_whole_frames() -> None:
             assert a.session.stats.video_frames_rate_limited == 1
             assert a.session.send_audio(bytes(640), 0.0)  # audio still fits
             await until(lambda: len(server.received) == 1)
+            await a.session.close()
+
+    _run(scenario)
+
+
+def _rtp_of(server: FakeServer, ssrc: int, pt: int | None = None) -> list[RtpHeader]:
+    out = []
+    for data, _src in server.received:
+        if is_rtp(data):
+            header, _ = parse_rtp(data)
+            if header.ssrc == ssrc and (pt is None or header.payload_type == pt):
+                out.append(header)
+    return out
+
+
+def test_frames_refused_by_the_cap_use_no_sequence_numbers() -> None:
+    """Review finding client-4: a refused frame used to be packetized first, so the
+    receivers saw a sequence gap and asked for packets that were never sent."""
+
+    async def scenario() -> None:
+        async with fake_server() as server:
+            clock = FakeClock()
+            _packets, size = VideoPacketizer(1, 4).wire_size(len(JPEG))
+            cfg = MediaConfig(max_send_kbps=100, send_burst_bytes=int(1.5 * size) + 2000)
+            a, b = Peer(server, 1, config=cfg, clock=clock), Peer(server, 2)
+            await a.session.start()
+            a.session.update_roster(_roster(a.joined, b.joined))
+            assert a.session.send_video(JPEG, 0.0) is not None
+            assert a.session.send_video(JPEG, 0.1) is None  # the budget is spent
+            clock.advance(10)
+            assert a.session.send_video(JPEG, 10.0) is not None
+            ssrc = a.joined["video_ssrc"]
+            per_frame = len(VideoPacketizer(1, 4).packetize(JPEG, 0)[1])
+            await until(lambda: len(_rtp_of(server, ssrc)) == 2 * per_frame)
+            seqs = [h.sequence for h in _rtp_of(server, ssrc)]
+            assert all(seq_diff(y, x) == 1 for x, y in itertools.pairwise(seqs))
+            assert a.session.stats.video_frames_rate_limited == 1
+            await a.session.close()
+
+    _run(scenario)
+
+
+def test_a_frame_larger_than_the_burst_goes_out_once_the_bucket_refills() -> None:
+    """Review finding client-5: with a fixed 128 KiB burst an HD frame never fit, at any
+    rate. The burst now grows to two such frames; the rate cap stays as it was."""
+
+    async def scenario() -> None:
+        async with fake_server() as server:
+            clock = FakeClock()
+            cfg = MediaConfig(max_send_kbps=1000, send_burst_bytes=1000)
+            a, b = Peer(server, 1, config=cfg, clock=clock), Peer(server, 2)
+            await a.session.start()
+            a.session.update_roster(_roster(a.joined, b.joined))
+            assert a.session.send_video(JPEG, 0.0) is None
+            assert a.session.send_audio(bytes(640), 0.0)  # audio is not starved meanwhile
+            clock.advance(2 * len(JPEG) * 8 / 1_000_000)  # time to earn the frame at 1 Mbit/s
+            assert a.session.send_video(JPEG, 0.5) is not None
+            assert a.session.stats.video_frames_rate_limited == 1
+            await a.session.close()
+
+    _run(scenario)
+
+
+def test_nacks_stay_within_the_feedback_budget_and_registers_are_charged() -> None:
+    """Review finding client-11: NACK and REGISTER packets bypassed every budget. NACKs
+    now have their own (feedback_kbps, feedback_pps); a REGISTER always goes out, and
+    the NACKs after it get less."""
+
+    async def scenario() -> None:
+        async with fake_server() as server:
+            clock = FakeClock()
+            cfg = MediaConfig(feedback_kbps=128, feedback_pps=100)  # burst: 10 packets
+            a = Peer(server, 1, config=cfg, clock=clock)
+            await a.session.start()  # its REGISTER and challenge echo are charged too
+            sent_before = len(server.received)
+            nack = build_nack(a.joined["video_ssrc"], 1234, [1, 2, 3])
+            sent = sum(a.session._send_feedback(nack) for _ in range(50))
+            assert sent == 10 - 2  # the burst, less the REGISTER and its echo
+            assert not a.session._send_feedback(nack)
+            assert a.session._send_feedback(build_register(1, bytes(16)), must=True)
+            clock.advance(0.051)  # 5 packets' worth, less the REGISTER's debt
+            assert sum(a.session._send_feedback(nack) for _ in range(50)) == 4
+            await until(lambda: len(server.received) == sent_before + sent + 4)
             await a.session.close()
 
     _run(scenario)

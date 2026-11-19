@@ -7,10 +7,14 @@ import secrets
 from .fec import FecEncoder
 from .protocol import (
     AUDIO_FRAME_BYTES,
+    FEC_HEADER_SIZE,
+    MAX_FEC_GROUP,
     MAX_FRAGMENT_PAYLOAD,
     MAX_FRAME_BYTES,
     PT_AUDIO,
     PT_VIDEO,
+    RTP_HEADER_SIZE,
+    VIDEO_HEADER_SIZE,
     ProtocolError,
     RtpHeader,
     VideoHeader,
@@ -20,8 +24,8 @@ from .protocol import (
 
 class _Stream:
     def __init__(self, ssrc: int, fec_k: int) -> None:
-        if fec_k < 0:
-            raise ValueError("fec_k must be >= 0")
+        if not 0 <= fec_k <= MAX_FEC_GROUP:
+            raise ValueError(f"fec_k must be 0..{MAX_FEC_GROUP}")
         self.ssrc = ssrc
         self.fec_k = fec_k
         self.seq = secrets.randbelow(1 << 16)
@@ -35,7 +39,13 @@ class _Stream:
     def _protect(self, pkt: bytes, out: list[bytes], close_group: bool) -> None:
         if self.fec_k == 0:
             return
-        self._fec.add(pkt)
+        try:
+            self._fec.add(pkt)
+        except ProtocolError:
+            # Cannot happen for packets this class builds; if it did, start a new group
+            # so that one bad packet does not break every later group.
+            self._fec = FecEncoder()
+            raise
         if len(self._fec) >= self.fec_k or close_group:
             out.append(self._fec.flush(self.ssrc, self._next_seq()))
 
@@ -48,6 +58,24 @@ class VideoPacketizer(_Stream):
     def __init__(self, ssrc: int, fec_k: int = 4) -> None:
         super().__init__(ssrc, fec_k)
         self.frame_id = secrets.randbelow(1 << 32)
+
+    def wire_size(self, frame_len: int) -> tuple[int, int]:
+        """The packets and bytes (from the RTP header on) that packetize() makes from a
+        frame of frame_len bytes, without using up sequence numbers: a sender checks
+        its budget first, so a frame it does not send leaves no sequence gap."""
+        if not 0 < frame_len <= MAX_FRAME_BYTES:
+            raise ProtocolError(f"frame of {frame_len} bytes cannot be sent (at most {MAX_FRAME_BYTES})")
+        count = fragment_count(frame_len)
+        size = count * (RTP_HEADER_SIZE + VIDEO_HEADER_SIZE) + frame_len
+        if self.fec_k == 0:
+            return count, size
+        groups = -(-count // self.fec_k)
+        # A parity packet is as long as the longest packet of its group: a full fragment,
+        # except in a final group that holds only the (shorter) last fragment.
+        full = RTP_HEADER_SIZE + FEC_HEADER_SIZE + VIDEO_HEADER_SIZE + MAX_FRAGMENT_PAYLOAD
+        last = frame_len - (count - 1) * MAX_FRAGMENT_PAYLOAD
+        tail = full if count - (groups - 1) * self.fec_k > 1 else full - MAX_FRAGMENT_PAYLOAD + last
+        return count + groups, size + (groups - 1) * full + tail
 
     def packetize(self, jpeg: bytes, timestamp: int) -> tuple[int, list[bytes]]:
         """Return (frame id, packets) for one frame captured at RTP time timestamp."""
@@ -79,6 +107,13 @@ class AudioPacketizer(_Stream):
 
     def __init__(self, ssrc: int, fec_k: int = 2) -> None:
         super().__init__(ssrc, fec_k)
+
+    def wire_size(self) -> tuple[int, int]:
+        """The packets and bytes (from the RTP header on) of the next packetize()."""
+        size = RTP_HEADER_SIZE + AUDIO_FRAME_BYTES
+        if self.fec_k and len(self._fec) + 1 >= self.fec_k:
+            return 2, size + RTP_HEADER_SIZE + FEC_HEADER_SIZE + AUDIO_FRAME_BYTES
+        return 1, size
 
     def packetize(self, pcm_be: bytes, timestamp: int, marker: bool = False) -> list[bytes]:
         if len(pcm_be) != AUDIO_FRAME_BYTES:

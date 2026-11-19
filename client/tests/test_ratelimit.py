@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from confclient.ratelimit import TokenBucket
@@ -45,7 +47,48 @@ def test_long_run_average_matches_rate() -> None:
     assert 100_000 <= sent <= 102_000
 
 
-def test_zero_rate_disables_limiting_and_negative_is_rejected() -> None:
-    assert TokenBucket(rate=0, burst=0).try_consume(10**9)
-    with pytest.raises(ValueError, match="must be >= 0"):
-        TokenBucket(rate=-1, burst=0)
+@pytest.mark.parametrize("rate", [0, -1, math.nan])
+def test_a_rate_of_zero_negative_or_nan_is_rejected(rate: float) -> None:
+    """0 used to mean "no limit", so `--max-send-kbps 0` silently removed the cap
+    (review finding client-1). Only math.inf turns the limit off now."""
+    with pytest.raises(ValueError, match="rate must be > 0"):
+        TokenBucket(rate=rate, burst=0)
+
+
+@pytest.mark.parametrize("burst", [-1, math.nan])
+def test_a_negative_or_nan_burst_is_rejected(burst: float) -> None:
+    with pytest.raises(ValueError, match="burst >= 0"):
+        TokenBucket(rate=1000, burst=burst)
+
+
+def test_infinite_rate_is_unlimited() -> None:
+    bucket = TokenBucket(rate=math.inf, burst=0)
+    assert bucket.unlimited
+    assert bucket.try_consume(10**12)
+    assert bucket.available() == math.inf
+
+
+def test_consume_goes_into_debt_that_is_repaid_first() -> None:
+    clock = FakeClock()
+    bucket = TokenBucket(rate=1000, burst=500, clock=clock)
+    bucket.consume(700)  # 200 tokens of debt
+    assert bucket.available() == -200
+    assert not bucket.try_consume(1)
+    clock.advance(0.2)  # repays the debt
+    assert bucket.available() == pytest.approx(0, abs=1e-6)
+    assert not bucket.try_consume(1)
+    clock.advance(0.11)
+    assert bucket.try_consume(100)
+
+
+def test_grow_lets_a_request_larger_than_the_burst_through_after_a_refill() -> None:
+    clock = FakeClock()
+    bucket = TokenBucket(rate=1000, burst=500, clock=clock)
+    assert not bucket.try_consume(800)
+    bucket.grow(1600)
+    assert bucket.burst == 1600
+    assert not bucket.try_consume(800)  # the tokens build up; growing adds none
+    clock.advance(0.31)
+    assert bucket.try_consume(800)
+    bucket.grow(100)  # never shrinks
+    assert bucket.burst == 1600

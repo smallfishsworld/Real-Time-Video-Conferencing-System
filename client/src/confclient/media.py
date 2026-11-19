@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ipaddress
+import math
 import secrets
 import socket
 import time
@@ -40,14 +41,20 @@ from .protocol import (
 from .ratelimit import TokenBucket
 
 Addr = tuple[str, int]
-_WIRE_OVERHEAD = 28  # IPv4 + UDP header bytes charged to the send budget per packet
+_WIRE_OVERHEAD = 28  # IPv4 + UDP header bytes charged to the send budgets per packet
 _KINDS = ("video", "video_fec", "audio", "audio_fec")
 
 
 @dataclass
 class MediaConfig:
-    max_send_kbps: int = 6000  # token-bucket cap on everything this client sends
-    send_burst_bytes: int = 128 * 1024
+    # Cap on media: video and audio packets with their FEC parity, IP/UDP headers
+    # included. None sends without a cap.
+    max_send_kbps: int | None = 6000
+    send_burst_bytes: int = 128 * 1024  # grows to two frames when a frame is larger
+    # Feedback (NACKs, REGISTER) has its own budget, in bytes and in packets.
+    # REGISTER is always sent but counts against it, so NACKs give way to it.
+    feedback_kbps: int = 128
+    feedback_pps: int = 200
     video_fec_k: int = 4
     audio_fec_k: int = 2
     audio_delay_frames: int = 3
@@ -76,6 +83,7 @@ class SessionStats:
     malformed: int = 0
     fec_recovered: int = 0
     nacks_sent: int = 0
+    nacks_limited: int = 0  # NACKs not sent because the feedback budget was spent
     challenges: int = 0  # REGISTER_ACK challenges answered
     mixed_csrcs: set[int] = field(default_factory=set)
     frames_by_participant: dict[int, int] = field(default_factory=dict)
@@ -126,7 +134,13 @@ class MediaSession(asyncio.DatagramProtocol):
         self._token = bytes.fromhex(joined["token"])
         self._video_tx = VideoPacketizer(int(joined["video_ssrc"]), self.config.video_fec_k)
         self._audio_tx = AudioPacketizer(int(joined["audio_ssrc"]), self.config.audio_fec_k)
-        self._bucket = TokenBucket(self.config.max_send_kbps * 1000 / 8, self.config.send_burst_bytes)
+        kbps = self.config.max_send_kbps
+        rate = math.inf if kbps is None else kbps * 1000 / 8
+        self._bucket = TokenBucket(rate, self.config.send_burst_bytes, clock)
+        fb_rate = self.config.feedback_kbps * 1000 / 8
+        self._fb_bytes = TokenBucket(fb_rate, fb_rate / 10, clock)
+        fb_pps = self.config.feedback_pps
+        self._fb_packets = TokenBucket(fb_pps, max(1.0, fb_pps / 10), clock)
         self._transport: asyncio.DatagramTransport | None = None
         self._targets: list[Addr] = [self.server]
         self._peer: Addr | None = None
@@ -185,7 +199,7 @@ class MediaSession(asyncio.DatagramProtocol):
         pkt = build_register(self._reg_txid, self._token)
         deadline = self.clock() + self.config.register_timeout
         while True:
-            self._send_raw(pkt, self.server)
+            self._send_feedback(pkt, must=True)
             try:
                 self.observed = await asyncio.wait_for(
                     asyncio.shield(self._reg_future), self.config.register_interval
@@ -207,7 +221,7 @@ class MediaSession(asyncio.DatagramProtocol):
     async def _keepalive(self) -> None:
         while True:
             await asyncio.sleep(self.config.keepalive_interval)
-            self._send_raw(build_register(secrets.randbits(64), self._token), self.server)
+            self._send_feedback(build_register(secrets.randbits(64), self._token), must=True)
 
     async def _expire_loop(self) -> None:
         while True:
@@ -228,8 +242,10 @@ class MediaSession(asyncio.DatagramProtocol):
                 # Only the server keeps a retransmission buffer, so P2P sends none.
                 if lost and self._peer is None:
                     for pkt in build_nacks(own, ssrc, lost):
-                        self._send_raw(pkt, self.server)
-                        self.stats.nacks_sent += 1
+                        if self._send_feedback(pkt):
+                            self.stats.nacks_sent += 1
+                        else:
+                            self.stats.nacks_limited += 1
 
     def nack_stats(self) -> NackStats:
         """NACK counters summed over the current senders."""
@@ -302,32 +318,60 @@ class MediaSession(asyncio.DatagramProtocol):
         self.stats.packets_out += 1
         self.stats.bytes_out += len(pkt)
 
+    def _send_feedback(self, pkt: bytes, *, must: bool = False) -> bool:
+        """Send a NACK or REGISTER to the server within the feedback budget. With must,
+        it is sent even when the budget is spent, and still counted."""
+        cost = len(pkt) + _WIRE_OVERHEAD
+        if must:
+            self._fb_bytes.consume(cost)
+            self._fb_packets.consume(1)
+        elif self._fb_bytes.available() < cost or self._fb_packets.available() < 1:
+            return False
+        else:
+            self._fb_bytes.consume(cost)
+            self._fb_packets.consume(1)
+        self._send_raw(pkt, self.server)
+        return True
+
     def _send_packets(self, pkts: list[bytes]) -> None:
         for addr in self._targets:
             for pkt in pkts:
                 self._send_raw(pkt, addr)
 
-    def _cost(self, pkts: list[bytes]) -> int:
-        return sum(len(p) + _WIRE_OVERHEAD for p in pkts) * len(self._targets)
+    def _cost(self, packets: int, size: int) -> int:
+        return (size + packets * _WIRE_OVERHEAD) * len(self._targets)
 
     def send_video(self, jpeg: bytes, capture_time: float) -> int | None:
         """Send one JPEG frame; returns its frame id, or None if it was not sent
-        (nobody to send to, or the bitrate cap has no room for the whole frame)."""
+        (nobody to send to, or the bitrate cap has no room for the whole frame). The
+        budget is checked before the frame is packetized, so a frame that is not sent
+        uses no sequence numbers and receivers see no loss. Raises ProtocolError for a
+        frame the wire format cannot carry (over MAX_FRAME_BYTES)."""
         if self._others == 0 or self._transport is None:
+            return None
+        cost = self._cost(*self._video_tx.wire_size(len(jpeg)))
+        if cost > self._bucket.burst:
+            # A frame larger than the burst could never pass: make room for two such
+            # frames. The rate cap is unchanged; large frames just go out less often.
+            self._bucket.grow(2 * cost)
+        if not self._bucket.try_consume(cost):
+            self.stats.video_frames_rate_limited += 1
             return None
         ts = (self._video_ts_base + round((capture_time - self._t0) * VIDEO_CLOCK_RATE)) & 0xFFFFFFFF
         frame_id, pkts = self._video_tx.packetize(jpeg, ts)
-        if not self._bucket.try_consume(self._cost(pkts)):
-            self.stats.video_frames_rate_limited += 1
-            return None
         self._send_packets(pkts)
         self.stats.video_frames_sent += 1
         return frame_id
 
     def send_audio(self, pcm_be: bytes, capture_time: float) -> bool:
         """Send one 20 ms frame (big-endian L16). The RTP timestamp follows the capture
-        clock, so a pause in capture shows up as a timestamp gap with the marker set."""
+        clock, so a pause in capture shows up as a timestamp gap with the marker set.
+        The budget is checked before the frame is packetized, so a refused frame never
+        enters the FEC encoder."""
         if self._others == 0 or self._transport is None:
+            return False
+        if not self._bucket.try_consume(self._cost(*self._audio_tx.wire_size())):
+            self.stats.audio_frames_rate_limited += 1  # a loss to the receivers
             return False
         n = round((capture_time - self._t0) / AUDIO_FRAME_SECONDS)
         marker = self._last_audio_n is None or n > self._last_audio_n + 1
@@ -336,9 +380,6 @@ class MediaSession(asyncio.DatagramProtocol):
         self._last_audio_n = n
         ts = (self._audio_ts_base + n * AUDIO_SAMPLES_PER_FRAME) & 0xFFFFFFFF
         pkts = self._audio_tx.packetize(pcm_be, ts, marker)
-        if not self._bucket.try_consume(self._cost(pkts)):
-            self.stats.audio_frames_rate_limited += 1
-            return False
         self._send_packets(pkts)
         self.stats.audio_frames_sent += 1
         return True
@@ -399,7 +440,7 @@ class MediaSession(asyncio.DatagramProtocol):
             # (first registration, a new NAT mapping, or an expired binding): echo the
             # nonce from the same socket. Only the echo moves the binding.
             self.stats.challenges += 1
-            self._send_raw(build_register(ack.txid, self._token, ack.nonce), self.server)
+            self._send_feedback(build_register(ack.txid, self._token, ack.nonce), must=True)
             return
         fut = self._reg_future
         if fut is not None and not fut.done() and ack.txid == self._reg_txid:

@@ -8,6 +8,7 @@ import pytest
 from confclient.packetizer import AudioPacketizer, VideoPacketizer
 from confclient.protocol import (
     AUDIO_FRAME_BYTES,
+    MAX_FEC_GROUP,
     MAX_FRAGMENT_PAYLOAD,
     MAX_FRAME_BYTES,
     MAX_SEND_DATAGRAM,
@@ -110,3 +111,40 @@ def test_audio_packets_and_parity() -> None:
         pz.packetize(pcm[:-2], 960)
     with pytest.raises(ValueError, match="fec_k"):
         AudioPacketizer(ssrc=7, fec_k=-1)
+
+
+@pytest.mark.parametrize("k", [0, 1, 2, 4, 7, MAX_FEC_GROUP])
+def test_video_wire_size_is_what_packetize_sends(k: int) -> None:
+    """The send cap is checked with wire_size before a frame is packetized (review
+    finding client-4), so the two must agree for every size and group size."""
+    sizes = [1, 2, 1199, 1200, 1201, 2399, 2400, 2401, 4800, 4801, 6001, 31_000, 57_601]
+    sizes += [MAX_FRAGMENT_PAYLOAD * n + r for n in (k - 1, k, k + 1) if n > 0 for r in (-1, 0, 1)]
+    for size in sizes:
+        pz = VideoPacketizer(ssrc=1, fec_k=k)
+        expected = pz.wire_size(size)
+        _fid, packets = pz.packetize(os.urandom(size), 0)
+        assert expected == (len(packets), sum(map(len, packets))), size
+
+
+def test_video_wire_size_rejects_what_packetize_rejects() -> None:
+    pz = VideoPacketizer(ssrc=1)
+    for size in (0, MAX_FRAME_BYTES + 1):
+        with pytest.raises(ProtocolError):
+            pz.wire_size(size)
+
+
+@pytest.mark.parametrize("k", [0, 1, 2, 3])
+def test_audio_wire_size_is_what_the_next_packetize_sends(k: int) -> None:
+    pz = AudioPacketizer(ssrc=7, fec_k=k)
+    for n in range(7):
+        expected = pz.wire_size()
+        packets = pz.packetize(bytes(AUDIO_FRAME_BYTES), n * 320)
+        assert expected == (len(packets), sum(map(len, packets))), n
+
+
+def test_bad_fec_group_sizes_are_rejected() -> None:
+    for k in (-1, MAX_FEC_GROUP + 1):
+        with pytest.raises(ValueError, match="fec_k"):
+            VideoPacketizer(ssrc=1, fec_k=k)
+        with pytest.raises(ValueError, match="fec_k"):
+            AudioPacketizer(ssrc=1, fec_k=k)
