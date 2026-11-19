@@ -1,0 +1,14 @@
+# command (server/, nice 19, CPU 0, under the bench lock; a check of the datagrams/msg metric, not a timing run): GOMAXPROCS=2 go test -run '^$' -bench 'BenchmarkForwardVideo' -benchtime 2000x -count 1 ./internal/media/
+goos: linux
+goarch: amd64
+pkg: github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkForwardVideo/unbatched-2         	    2000	      5879 ns/op	 622.57 MB/s	         1.000 datagrams/msg	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=1-2  	    2000	      8296 ns/op	 441.17 MB/s	         1.000 datagrams/msg	       0 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=16-2 	    2000	      5060 ns/op	 723.28 MB/s	         1.000 datagrams/msg	       5 B/op	       0 allocs/op
+BenchmarkForwardVideo/sendmmsg/batch=64-2 	    2000	      5419 ns/op	 675.36 MB/s	         1.000 datagrams/msg	      22 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=16-2      	    2000	       972.3 ns/op	3764.38 MB/s	        16.00 datagrams/msg	       5 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso/batch=64-2      	    2000	      1515 ns/op	2415.37 MB/s	        31.75 datagrams/msg	      24 B/op	       0 allocs/op
+BenchmarkForwardVideo/gso+nack-buffer/batch=64-2         	    2000	       977.2 ns/op	3745.48 MB/s	        31.75 datagrams/msg	     184 B/op	       0 allocs/op
+PASS
+ok  	github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media	0.115s

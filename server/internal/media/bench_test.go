@@ -14,7 +14,8 @@ import (
 )
 
 // discardWriter is a packetWriter that drops everything, so a benchmark measures the
-// mixer's own work without system calls.
+// mixer's own work without system calls: a mixer tick here excludes the socket sends of
+// the mixed streams, which a real tick also makes.
 type discardWriter struct{ n int }
 
 func (d *discardWriter) WriteToUDPAddrPort(b []byte, _ netip.AddrPort) (int, error) {
@@ -51,7 +52,8 @@ func (u *upstreamAudio) push(b *testing.B, jb *jitterBuffer) {
 
 // BenchmarkMixerTick measures one 20 ms mixer tick of a room in which every member
 // talks: each member's upstream packet enters its jitter buffer, then the tick pops,
-// mixes minus-one, packetises (with k=2 audio FEC) and "sends" one stream per member.
+// mixes minus-one, packetises (with k=2 audio FEC) and "sends" one stream per member
+// to a discardWriter, so the time excludes the sendto calls a real tick makes.
 func BenchmarkMixerTick(b *testing.B) {
 	for _, members := range []int{3, 4, 5, 16} {
 		b.Run(fmt.Sprintf("members=%d", members), func(b *testing.B) {
@@ -200,5 +202,11 @@ func benchmarkForwardVideo(b *testing.B, batch, flushEvery int, gso, nack bool) 
 	b.StopTimer()
 	if got := r.stats.PacketsOut[OutVideo].Load(); got < uint64(b.N*len(targets)) {
 		b.Fatalf("forwarded %d copies, want %d", got, b.N*len(targets))
+	}
+	// How many datagrams went down the send path per message: one sender's copies to
+	// three receivers merge into messages of up to flushEvery datagrams here, many more
+	// than the 10.1 per message measured under the B3 load (BENCHMARKS.md, profiles).
+	if msgs := r.stats.VideoSendMessages.Load(); msgs > 0 {
+		b.ReportMetric(float64(r.stats.PacketsOut[OutVideo].Load())/float64(msgs), "datagrams/msg")
 	}
 }
