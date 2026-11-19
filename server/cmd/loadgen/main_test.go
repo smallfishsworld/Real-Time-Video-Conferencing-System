@@ -3,9 +3,19 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"flag"
+	"fmt"
+	"math"
+	"net"
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/net/ipv4"
+
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/client"
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
 )
 
 // Hashes of pickle.dumps((id, kind, data)) from CPython 3.13 (default protocol 4),
@@ -88,6 +98,7 @@ func TestValidateSafetyLimits(t *testing.T) {
 		}
 		return c
 	}
+	remote := func(c *config) { c.Server = "192.0.2.10"; c.AllowRemote = true }
 	cases := []struct {
 		name   string
 		mutate func(*config)
@@ -95,13 +106,42 @@ func TestValidateSafetyLimits(t *testing.T) {
 	}{
 		{"defaults are fine", func(*config) {}, ""},
 		{"remote target refused", func(c *config) { c.Server = "192.0.2.10" }, "non-loopback"},
-		{"remote target allowed by flag", func(c *config) { c.Server = "192.0.2.10"; c.AllowRemote = true }, ""},
+		{"remote target allowed by flag", func(c *config) { remote(c); c.Participants = 2 }, ""},
+		{"remote default bitrate is low", func(c *config) { remote(c); c.Participants = 8 }, "exceeds -max-mbps 25"},
+		{"remote limits raised by flags", func(c *config) {
+			remote(c)
+			c.Participants, c.FPS, c.MaxMbps, c.MaxPPS = 4, 5, 100, 5000
+		}, ""},
+		{"remote default packet rate", func(c *config) {
+			remote(c)
+			c.Participants, c.RoomSize, c.FPS = 16, 16, 0.1 // mostly audio: few bits, many packets
+		}, "exceeds -max-pps 2500"},
+		{"remote hard bitrate cap", func(c *config) { remote(c); c.MaxMbps = hardRemoteMbps + 1 }, "hard cap of 100"},
+		{"remote hard packet cap", func(c *config) { remote(c); c.MaxPPS = hardRemotePPS + 1 }, "hard cap of 5000"},
+		{"remote room size", func(c *config) { remote(c); c.RoomSize = 17 }, "room-size above 16"},
+		{"remote participants", func(c *config) { remote(c); c.Participants = 65 }, "more than 64"},
 		{"host names refused", func(c *config) { c.Server = "example.com" }, "IP address"},
 		{"too many participants", func(c *config) { c.Participants = hardMaxParticipants + 1 }, "participants"},
 		{"legacy port scheme", func(c *config) { c.Wire = "legacy"; c.Participants = legacyMaxID + 1 }, "legacy"},
-		{"bitrate cap", func(c *config) { c.Participants = 500; c.MaxMbps = 100 }, "exceeds"},
-		{"hard bitrate cap", func(c *config) { c.MaxMbps = hardMaxMbps + 1 }, "hard cap"},
-		{"duration cap", func(c *config) { c.Duration = time.Hour }, "longer"},
+		{"bitrate cap counts fan-out and headers", func(c *config) { c.Participants = 64; c.MaxMbps = 600 }, "exceeds -max-mbps 600"},
+		{"packet-rate cap", func(c *config) { c.Participants = 64; c.MaxPPS = 50_000 }, "exceeds -max-pps"},
+		{"hard bitrate cap", func(c *config) { c.MaxMbps = hardLoopbackMbps + 1 }, "hard cap"},
+		{"NaN bitrate", func(c *config) { c.MaxMbps = math.NaN() }, "-max-mbps"},
+		{"infinite bitrate", func(c *config) { c.MaxMbps = math.Inf(1) }, "-max-mbps"},
+		{"negative bitrate", func(c *config) { c.MaxMbps = -1 }, "-max-mbps"},
+		{"NaN packet rate", func(c *config) { c.MaxPPS = math.NaN() }, "-max-pps"},
+		{"NaN fps", func(c *config) { c.FPS = math.NaN() }, "-fps"},
+		{"tiny fps", func(c *config) { c.FPS = 1e-9 }, "-fps"},
+		{"infinite fps", func(c *config) { c.FPS = math.Inf(1) }, "-fps"},
+		{"FEC group too large", func(c *config) { c.FECK = protocol.MaxFECGroup + 1 }, "-fec-k"},
+		{"negative audio FEC group", func(c *config) { c.AudioFECK = -1 }, "-fec-k"},
+		{"negative warmup", func(c *config) { c.Warmup = -time.Second }, "-warmup"},
+		{"negative grace", func(c *config) { c.Grace = -time.Second }, "-grace"},
+		{"zero duration", func(c *config) { c.Duration = 0 }, "-duration"},
+		{"overflowing sum", func(c *config) { c.Warmup = math.MaxInt64 / 2; c.Duration = math.MaxInt64 / 2 }, "-warmup"},
+		{"duration cap", func(c *config) { c.Duration = time.Hour }, "-duration"},
+		{"total duration cap", func(c *config) { c.Warmup = 6 * time.Minute; c.Duration = 6 * time.Minute }, "longer"},
+		{"room size", func(c *config) { c.RoomSize = 1 }, "-room-size"},
 		{"unknown wire", func(c *config) { c.Wire = "rtmp" }, "wire"},
 	}
 	for _, tc := range cases {
@@ -116,6 +156,120 @@ func TestValidateSafetyLimits(t *testing.T) {
 				t.Fatalf("error %v, want it to mention %q", err, tc.errSub)
 			}
 		})
+	}
+}
+
+func TestHelpIsNotAnError(t *testing.T) {
+	if _, err := parseFlags([]string{"-h"}); !errors.Is(err, flag.ErrHelp) {
+		t.Fatalf("parseFlags(-h) = %v, want flag.ErrHelp (main exits 0 on it)", err)
+	}
+}
+
+// sink is a UDP socket that a v2Participant sends to; it returns the datagram sizes.
+func sink(t *testing.T) (*net.UDPConn, func(n int) []int) {
+	t.Helper()
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	_ = conn.SetReadBuffer(4 << 20)
+	read := func(n int) []int {
+		out := make([]int, 0, n)
+		buf := make([]byte, 65536)
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		for len(out) < n {
+			k, _, err := conn.ReadFromUDP(buf)
+			if err != nil {
+				t.Fatalf("read %d of %d datagrams: %v", len(out), n, err)
+			}
+			out = append(out, k)
+		}
+		return out
+	}
+	return conn, read
+}
+
+func testParticipant(t *testing.T, cfg config, to *net.UDPConn) *v2Participant {
+	t.Helper()
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	return &v2Participant{
+		cfg:    cfg,
+		pc:     ipv4.NewPacketConn(conn),
+		joined: client.Message{VideoSSRC: 1, AudioSSRC: 2},
+		server: to.LocalAddr().(*net.UDPAddr),
+		st:     &senderStats{},
+		msgs:   make([]ipv4.Message, batch),
+	}
+}
+
+// The traffic estimate must describe what the load generator really sends.
+func TestEstimateMatchesWhatIsSent(t *testing.T) {
+	for _, k := range []int{0, 1, 2, 4, 7} {
+		for _, n := range []int{1, 1199, 1200, 1201, 4800, 4801, 31000, 57601} {
+			cfg := config{Wire: "v2", Server: "127.0.0.1", FECK: k}
+			to, read := sink(t)
+			p := testParticipant(t, cfg, to)
+			frame := make([]byte, n)
+			if err := p.sendVideo(frame, tag{Seq: 1}); err != nil {
+				t.Fatal(err)
+			}
+			want := cfg.v2Frame(n)
+			got := read(len(want))
+			if fmt.Sprint(got) != fmt.Sprint(want) {
+				t.Errorf("k=%d n=%d: sent %v, estimate %v", k, n, got, want)
+			}
+		}
+	}
+	cfg := config{Wire: "v2", Server: "127.0.0.1", AudioFECK: 2}
+	to, read := sink(t)
+	p := testParticipant(t, cfg, to)
+	for seq := uint32(0); seq < 4; seq++ {
+		if err := p.sendAudio(seq); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := read(6)
+	media, parity := protocol.RTPHeaderSize+v2AudioPayloadBytes, protocol.RTPHeaderSize+protocol.FECHeaderSize+v2AudioPayloadBytes
+	if want := fmt.Sprint([]int{media, media, parity, media, media, parity}); fmt.Sprint(got) != want {
+		t.Errorf("audio sent %v, want %v", got, want)
+	}
+}
+
+func TestEstimateCountsFanOutHeadersAndFragments(t *testing.T) {
+	c := config{Wire: "legacy", Server: "127.0.0.1", Participants: 4, RoomSize: 4, FPS: 10}
+	l := c.estimate(10000)
+	// Up: 4 senders x 10 datagrams/s of 10000 + pickle + 28 bytes; down: 3 copies each.
+	up := 4 * 10 * float64(pickleSize(10000)+ipUDPHeader) * 8 / 1e6
+	if math.Abs(l.UpMbps-up) > 1e-9 || math.Abs(l.DownMbps-3*up) > 1e-9 || l.UpPPS != 40 || l.DownPPS != 120 {
+		t.Fatalf("legacy estimate %+v, want up %.3f Mbit/s and 40 + 120 packets/s", l, up)
+	}
+	c.Server, c.AllowRemote = "192.0.2.1", true // on a real network: IP fragments
+	frags := float64((pickleSize(10000) + 8 + remoteMTU - ipHeader - 1) / (remoteMTU - ipHeader))
+	if r := c.estimate(10000); r.UpPPS != 40*frags || r.UpMbps <= l.UpMbps {
+		t.Fatalf("remote legacy estimate %+v, want %v fragments per datagram", r, frags)
+	}
+	v := config{Wire: "v2", Server: "127.0.0.1", Participants: 3, RoomSize: 4, FPS: 15, FECK: 4, Audio: true, AudioFECK: 2}
+	e := v.estimate(31000)
+	// 26 fragments and 7 parity packets per frame; 50 audio packets/s and 25 parity.
+	videoUp, audio := 3*15*33.0, 3*75.0
+	if e.UpPPS != videoUp+audio || e.DownPPS != 2*videoUp+audio || e.TotalPPS != e.UpPPS+e.DownPPS {
+		t.Fatalf("v2 estimate %+v: want %v packets/s up, and down two copies of the video plus "+
+			"one mixed audio stream per member", e, videoUp+audio)
+	}
+}
+
+func TestWatchdogAllowance(t *testing.T) {
+	bound := load{UpMbps: 100, UpPPS: 10_000}
+	if tooFast(100, 10_000, bound) || tooFast(120, 12_000, bound) {
+		t.Error("the estimate itself must pass")
+	}
+	if !tooFast(130, 1000, bound) || !tooFast(1, 13_000, bound) {
+		t.Error("25 % over the estimate must trip")
 	}
 }
 

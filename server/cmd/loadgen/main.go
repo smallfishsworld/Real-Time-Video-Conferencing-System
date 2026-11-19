@@ -8,9 +8,14 @@
 // with the sender, a sequence number and the send time, so a receiver can measure
 // end-to-end latency without clock synchronisation (one process, one clock).
 //
-// Safety limits (see README "Network usage"): the target must be a loopback address
-// unless -allow-remote is given; the number of participants, the offered bitrate and
-// the duration are capped.
+// Safety limits (see README "Network usage limits"): the target must be a loopback
+// address unless -allow-remote is given. Before a run starts, the load generator
+// estimates the traffic it causes on the wire in both directions (its own sends with
+// FEC parity and every header down to IP and UDP, the server's fan-out to the other
+// members of each room, and the mixed audio) and refuses the run if the total
+// bitrate or packet rate is over the limit. A non-loopback target gets much lower
+// defaults and hard caps, and a room size of at most 16. While it runs, a watchdog
+// stops the run if what it actually sends is over the estimate.
 package main
 
 import (
@@ -31,14 +36,40 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
 )
 
 // Hard limits that no flag can raise.
 const (
 	hardMaxParticipants = 512
-	hardMaxMbps         = 4000
 	hardMaxDuration     = 10 * time.Minute
 	legacyMaxID         = 452 // legacy client UDP port 20000 + 100*ID must stay below 65536
+
+	// Total wire traffic (both directions) on loopback, where nothing leaves the host.
+	defaultLoopbackMbps = 2000
+	hardLoopbackMbps    = 16000
+	defaultLoopbackPPS  = 400_000
+	hardLoopbackPPS     = 2_000_000
+
+	// A non-loopback target is a real network that others share.
+	defaultRemoteMbps         = 25 // two participants at the default 15 fps
+	hardRemoteMbps            = 100
+	defaultRemotePPS          = 2500
+	hardRemotePPS             = 5000
+	hardRemoteRoomSize        = 16
+	hardRemoteParticipants    = 64
+	remoteMTU                 = 1500 // for counting the IP fragments of large legacy datagrams
+	ipUDPHeader               = 28   // IPv4 + UDP header bytes per datagram
+	ipHeader                  = 20
+	watchdogSlack             = 1.25 // measured send rate allowed over the estimate
+	mixerAudioFECK            = 2    // the server's default -audio-fec-k
+	legacyAudioChunkBytes     = 2048 // 1024 samples of 16-bit audio
+	legacyAudioChunksPerSec   = 16000.0 / 1024
+	v2AudioFramesPerSec       = 50
+	v2AudioPayloadBytes       = 640
+	v2MaxCSRC                 = 15
+	pickleWorstCaseOverheadID = 300 // an ID above 255 takes the longer pickle encoding
 )
 
 type config struct {
@@ -56,6 +87,7 @@ type config struct {
 	Duration     time.Duration
 	Grace        time.Duration
 	MaxMbps      float64
+	MaxPPS       float64
 	AllowRemote  bool
 	LocalBase    string
 	ServerPID    int
@@ -80,8 +112,17 @@ func parseFlags(args []string) (config, error) {
 	fs.DurationVar(&c.Warmup, "warmup", 5*time.Second, "load before the measurement window")
 	fs.DurationVar(&c.Duration, "duration", 20*time.Second, "measurement window")
 	fs.DurationVar(&c.Grace, "grace", time.Second, "keep receiving this long after the window for late frames")
-	fs.Float64Var(&c.MaxMbps, "max-mbps", 1500, fmt.Sprintf("refuse runs whose offered upstream load exceeds this (max %d)", hardMaxMbps))
-	fs.BoolVar(&c.AllowRemote, "allow-remote", false, "allow a non-loopback server address")
+	fs.Float64Var(&c.MaxMbps, "max-mbps", 0, fmt.Sprintf(
+		"refuse runs whose estimated total wire traffic, both directions with all headers, exceeds this many Mbit/s "+
+			"(default %d on loopback, %d otherwise; at most %d and %d)",
+		defaultLoopbackMbps, defaultRemoteMbps, hardLoopbackMbps, hardRemoteMbps))
+	fs.Float64Var(&c.MaxPPS, "max-pps", 0, fmt.Sprintf(
+		"refuse runs whose estimated total packet rate exceeds this many packets/s "+
+			"(default %d on loopback, %d otherwise; at most %d and %d)",
+		defaultLoopbackPPS, defaultRemotePPS, hardLoopbackPPS, hardRemotePPS))
+	fs.BoolVar(&c.AllowRemote, "allow-remote", false, fmt.Sprintf(
+		"allow a non-loopback server address (lower limits apply: room size <= %d, <= %d participants)",
+		hardRemoteRoomSize, hardRemoteParticipants))
 	fs.StringVar(&c.LocalBase, "local-base", "127.1.0.0", "legacy: participant i binds base+i (one address per participant)")
 	fs.IntVar(&c.ServerPID, "server-pid", 0, "read this process's CPU time from /proc at the window edges")
 	fs.IntVar(&c.ConfBase, "conf-base", 1, "legacy: first conference ID")
@@ -99,8 +140,35 @@ func parseFlags(args []string) (config, error) {
 	return c, nil
 }
 
-// validate enforces the safety limits before any packet is sent.
-func (c *config) validate(avgFrameBytes float64) error {
+// remote reports whether the target is not a loopback address (validate has checked
+// that it parses).
+func (c *config) remote() bool {
+	addr, err := netip.ParseAddr(c.Server)
+	return err != nil || !addr.IsLoopback()
+}
+
+// limits returns the bitrate (Mbit/s) and packet-rate caps for the target: the flags'
+// values, or the target's defaults when they are 0.
+func (c *config) limits() (mbps, pps float64) {
+	mbps, pps = c.MaxMbps, c.MaxPPS
+	if mbps == 0 {
+		mbps = defaultLoopbackMbps
+		if c.remote() {
+			mbps = defaultRemoteMbps
+		}
+	}
+	if pps == 0 {
+		pps = defaultLoopbackPPS
+		if c.remote() {
+			pps = defaultRemotePPS
+		}
+	}
+	return mbps, pps
+}
+
+// validate enforces the safety limits before any packet is sent. maxFrameBytes is the
+// largest corpus frame, so the traffic estimate it checks is an upper bound.
+func (c *config) validate(maxFrameBytes int) error {
 	if c.Wire != "v2" && c.Wire != "legacy" {
 		return fmt.Errorf("unknown -wire %q", c.Wire)
 	}
@@ -108,7 +176,8 @@ func (c *config) validate(avgFrameBytes float64) error {
 	if err != nil {
 		return fmt.Errorf("-server must be an IP address: %w", err)
 	}
-	if !addr.IsLoopback() && !c.AllowRemote {
+	remote := !addr.IsLoopback()
+	if remote && !c.AllowRemote {
 		return fmt.Errorf("refusing non-loopback target %s without -allow-remote", addr)
 	}
 	if c.Participants < 1 || c.Participants > hardMaxParticipants {
@@ -117,25 +186,156 @@ func (c *config) validate(avgFrameBytes float64) error {
 	if c.Wire == "legacy" && c.Participants > legacyMaxID {
 		return fmt.Errorf("the legacy port scheme supports at most %d participants", legacyMaxID)
 	}
-	if c.RoomSize < 2 {
-		return errors.New("-room-size must be at least 2")
+	if c.RoomSize < 2 || c.RoomSize > hardMaxParticipants {
+		return fmt.Errorf("-room-size must be 2..%d", hardMaxParticipants)
 	}
-	if c.FPS <= 0 || c.FPS > 60 {
-		return errors.New("-fps must be in (0, 60]")
+	if remote && c.RoomSize > hardRemoteRoomSize {
+		return fmt.Errorf("-room-size above %d is refused for a non-loopback target", hardRemoteRoomSize)
 	}
-	if c.Warmup+c.Duration+c.Grace > hardMaxDuration {
+	if remote && c.Participants > hardRemoteParticipants {
+		return fmt.Errorf("more than %d participants are refused for a non-loopback target", hardRemoteParticipants)
+	}
+	// Written so that NaN fails every check.
+	if !(c.FPS >= 0.1 && c.FPS <= 60) {
+		return errors.New("-fps must be in 0.1..60")
+	}
+	if c.FECK < 0 || c.FECK > protocol.MaxFECGroup || c.AudioFECK < 0 || c.AudioFECK > protocol.MaxFECGroup {
+		return fmt.Errorf("-fec-k and -audio-fec-k must be 0..%d", protocol.MaxFECGroup)
+	}
+	for _, d := range []struct {
+		name string
+		v    time.Duration
+		min  time.Duration
+	}{{"-warmup", c.Warmup, 0}, {"-duration", c.Duration, time.Second}, {"-grace", c.Grace, 0}} {
+		if d.v < d.min || d.v > hardMaxDuration {
+			return fmt.Errorf("%s must be %s..%s", d.name, d.min, hardMaxDuration)
+		}
+	}
+	if c.Warmup+c.Duration+c.Grace > hardMaxDuration { // each is bounded: no overflow
 		return fmt.Errorf("run longer than %s", hardMaxDuration)
 	}
-	if c.MaxMbps > hardMaxMbps {
-		return fmt.Errorf("-max-mbps above the hard cap of %d", hardMaxMbps)
+	hardMbps, hardPPS := float64(hardLoopbackMbps), float64(hardLoopbackPPS)
+	if remote {
+		hardMbps, hardPPS = hardRemoteMbps, hardRemotePPS
 	}
-	if mbps := c.offeredMbps(avgFrameBytes); mbps > c.MaxMbps {
-		return fmt.Errorf("offered load %.0f Mbit/s exceeds -max-mbps %.0f", mbps, c.MaxMbps)
+	if !(c.MaxMbps >= 0 && c.MaxMbps <= hardMbps) {
+		return fmt.Errorf("-max-mbps must be 0 (the default) up to the hard cap of %.0f for this target", hardMbps)
+	}
+	if !(c.MaxPPS >= 0 && c.MaxPPS <= hardPPS) {
+		return fmt.Errorf("-max-pps must be 0 (the default) up to the hard cap of %.0f for this target", hardPPS)
+	}
+	maxMbps, maxPPS := c.limits()
+	est := c.estimate(maxFrameBytes)
+	if est.TotalMbps > maxMbps {
+		return fmt.Errorf("estimated traffic %.0f Mbit/s (%.0f up, %.0f down, all headers) exceeds -max-mbps %.0f",
+			est.TotalMbps, est.UpMbps, est.DownMbps, maxMbps)
+	}
+	if est.TotalPPS > maxPPS {
+		return fmt.Errorf("estimated %.0f packets/s (%.0f up, %.0f down) exceeds -max-pps %.0f",
+			est.TotalPPS, est.UpPPS, est.DownPPS, maxPPS)
 	}
 	return nil
 }
 
-// offeredMbps is the upstream media bitrate of all participants (payload only).
+// load is an estimate of the traffic a run causes on the wire, with every header down
+// to IP and UDP: what the load generator sends (up) and what the server sends to it
+// (down). On loopback both cross the same interface.
+type load struct {
+	UpMbps    float64 `json:"upstream_mbps"`
+	DownMbps  float64 `json:"downstream_mbps"`
+	TotalMbps float64 `json:"total_mbps"`
+	UpPPS     float64 `json:"upstream_pps"`
+	DownPPS   float64 `json:"downstream_pps"`
+	TotalPPS  float64 `json:"total_pps"`
+}
+
+// datagram returns the IP packets and wire bytes of one UDP datagram with n payload
+// bytes. On a real network a datagram larger than the MTU leaves as IP fragments.
+func (c *config) datagram(n int) (pkts, bytes float64) {
+	if c.remote() && n+8 > remoteMTU-ipHeader {
+		frags := (n + 8 + remoteMTU - ipHeader - 1) / (remoteMTU - ipHeader)
+		return float64(frags), float64(n + 8 + ipHeader*frags)
+	}
+	return 1, float64(n + ipUDPHeader)
+}
+
+// v2Frame returns the datagram sizes the v2 load generator sends for one frame of n
+// bytes: its fragments and, with -fec-k, one parity packet per group (the same layout
+// as the client's VideoPacketizer.wire_size).
+func (c *config) v2Frame(n int) []int {
+	count := protocol.FragmentCount(n)
+	out := make([]int, 0, count+count/max(c.FECK, 1)+1)
+	for i := 0; i < count; i++ {
+		frag := min(protocol.MaxFragmentPayload, n-i*protocol.MaxFragmentPayload)
+		out = append(out, protocol.RTPHeaderSize+protocol.VideoHeaderSize+frag)
+		if c.FECK > 0 && ((i+1)%c.FECK == 0 || i == count-1) {
+			body := 0 // the longest protected packet of the group, without its RTP header
+			for j := i - i%c.FECK; j <= i; j++ {
+				body = max(body, protocol.VideoHeaderSize+min(protocol.MaxFragmentPayload, n-j*protocol.MaxFragmentPayload))
+			}
+			out = append(out, protocol.RTPHeaderSize+protocol.FECHeaderSize+body)
+		}
+	}
+	return out
+}
+
+// pickleSize is the size of the legacy datagram pickle.dumps((id, kind, data)) with
+// len(data) == n, for an ID above 255 (the larger encoding).
+func pickleSize(n int) int {
+	body := 3 + 2 + 2 // BININT2 id, BININT1 kind, SHORT_BINBYTES
+	if n >= 256 {
+		body = 3 + 2 + 5 // BINBYTES
+	}
+	return 3 + 8 + body + n + 4
+}
+
+// estimate computes the traffic of the run for frames of frameBytes bytes.
+func (c *config) estimate(frameBytes int) load {
+	var up, upP, down, downP float64 // bytes and packets per second
+	add := func(n int, perSec, copies float64) {
+		p, b := c.datagram(n)
+		up += b * perSec
+		upP += p * perSec
+		down += b * perSec * copies
+		downP += p * perSec * copies
+	}
+	for i := 0; i < c.Participants; i++ {
+		others := float64(roomMembers(*c, i) - 1)
+		if c.Wire == "v2" {
+			for _, n := range c.v2Frame(frameBytes) {
+				add(n, c.FPS, others) // the server forwards every packet to each other member
+			}
+			if !c.Audio {
+				continue
+			}
+			add(protocol.RTPHeaderSize+v2AudioPayloadBytes, v2AudioFramesPerSec, 0)
+			if c.AudioFECK > 0 {
+				add(protocol.RTPHeaderSize+protocol.FECHeaderSize+v2AudioPayloadBytes,
+					float64(v2AudioFramesPerSec)/float64(c.AudioFECK), 0)
+			}
+			if others > 0 { // one mixed stream back, with CSRCs and the mixer's parity
+				mixed := protocol.RTPHeaderSize + 4*min(int(others), v2MaxCSRC) + v2AudioPayloadBytes
+				p, b := c.datagram(mixed)
+				down += b * v2AudioFramesPerSec
+				downP += p * v2AudioFramesPerSec
+				p, b = c.datagram(mixed + protocol.FECHeaderSize)
+				down += b * v2AudioFramesPerSec / mixerAudioFECK
+				downP += p * v2AudioFramesPerSec / mixerAudioFECK
+			}
+		} else {
+			add(pickleSize(frameBytes), c.FPS, others) // the relay sends each datagram to every other member
+			if c.Audio {
+				add(pickleSize(legacyAudioChunkBytes), legacyAudioChunksPerSec, others)
+			}
+		}
+	}
+	l := load{UpMbps: up * 8 / 1e6, DownMbps: down * 8 / 1e6, UpPPS: upP, DownPPS: downP}
+	l.TotalMbps, l.TotalPPS = l.UpMbps+l.DownMbps, l.UpPPS+l.DownPPS
+	return l
+}
+
+// offeredMbps is the upstream media payload bitrate of all participants (JPEG and PCM
+// bytes only, no headers or parity), kept for comparison with earlier results.
 func (c *config) offeredMbps(avgFrameBytes float64) float64 {
 	per := avgFrameBytes * 8 * c.FPS
 	if c.Audio {
@@ -267,7 +467,9 @@ type result struct {
 	AudioFECK            int                `json:"audio_fec_k"`
 	WindowSeconds        float64            `json:"window_seconds"`
 	AvgFrameBytes        float64            `json:"avg_frame_bytes"`
-	OfferedUpMbps        float64            `json:"offered_upstream_mbps"`
+	MaxFrameBytes        int                `json:"max_frame_bytes"`
+	OfferedUpMbps        float64            `json:"offered_upstream_mbps"` // media payload only
+	Traffic              wireReport         `json:"wire_traffic"`
 	FramesSent           int64              `json:"frames_sent_in_window"`
 	FramesExpected       int64              `json:"frames_expected"`
 	FramesReceived       int64              `json:"frames_received"`
@@ -291,8 +493,24 @@ type result struct {
 	StartedUTC           string             `json:"started_utc"`
 }
 
+// wireReport is the run's traffic on the wire: the estimate for the average and for
+// the largest corpus frame (the bound that was checked against the limits), the limits,
+// and what the load generator measured it sent.
+type wireReport struct {
+	Expected   load    `json:"estimate_average_frame"`
+	Bound      load    `json:"estimate_largest_frame"`
+	LimitMbps  float64 `json:"limit_total_mbps"`
+	LimitPPS   float64 `json:"limit_total_pps"`
+	SentUpMbps float64 `json:"measured_upstream_mbps"`
+	SentUpPPS  float64 `json:"measured_upstream_pps"`
+}
+
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	err := run(os.Args[1:])
+	if errors.Is(err, flag.ErrHelp) {
+		return // -h: the usage text has been printed
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "loadgen:", err)
 		os.Exit(1)
 	}
@@ -308,13 +526,16 @@ func run(args []string) error {
 		return err
 	}
 	var total float64
+	largest := 0
 	for _, f := range frames {
 		total += float64(len(f))
+		largest = max(largest, len(f))
 	}
 	avg := total / float64(len(frames))
-	if err := cfg.validate(avg); err != nil {
+	if err := cfg.validate(largest); err != nil {
 		return err
 	}
+	bound := cfg.estimate(largest)
 	clk := clock{start: time.Now()}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -365,6 +586,11 @@ func run(args []string) error {
 		}(p, recs[i])
 	}
 
+	// The watchdog stops every sender if what they send is more than the estimate
+	// allows; the limits were checked against that estimate.
+	var tripped atomic.Bool
+	go watchdog(ctx, stats, bound, &tripped)
+
 	var swg sync.WaitGroup
 	period := time.Duration(float64(time.Second) / cfg.FPS)
 	audioPeriod := 20 * time.Millisecond
@@ -375,7 +601,7 @@ func run(args []string) error {
 		swg.Add(1)
 		go func(i int, p participant, st *senderStats) {
 			defer swg.Done()
-			sendLoop(clk, cfg, frames, i, p, st, period, audioPeriod, winStart, winEnd, stopSend)
+			sendLoop(clk, cfg, frames, i, p, st, period, audioPeriod, winStart, winEnd, stopSend, &tripped)
 		}(i, p, stats[i])
 	}
 
@@ -404,20 +630,32 @@ func run(args []string) error {
 		}
 	}
 	swg.Wait()
+	sendEnd := clk.now()
 	recvCancel()
 	rwg.Wait()
+	if tripped.Load() {
+		return errors.New("stopped: the load generator sent more than its traffic estimate allows")
+	}
+	maxMbps, maxPPS := cfg.limits()
 
 	res := result{
-		Label:             cfg.Label,
-		Wire:              cfg.Wire,
-		Participants:      cfg.Participants,
-		Rooms:             (cfg.Participants + cfg.RoomSize - 1) / cfg.RoomSize,
-		RoomSize:          cfg.RoomSize,
-		FPS:               cfg.FPS,
-		Audio:             cfg.Audio,
-		WindowSeconds:     cfg.Duration.Seconds(),
-		AvgFrameBytes:     math.Round(avg),
-		OfferedUpMbps:     cfg.offeredMbps(avg),
+		Label:         cfg.Label,
+		Wire:          cfg.Wire,
+		Participants:  cfg.Participants,
+		Rooms:         (cfg.Participants + cfg.RoomSize - 1) / cfg.RoomSize,
+		RoomSize:      cfg.RoomSize,
+		FPS:           cfg.FPS,
+		Audio:         cfg.Audio,
+		WindowSeconds: cfg.Duration.Seconds(),
+		AvgFrameBytes: math.Round(avg),
+		MaxFrameBytes: largest,
+		OfferedUpMbps: cfg.offeredMbps(avg),
+		Traffic: wireReport{
+			Expected:  cfg.estimate(int(math.Round(avg))),
+			Bound:     bound,
+			LimitMbps: maxMbps,
+			LimitPPS:  maxPPS,
+		},
 		LoadgenGOMAXPROCS: runtime.GOMAXPROCS(0),
 		ControlLost:       lost,
 		StartedUTC:        clk.start.UTC().Format(time.RFC3339),
@@ -454,6 +692,10 @@ func run(args []string) error {
 			}
 		}
 	}
+	if secs := float64(sendEnd-t0) / 1e9; secs > 0 {
+		res.Traffic.SentUpMbps = float64(res.BytesSent+ipUDPHeader*res.PacketsSent) * 8 / 1e6 / secs
+		res.Traffic.SentUpPPS = float64(res.PacketsSent) / secs
+	}
 	if res.FramesExpected > 0 {
 		res.DeliveryRatio = float64(res.FramesReceived) / float64(res.FramesExpected)
 	}
@@ -489,8 +731,44 @@ func roomMembers(cfg config, i int) int {
 	return min(cfg.RoomSize, cfg.Participants-first)
 }
 
+// watchdog checks once a second what all senders put on the wire (with IP and UDP
+// headers) against the upstream estimate for the largest frame, and trips when either
+// rate is more than watchdogSlack times that.
+func watchdog(ctx context.Context, stats []*senderStats, bound load, tripped *atomic.Bool) {
+	t := time.NewTicker(time.Second)
+	defer t.Stop()
+	var lastBytes, lastPkts int64
+	last := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-t.C:
+			var b, p int64
+			for _, st := range stats {
+				b += st.bytes.Load()
+				p += st.packets.Load()
+			}
+			secs := now.Sub(last).Seconds()
+			mbps := float64(b-lastBytes+ipUDPHeader*(p-lastPkts)) * 8 / 1e6 / secs
+			pps := float64(p-lastPkts) / secs
+			if tooFast(mbps, pps, bound) {
+				tripped.Store(true)
+				return
+			}
+			lastBytes, lastPkts, last = b, p, now
+		}
+	}
+}
+
+// tooFast reports whether a measured upstream rate is over the watchdog's allowance
+// (a little slack above the estimate, for timer jitter).
+func tooFast(mbps, pps float64, bound load) bool {
+	return mbps > watchdogSlack*bound.UpMbps+1 || pps > watchdogSlack*bound.UpPPS+100
+}
+
 func sendLoop(clk clock, cfg config, frames [][]byte, i int, p participant, st *senderStats,
-	period, audioPeriod time.Duration, winStart, winEnd, stop int64) {
+	period, audioPeriod time.Duration, winStart, winEnd, stop int64, tripped *atomic.Bool) {
 	// Spread participants' phases over one frame period, so that the offered load is
 	// smooth rather than synchronised bursts.
 	phase := int64(period) * int64(i) / int64(cfg.Participants)
@@ -503,7 +781,7 @@ func sendLoop(clk clock, cfg config, frames [][]byte, i int, p participant, st *
 		if cfg.Audio && nextAudio < next {
 			next = nextAudio
 		}
-		if next >= stop {
+		if next >= stop || tripped.Load() {
 			return
 		}
 		sleepUntil(clk, next)
