@@ -939,16 +939,17 @@ PROFILE_PATHS = [
     "reading packets",
     "audio mixers (20 ms ticks)",
     "mixed-stream sends",
-    "all system calls (Syscall6)",
+    "system calls (syscall.Syscall6)",
 ]
 
 
 def table_profiles() -> str | None:
     lines = [
-        "| Server | Server CPU | p99 latency | Forwarding | Reading | Audio mixers | of which mixer sends"
-        " | All system calls | Datagrams per read call | Copies per send call | Datagrams per message"
+        "| Server | Server CPU | Core softirq | Core busy | p99 latency | Forwarding | Reading | Audio mixers"
+        " | of which mixer sends"
+        " | `syscall.Syscall6` | Datagrams per read call | Copies per send call | Datagrams per message"
         " | Built from | Files |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for name, label in PROFILES:
         path = RESULTS / f"pprof_{name}.json"
@@ -967,7 +968,9 @@ def table_profiles() -> str | None:
             )
         ]
         lines.append(
-            f"| {label} | {load['server_cpu_utilisation']:.3f} | {load['latency_ms']['p99']:.1f} ms | "
+            f"| {label} | {load['server_cpu_utilisation']:.3f} "
+            f"| {load['server_core']['softirq_seconds'] / load['window_seconds']:.3f} "
+            f"| {load['server_core']['utilisation']:.3f} | {load['latency_ms']['p99']:.1f} ms | "
             + " | ".join(cells)
             + f" | `{build.get('git_commit', 'n/a')}` | `pprof_{name}.{{json,txt,pb.gz}}` |"
         )

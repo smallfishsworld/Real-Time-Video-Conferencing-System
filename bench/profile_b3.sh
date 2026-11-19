@@ -10,7 +10,10 @@
 # server's system-call counters and the top functions) and pprof_NAME.json (the
 # provenance: run ID, command, server flags, build record with binary hashes, the load
 # generator's result and the server counters). Raw files stay in
-# bench/tmp/profile/<run ID>/.
+# bench/tmp/profile/<run ID>/, with command.txt (written before the run) and
+# lo_gso_check.json (how a GSO message crossed lo in the profiles' namespace setup).
+# The published run 20261119T114714Z-23555 predates both: its command.txt was written
+# after the run and it has no lo_gso_check.json (the B3 run of the same build has one).
 #
 # Usage: sudo bench/profile_b3.sh
 #        PARTICIPANTS=96 PROFILES="v2-gso=" bench/profile_b3.sh
@@ -71,6 +74,14 @@ profile() {
   cleanup_netns
 }
 
+# gso_check: how a GSO message crosses lo in a namespace set up as for the profiles
+# (bench/lib/gso_split.py; with gso_max_segs 1 the kernel splits it before lo).
+gso_check() {
+  setup_ns
+  ip netns exec "$NS" "$PY" "$BENCH/lib/gso_split.py" >"$RUNDIR/lo_gso_check.json"
+  cleanup_netns
+}
+
 # analyze: the result files of every profile, from this run's raw files and binaries.
 analyze() {
   local p name
@@ -90,6 +101,7 @@ analyze() {
 if [ "${1:-}" = --locked ]; then
   trap cleanup_netns EXIT
   trap 'exit 130' INT TERM
+  gso_check
   for p in $PROFILES; do profile "${p%%=*}" "${p#*=}"; done
   exit 0
 fi

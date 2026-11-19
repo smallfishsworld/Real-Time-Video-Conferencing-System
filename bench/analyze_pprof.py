@@ -9,7 +9,8 @@ the profile's own header (File, Build ID, Type, Time, Duration), the share of CP
 spent in a few code paths (cumulative, so nested paths overlap), the server's system
 call counters if a metrics scrape is given, and the top functions by own time. With
 --provenance it also writes that information as JSON. The code-path patterns match
-the server both before and after system-call batching. Everything comes from
+the server both before and after system-call batching, and each matches one function
+name, so a share means the same thing in every profile. Everything comes from
 `go tool pprof` and the server's own counters.
 """
 
@@ -35,10 +36,10 @@ PATHS = [
     ("  reading packets", r"^(net\.\(\*UDPConn\)\.ReadFromUDPAddrPort|.*udpio\.\(\*Conn\)\.ReadBatch)$"),
     ("audio mixers (20 ms ticks)", r"^.*media\.\(\*mixRoom\)\.run$"),
     ("  mixed-stream sends", r"^.*media\.\(\*mixRoom\)\.write$"),
-    (
-        "all system calls (Syscall6)",
-        r"^(internal/runtime/syscall|runtime/internal/syscall|syscall)\.Syscall6$",
-    ),
+    # One function in every profile: syscall.Syscall6 is where the socket system calls
+    # (sendto, recvfrom, sendmmsg, recvmmsg) enter the kernel. The netpoller's epoll_wait
+    # goes through internal/runtime/syscall.Syscall6 instead, so that one is not counted.
+    ("system calls (syscall.Syscall6)", r"^syscall\.Syscall6$"),
     ("Go scheduler and netpoller", r"^runtime\.(schedule|findRunnable|netpoll)$"),
     ("garbage collector", r"^runtime\.gcBgMarkWorker$"),
 ]
@@ -67,6 +68,25 @@ def syscall_counters(counters: dict[str, Any]) -> None:
     if counters["video_datagrams_per_message"]:
         msgs = counters["video_send_messages"]
         print(f"  messages {msgs:.0f} ({counters['video_datagrams_per_message']:.2f} datagrams per message)")
+
+
+def cpu_excluding_softirq(load: dict[str, Any]) -> dict[str, float] | None:
+    """The server's CPU minus its core's softirq time, as in analyze_b3.py.
+
+    Without IRQ time accounting the softirq on the server's core (mostly the receivers'
+    loopback receive path) is charged to whichever task is running, usually the server.
+    The difference estimates the relay's own work only while the core was about as busy
+    as the server (server_core_minus_process near 0).
+    """
+    core, cpu = load.get("server_core") or {}, load.get("server_cpu_utilisation")
+    if cpu is None or "softirq_seconds" not in core:
+        return None
+    softirq = core["softirq_seconds"] / load["window_seconds"]
+    return {
+        "server_core_softirq_utilisation": softirq,
+        "server_cpu_excluding_core_softirq": cpu - softirq,
+        "server_core_minus_process": core["utilisation"] - cpu,
+    }
 
 
 def main() -> None:
@@ -105,6 +125,13 @@ def main() -> None:
             f"(core {core.get('cpu')}: busy {core.get('utilisation', nan):.3f}, "
             f"softirq {core.get('softirq_seconds', nan):.2f} s of {core.get('busy_seconds', nan):.2f} s)"
         )
+        excl = cpu_excluding_softirq(load)
+        if excl:
+            print(
+                f"server CPU without the core's softirq {excl['server_cpu_excluding_core_softirq']:.3f} "
+                f"(softirq {excl['server_core_softirq_utilisation']:.3f} of a core; "
+                f"core busier than the server by {excl['server_core_minus_process']:.3f})"
+            )
     cum = pprof(["-top", "-cum", "-nodecount=500", args.binary, args.profile])
     header = [
         line
@@ -144,6 +171,7 @@ def main() -> None:
                 "pprof_header": header,
                 "share_of_profile_percent": shares,
                 "server_counters": counters,
+                "cpu_excluding_core_softirq": cpu_excluding_softirq(load) if load else None,
                 "load": load,
                 "environment": environment(args.build),
             },
