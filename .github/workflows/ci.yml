@@ -1,0 +1,73 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go (vet, staticcheck, race tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@2025.1.1 ./...
+      - name: tests with the race detector
+        run: go test -race ./...
+      - name: short fuzzing of every decoder
+        run: |
+          for t in FuzzParseRTP FuzzParseVideo FuzzParseFEC FuzzFECRecovery FuzzParseRegister FuzzParseRegisterAck FuzzControlFrame; do
+            go test -run '^$' -fuzz "^${t}\$" -fuzztime 10s ./internal/protocol
+          done
+      - name: benchmarks compile and run once
+        run: go test -run '^$' -bench . -benchtime 1x ./...
+
+  python:
+    name: Python client (ruff, mypy, pytest incl. end-to-end)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: astral-sh/setup-uv@v6
+      - name: install
+        run: uv sync --frozen --python 3.13
+      - name: ruff
+        run: uv run ruff check . ../bench && uv run ruff format --check . ../bench
+      - name: mypy
+        run: uv run mypy
+      - name: pytest (unit and end-to-end; the e2e tests build and start the Go server)
+        run: uv run pytest -v
+
+  docker:
+    name: Server container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: docker build -t confserver:ci -f server/Dockerfile server
+      - name: smoke test
+        run: |
+          docker run -d --name confserver -p 6100:6100/tcp -p 127.0.0.1:6101:6101 confserver:ci
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:6101/metrics > /dev/null && break; sleep 0.5; done
+          curl -fsS http://127.0.0.1:6101/metrics | grep -q '^confserver_rooms'
+          docker rm -f confserver

@@ -334,7 +334,9 @@ def test_command_line_clients(server: Server) -> None:
         "--name=alice", "--create=demo", "--script=sleep 4; chat hello from alice; sleep 3; status; exit"
     )
     time.sleep(1.0)
-    bob = start("--name=bob", "--script=join 1; sleep 1; chat hi from bob; sleep 5; exit")
+    # Bob stays until well after alice's `status` (about 7 s in), so that alice still
+    # reports the peer-to-peer mode however long the interpreters take to start.
+    bob = start("--name=bob", "--script=join 1; sleep 1; chat hi from bob; sleep 8; exit")
     out_a, _ = alice.communicate(timeout=60)
     out_b, _ = bob.communicate(timeout=60)
     assert alice.returncode == 0, out_a

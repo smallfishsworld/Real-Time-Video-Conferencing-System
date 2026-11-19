@@ -43,7 +43,13 @@ PLOTS = RESULTS / "plots"
 # palette (dataviz skill, references/palette.md); colors follow the system, never the
 # rank, and are the same in every chart.
 
-LABELS = {"legacy": "legacy (original)", "v2": "v2", "v2-fec": "v2 with FEC", "v2-nofec": "v2 without FEC"}
+LABELS = {
+    "legacy": "legacy (original)",
+    "v2": "v2",
+    "v2-fec": "v2 with FEC",
+    "v2-nofec": "v2 without FEC",
+    "v2-unbatched": "v2 before syscall batching",
+}
 
 
 @dataclass(frozen=True)
@@ -66,7 +72,13 @@ LIGHT = Theme(
     muted="#898781",
     grid="#e1e0d9",
     baseline="#c3c2b7",
-    series={"legacy": "#2a78d6", "v2": "#eb6834", "v2-fec": "#eb6834", "v2-nofec": "#1baf7a"},
+    series={
+        "legacy": "#2a78d6",
+        "v2": "#eb6834",
+        "v2-fec": "#eb6834",
+        "v2-nofec": "#1baf7a",
+        "v2-unbatched": "#1baf7a",
+    },
 )
 DARK = Theme(
     "dark",
@@ -76,7 +88,13 @@ DARK = Theme(
     muted="#898781",
     grid="#2c2c2a",
     baseline="#383835",
-    series={"legacy": "#3987e5", "v2": "#d95926", "v2-fec": "#d95926", "v2-nofec": "#199e70"},
+    series={
+        "legacy": "#3987e5",
+        "v2": "#d95926",
+        "v2-fec": "#d95926",
+        "v2-nofec": "#199e70",
+        "v2-unbatched": "#199e70",
+    },
 )
 
 # Images are 1280 px wide and shown at about 800 CSS px, so one CSS px is 1.6 image
@@ -495,8 +513,11 @@ def table_b2(b2: dict[str, Any]) -> str:
 # --- B3 ------------------------------------------------------------------------------
 
 
+B3_ORDER = ["legacy", "v2", "v2-unbatched"]
+
+
 def plot_b3(variants: list[tuple[str, dict[str, Any]]], theme: Theme) -> None:
-    keys = [k for k in ("legacy", "v2") if any(k in b3["systems"] for _, b3 in variants)]
+    keys = [k for k in B3_ORDER if any(k in b3["systems"] for _, b3 in variants)]
     metrics = [
         (
             "b3_delivery",
@@ -561,7 +582,7 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
         "|---|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
-        for k in ("legacy", "v2"):
+        for k in B3_ORDER:
             s = b3["systems"].get(k)
             if not s:
                 continue
@@ -583,7 +604,7 @@ def table_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for label, b3 in variants:
-        for k in ("legacy", "v2"):
+        for k in B3_ORDER:
             s = b3["systems"].get(k)
             if not s:
                 continue
@@ -619,6 +640,68 @@ def table_micro(micro: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+# --- README summaries ----------------------------------------------------------------
+
+
+def summary_b1(b1: dict[str, Any]) -> str:
+    runs = b1_runs(b1)
+    keys = [k for k in B1_ORDER if k in runs]
+    by = {(k, r["loss_percent"]): r for k in keys for r in runs[k]}
+    losses = sorted({r["loss_percent"] for rs in runs.values() for r in rs if r["loss_percent"] > 0})
+    lines = [
+        "| Random packet loss | " + " | ".join(LABELS[k] for k in keys) + " |",
+        "|---" * (len(keys) + 1) + "|",
+    ]
+    for loss in losses:
+        cells = [pct(by[(k, loss)]["video"]["delivery_ratio"]) if (k, loss) in by else "n/a" for k in keys]
+        lines.append(f"| {loss:g} % | " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+def summary_b2(b2: dict[str, Any]) -> str:
+    idx = b2_index(b2)
+    cols = sorted(idx, key=lambda k: (k[1], k[0] != "legacy"))
+    rows: list[tuple[str, Callable[[dict[str, Any]], str]]] = [
+        ("Audio latency, median", lambda r: f"{r['audio_latency_ms']['p50']:.0f} ms"),
+        (
+            "Audio played, worst talker",
+            lambda r: pct(min(min(rc["audio_delivery_by_talker"].values()) for rc in r["receivers"])),
+        ),
+        ("Downstream audio per receiver", lambda r: f"{r['downstream_audio_kbit_per_s_mean']:.0f} kbit/s"),
+        (
+            "Video frames processed",
+            lambda r: pct(_mean(rc["video"]["delivery_ratio"] for rc in r["receivers"])),
+        ),
+    ]
+    head = "| | " + " | ".join(f"{n} parties, {LABELS[s]}" for s, n in cols) + " |"
+    lines = [head, "|---" * (len(cols) + 1) + "|"]
+    for name, get in rows:
+        lines.append(f"| {name} | " + " | ".join(get(idx[c]) for c in cols) + " |")
+    return "\n".join(lines)
+
+
+def summary_b3(variants: list[tuple[str, dict[str, Any]]]) -> str:
+    lines = [
+        "| Loopback MTU | System | Participants sustained (largest size swept that passed) "
+        "| Server CPU-seconds per participant-minute (16 participants) |",
+        "|---|---|---|---|",
+    ]
+    for label, b3 in variants:
+        for k in B3_ORDER:
+            s = b3["systems"].get(k)
+            if not s:
+                continue
+            first = s.get("first_failing_participants")
+            cap = s["capacity_participants"]
+            cap_s = f"{cap} (fails at {first})" if first is not None else f"{cap} (every size swept passed)"
+            fixed = s.get("fixed") or {}
+            lines.append(
+                f"| {label} | {LABELS[k]} | {cap_s} | "
+                f"{_num(fixed.get('server_cpu_seconds_per_participant_minute'), 3)} |"
+            )
+    return "\n".join(lines)
+
+
 # --- output --------------------------------------------------------------------------
 
 
@@ -628,10 +711,11 @@ def replace_blocks(path: Path, blocks: dict[str, str]) -> None:
     text = path.read_text()
     for name, body in blocks.items():
         pattern = re.compile(
-            rf"(<!-- BEGIN GENERATED {re.escape(name)} -->\n).*?(\n<!-- END GENERATED {re.escape(name)} -->)",
+            rf"(<!-- BEGIN GENERATED {re.escape(name)} -->\n)(?:.*?\n)?"
+            rf"(<!-- END GENERATED {re.escape(name)} -->)",
             re.DOTALL,
         )
-        text = pattern.sub(lambda m, body=body: m.group(1) + body + m.group(2), text)
+        text = pattern.sub(lambda m, body=body: m.group(1) + body + "\n" + m.group(2), text)
     path.write_text(text)
 
 
@@ -648,6 +732,11 @@ def main() -> None:
         )
         if data is not None
     ]
+    unbatched = load("b3_capacity_unbatched.json")
+    if variants and unbatched is not None and "v2" in unbatched["systems"]:
+        main_b3 = variants[0][1]
+        if main_b3["environment"]["git_commit"] != unbatched["environment"]["git_commit"]:
+            main_b3["systems"]["v2-unbatched"] = unbatched["systems"]["v2"]
     micro = load("micro.json")
     for theme in (LIGHT, DARK):
         if b1:
@@ -658,10 +747,13 @@ def main() -> None:
             plot_b3(variants, theme)
     if b1:
         blocks["b1"] = table_b1(b1)
+        blocks["summary_b1"] = summary_b1(b1)
     if b2:
         blocks["b2"] = table_b2(b2)
+        blocks["summary_b2"] = summary_b2(b2)
     if variants:
         blocks["b3"] = table_b3(variants)
+        blocks["summary_b3"] = summary_b3(variants)
     if micro:
         blocks["micro"] = table_micro(micro)
     (RESULTS / "tables.md").write_text(

@@ -13,7 +13,7 @@ Each item was checked against the code in `legacy/` before it was fixed.
 | # | Problem in `legacy/` | Where | Consequence |
 |---|---|---|---|
 | 1 | Media datagrams are `pickle.dumps((ID, kind, data))` and the receiver calls `pickle.loads()` on whatever arrives on its UDP port | `my_client.py` `keep_share` / `keep_recv` | Anyone who can send one UDP packet to a client can run code on it |
-| 2 | A whole JPEG frame (about 31 kB for the test corpus) is one UDP datagram | `keep_share` | On a 1500-byte MTU it becomes 22 IP fragments; losing any one loses the frame (section 3.1) |
+| 2 | A whole JPEG frame (about 31 kB for the test corpus) is one UDP datagram | `keep_share` | On a 1500-byte MTU it becomes 21 or 22 IP fragments; losing any one loses the frame (section 3.1) |
 | 3 | No sequence numbers, jitter buffer, FEC or retransmission | media threads | No way to detect, conceal or repair loss |
 | 4 | No audio mixing: each received chunk is written to a blocking output stream, one after another | `keep_recv` | With two or more talkers playback falls behind real time without bound, and because the same thread receives video, video stalls too (section 3.2) |
 | 5 | The relay identifies senders by IP address and skips every receiver with the sender's IP | `my_server.py` `handle_data` | Two clients on one host cannot hear or see each other |
@@ -61,8 +61,8 @@ be rebuilt as soon as its own packets are in. Audio uses k = 2 in both direction
 | 5 % | 10.7 % | 23.3 % | 86.1 % |
 | 10 % | 4.3 % | 5.8 % | 56.0 % |
 
-Fragmentation alone helps less than one might expect, because a frame of 27 fragments is
-lost if any of them is lost, exactly as with 22 IP fragments; the measured v2-without-FEC
+Fragmentation alone helps less than one might expect, because a frame of about 26
+fragments is lost if any of them is lost, just as a datagram of 21-22 IP fragments is; the measured v2-without-FEC
 numbers match the independent-loss model (77.2 % against 76.6 % at 1 %). What makes the
 difference is that application-level fragments can be protected and repaired, which IP
 fragments cannot.
@@ -80,12 +80,12 @@ At 1 % loss the independent-loss model predicts 80.5 % delivery for 22-fragment
 datagrams, but the original delivered 69.0 %, and 80.7 % in the first half of the run
 against 57.2 % in the second half. The receiver's kernel counted 1 821 IP reassembly
 failures. The explanation that fits these counters: every incomplete datagram leaves
-its fragments in the reassembly queue until `ipfrag_time` (30 s) expires, so with
-about three incomplete frames per second the queue memory climbs to
-`ipfrag_high_thresh` (4 MiB) within the run, after which the kernel drops new fragments,
+its fragments in the reassembly queue until `ipfrag_time` (30 s) expires; at 1 % loss
+about one frame in five is incomplete, so the queue memory grows during the run until
+it reaches `ipfrag_high_thresh` (4 MiB), after which the kernel drops new fragments,
 including those of datagrams that would have been complete. Audio suffers too: 14.5 % of
-the original's 2-fragment audio datagrams were lost at 1 % packet loss, against 2 % from
-the model. v2 never sends fragmented datagrams, so its reassembly counters stay at zero.
+the original's 2-fragment audio datagrams were lost at 1 % packet loss, where independent
+loss would lose 1 - 0.99^2 = 2 %. v2 never sends fragmented datagrams, so its reassembly counters stay at zero.
 `bench/run_b1.sh` samples the receiver namespace's reassembly memory
 (`/proc/net/sockstat`, `FRAG:` line) so that this explanation can be checked directly
 on a re-run.
@@ -101,7 +101,7 @@ receiver must play 2 x real time of audio, so its UDP socket buffer overflows an
 latency settles at the buffer depth: median mouth-to-speaker latency was 595 ms with
 three parties and 1 003 ms with five. Only 41-59 % (three parties) and 15-37 % (five
 parties) of each talker's chunks were played, and because the same thread receives
-video, the receivers processed 25 % (three parties) and 8 % (five parties) of the video
+video, the receivers processed 24.9 % (three parties) and 8.1 % (five parties) of the video
 frames; with five parties some senders' video never reached some receivers during the
 whole 62 s window.
 
@@ -167,6 +167,25 @@ and is the playout clock. Devices are opened only when a meeting starts, through
 adapters (OpenCV camera and window, PyAudio microphone and speaker, all optional imports)
 with synthetic replacements (`--fake-media`: a moving test pattern and a tone). Server
 address and port are command-line flags.
+
+### 2.9 The price of MTU-safe packets: server CPU (B3)
+
+**Measured.** On loopback with Linux's default 64 KiB MTU, the original relay passed
+every size up to 448 participants (rooms of four, 15 fps) with its process at 0.37 of a
+CPU, while v2 passed up to 160 and failed at 192 with its server at 0.94 of the CPU it
+was pinned to. At 16 participants v2 used 0.595 CPU-seconds per participant-minute
+against 0.147 for the original.
+
+**Why.** v2 sends 18.8 times as many packets for the same media (609 296 against
+32 340 in the same fixed-load run): about 26 fragments and 7 parity packets per frame
+and 75 audio packets per second, against one datagram per frame or audio chunk, and on
+a 64 KiB-MTU loopback the original's 31 kB datagram is never fragmented. The server
+pays one `recvfrom` per incoming packet and one `sendto` per copy.
+
+**Trade-off.** MTU-safe fragments are what make FEC (and any future retransmission)
+possible and keep the original's IP-fragmentation failure modes (section 2.3) away, so
+they stay. The per-packet system-call cost is what profiling-guided batching attacks
+next (`recvmmsg`/`sendmmsg`).
 
 ## 3. Decisions the specification left open
 
