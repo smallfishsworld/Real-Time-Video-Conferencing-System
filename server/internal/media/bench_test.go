@@ -129,8 +129,12 @@ func BenchmarkMixMinus(b *testing.B) {
 // sendmmsg, as Serve does when a read returns N datagrams; "gso/batch=N" also merges
 // each receiver's copies into UDP GSO messages; "+nack-buffer" also copies every
 // packet into the sender's retransmission buffer. The receiving sockets are not read,
-// so the kernel drops the copies once their buffers fill; the send side's cost is
-// unaffected.
+// so the kernel drops the copies once their buffers fill.
+//
+// Loopback only: the measured time includes the receivers' IP receive path (softirq
+// on the sending CPU), and with the "gso" variants a whole GSO message takes that path
+// once instead of once per datagram (lo splits it only at the receiving socket), so
+// their speed-up includes receive work a real NIC would not give the server.
 func BenchmarkForwardVideo(b *testing.B) {
 	for _, bc := range []struct {
 		name         string
