@@ -15,6 +15,8 @@ class VideoFrame:
     data: bytes
     first_arrival: float
     completed: float
+    first_seq: int = -1  # RTP sequence numbers of the first and the last fragment
+    last_seq: int = -1
 
 
 @dataclass(slots=True)
@@ -33,6 +35,8 @@ class _Pending:
     first_arrival: float
     parts: list[bytes | None]
     have: int = 0
+    first_seq: int = -1
+    last_seq: int = -1
 
 
 @dataclass
@@ -78,6 +82,10 @@ class FrameAssembler:
             return None
         p.parts[vh.index] = bytes(frag)
         p.have += 1
+        if vh.index == 0:
+            p.first_seq = header.sequence
+        if vh.index == p.count - 1:
+            p.last_seq = header.sequence
         if p.have < p.count:
             return None
         del self._pending[fid]
@@ -85,7 +93,7 @@ class FrameAssembler:
         self._last_emitted = fid
         self.stats.completed += 1
         data = b"".join(part for part in p.parts if part is not None)
-        return VideoFrame(header.ssrc, fid, p.timestamp, data, p.first_arrival, now)
+        return VideoFrame(header.ssrc, fid, p.timestamp, data, p.first_arrival, now, p.first_seq, p.last_seq)
 
     def expire(self, now: float) -> int:
         """Abandon frames whose deadline passed; returns how many were dropped."""

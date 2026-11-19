@@ -40,6 +40,7 @@ class NackTracker:
     max_gap: int = 128
     stats: NackStats = field(default_factory=NackStats)
     _top: int | None = None
+    _settled: int | None = None  # nothing up to this sequence number is needed
     _missing: dict[int, _Missing] = field(default_factory=dict)
 
     def on_packet(self, seq: int, now: float) -> None:
@@ -51,8 +52,12 @@ class NackTracker:
         if d > 0:
             if d - 1 <= self.max_gap:
                 for k in range(1, d):
-                    self._missing.setdefault((self._top + k) & 0xFFFF, _Missing(now))
+                    s = (self._top + k) & 0xFFFF
+                    if self._settled is None or seq_diff(s, self._settled) > 0:
+                        self._missing.setdefault(s, _Missing(now))
             self._top = seq
+            if self._settled is not None and seq_diff(seq, self._settled) > 4 * self.max_gap:
+                self._settled = None  # long past; and too old to compare safely
             return
         m = self._missing.pop(seq, None)
         if m is not None and m.tries > 0:
@@ -78,3 +83,22 @@ class NackTracker:
 
     def missing(self) -> int:
         return len(self._missing)
+
+    def forget(self, first: int, count: int) -> None:
+        """Never ask for the count sequence numbers from first on, now or later: the
+        receiver knows they are not needed. These are the parity packets of a complete
+        frame, including the one after its last fragment, whose loss only shows when
+        the next frame starts."""
+        if count <= 0:
+            return
+        end = (first + count - 1) & 0xFFFF
+        if self._settled is None or seq_diff(end, self._settled) > 0:
+            self._settled = end
+        for seq in [s for s in self._missing if 0 <= seq_diff(s, first) < count]:
+            del self._missing[seq]
+
+    def reset(self) -> None:
+        """Forget everything (the stream now arrives on a path without retransmission)."""
+        self._missing.clear()
+        self._top = None
+        self._settled = None

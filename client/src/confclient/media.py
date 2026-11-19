@@ -37,6 +37,7 @@ from .protocol import (
     parse_register_ack,
     parse_rtp,
     peek_ssrc,
+    seq_diff,
 )
 from .ratelimit import TokenBucket
 
@@ -99,6 +100,7 @@ class _VideoIn:
     fec: FecDecoder = field(default_factory=FecDecoder)
     assembler: FrameAssembler = field(default_factory=FrameAssembler)
     nack: NackTracker | None = None
+    parity_seen: bool = False  # the sender protects its frames with parity packets
 
 
 VideoCallback = Callable[[int, VideoFrame], None]
@@ -243,14 +245,16 @@ class MediaSession(asyncio.DatagramProtocol):
             for ssrc, v in self._video_in.items():
                 if v.nack is None:
                     continue
-                lost = v.nack.due(now)
-                # Only the server keeps a retransmission buffer, so P2P sends none.
-                if lost and self._peer is None:
-                    for pkt in build_nacks(own, ssrc, lost):
-                        if self._send_feedback(pkt):
-                            self.stats.nacks_sent += 1
-                        else:
-                            self.stats.nacks_limited += 1
+                if self._peer is not None:
+                    # Only the server keeps a retransmission buffer, so P2P asks for
+                    # nothing, and losses seen meanwhile are not counted as requests.
+                    v.nack.reset()
+                    continue
+                for pkt in build_nacks(own, ssrc, v.nack.due(now)):
+                    if self._send_feedback(pkt):
+                        self.stats.nacks_sent += 1
+                    else:
+                        self.stats.nacks_limited += 1
 
     def nack_stats(self) -> NackStats:
         """NACK counters summed over the current senders."""
@@ -462,6 +466,7 @@ class MediaSession(asyncio.DatagramProtocol):
     def _on_video(self, v: _VideoIn, pt: int, seq: int, data: bytes, now: float) -> None:
         if pt == PT_FEC:
             self._count("video_fec", len(data))
+            v.parity_seen = True
             repaired = v.fec.on_parity(data)
             packets = []
         elif pt == PT_VIDEO:
@@ -479,6 +484,12 @@ class MediaSession(asyncio.DatagramProtocol):
             header, payload = parse_rtp(pkt)
             frame = v.assembler.push(header, payload, now)
             if frame is not None:
+                if v.nack is not None and frame.first_seq >= 0:
+                    # Every fragment is here, so whatever is still missing between the
+                    # first fragment and the parity packet after the last is parity:
+                    # not worth a retransmission.
+                    span = seq_diff(frame.last_seq, frame.first_seq) + 1 + v.parity_seen
+                    v.nack.forget(frame.first_seq, span)
                 counts = self.stats.frames_by_participant
                 counts[v.participant] = counts.get(v.participant, 0) + 1
                 self.on_video(v.participant, frame)

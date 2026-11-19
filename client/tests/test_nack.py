@@ -46,3 +46,39 @@ def test_wraps_and_skips_huge_jumps() -> None:
     assert t.due(0.001) == []
     t.on_packet(1002, 0.0)
     assert t.due(0.002) == [1001]
+
+
+def test_forgotten_parity_is_never_requested_even_when_its_loss_shows_later() -> None:
+    """A frame of fragments 10, 11, 13 with parity at 12 and 14 completes when 13
+    arrives. Parity 12 is already missing then; 14's loss only shows when the next frame
+    starts at 15. Neither is worth a retransmission (review finding client-12)."""
+    t = NackTracker(delay=0.0)
+    for seq in (10, 11, 13):
+        t.on_packet(seq, 0.0)
+    t.forget(10, 13 - 10 + 1 + 1)  # the fragments' span plus the trailing parity
+    assert t.missing() == 0
+    t.on_packet(15, 0.0)
+    t.on_packet(17, 0.0)  # 16 is a real loss in the next frame
+    assert t.due(0.0) == [16]
+    assert t.stats.requested == 1
+
+
+def test_forget_across_the_wrap() -> None:
+    t = NackTracker(delay=0.0)
+    t.on_packet(65533, 0.0)
+    t.on_packet(1, 0.0)  # 65534, 65535 and 0 missing
+    t.forget(65535, 2)
+    assert t.due(0.0) == [65534]
+
+
+def test_reset_forgets_gaps_and_the_stream_position() -> None:
+    t = NackTracker(delay=0.0)
+    t.on_packet(1, 0.0)
+    t.on_packet(5, 0.0)
+    t.forget(1, 3)
+    t.reset()
+    assert t.missing() == 0
+    t.on_packet(100, 0.0)  # a new starting point, not a jump from 5
+    t.on_packet(102, 0.0)
+    assert t.due(0.0) == [101]
+    assert t.stats.requested == 1
