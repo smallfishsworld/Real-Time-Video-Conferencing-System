@@ -30,7 +30,7 @@ jobs:
         run: go test -race ./...
       - name: short fuzzing of every decoder
         run: |
-          for t in FuzzParseRTP FuzzParseVideo FuzzParseFEC FuzzFECRecovery FuzzParseRegister FuzzParseRegisterAck FuzzControlFrame; do
+          for t in FuzzParseRTP FuzzParseVideo FuzzParseFEC FuzzFECRecovery FuzzParseRegister FuzzParseRegisterAck FuzzControlFrame FuzzParseNACK; do
             go test -run '^$' -fuzz "^${t}\$" -fuzztime 10s ./internal/protocol
           done
       - name: benchmarks compile and run once

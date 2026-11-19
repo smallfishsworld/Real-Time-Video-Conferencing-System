@@ -2,7 +2,7 @@
 # Go code lives in server/, Python code in client/ (managed with uv).
 
 GO_FUZZ_TARGETS := FuzzParseRTP FuzzParseVideo FuzzParseFEC FuzzFECRecovery FuzzParseRegister \
-                   FuzzParseRegisterAck FuzzControlFrame
+                   FuzzParseRegisterAck FuzzControlFrame FuzzParseNACK
 FUZZTIME ?= 30s
 STATICCHECK ?= staticcheck
 
