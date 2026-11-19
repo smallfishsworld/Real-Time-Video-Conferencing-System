@@ -3,7 +3,7 @@
   "label": "after",
   "description": "Deterministic simulation of the server mixer's and the client's audio jitter buffers (bench/jitter_scenarios.json; server/internal/media/jitter_sim_test.go and bench/jitter_sim.py). Latency is pop time minus send time of each played frame; a gap is a run of ticks in which the sender was active but no received frame was played.",
   "command": "LABEL=after bench/run_jitter.sh",
-  "rundir": "bench/tmp/jitter/after-20261119T093118Z",
+  "rundir": "bench/tmp/jitter/after-20261119T114625Z",
   "environment": {
     "kernel": "6.18.44-fc-v653",
     "kernel_config": {
@@ -12,24 +12,25 @@
       "CONFIG_TICK_CPU_ACCOUNTING": "y",
       "CONFIG_HZ": "250"
     },
-    "loadavg": "1.73 1.66 1.84 5/211 6747",
+    "loadavg": "3.06 2.00 1.77 7/215 22323",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "cpus": 4,
     "python": "3.13.18",
     "go": "go version go1.24.7 linux/amd64",
-    "git_commit": "8805d37",
+    "git_commit": "97479e4",
     "git_dirty": false,
     "git_dirty_files": [],
     "build": {
-      "git_commit": "8805d37",
-      "utc": "2026-11-19T09:31:18Z",
+      "git_commit": "97479e4",
+      "utc": "2026-11-19T11:46:27Z",
+      "go": "go version go1.24.7 linux/amd64",
       "git_dirty_files": [],
       "git_diff_sha256": null,
       "binaries": {
-        "media.test": "7351dabc67a439c16abd7ebfda29a4ceb358e4dbdef0aa2921eb89cac13e816c"
+        "media.test": "575d0d0fc6ee39dfb18844337b4a663632465dd1853f4bfd7991486050326432"
       }
     },
-    "utc": "2026-11-19T09:31:19Z"
+    "utc": "2026-11-19T11:46:29Z"
   },
   "scenarios": {
     "description": "Audio streams for the jitter-buffer simulations (bench/jitter_sim.py for the client, server/internal/media/jitter_sim_test.go for the server mixer). Frame k is sent at k * period_us of the receiver's clock and carries RTP timestamp k * 320. It arrives delay_us later, plus step_us for frames step_from..step_to-1, plus a uniform random jitter in [0, jitter_us) drawn from SplitMix64(seed + k). The first burst_frames frames all arrive when frame burst_frames-1 does. The receiver pops one frame every 20 ms, 7 ms after the send grid.",
