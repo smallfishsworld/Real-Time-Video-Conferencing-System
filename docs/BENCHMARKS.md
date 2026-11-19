@@ -539,6 +539,75 @@ same size, which have three repeats.
   participants show no such gap (core 0.46-0.50, process 0.50-0.54). The process's own
   CPU time is the measure used here.
 
+## Jitter buffers under clock drift, bursts and delay steps
+
+**What and why.** Review findings server-2 and client-7: neither audio jitter buffer
+re-aligned to a sender whose clock runs slower or faster than the receiver's, or after
+a change in network delay, so the buffer drained into long silences or kept latency it
+did not need. `bench/run_jitter.sh` replays the streams of
+`bench/jitter_scenarios.json` through the server mixer's per-sender buffer (its default
+delay, 2 frames) and the client's playout buffer (its default, 3 frames = 60 ms), in
+simulated time, so the results are exact and repeatable: sender clocks 100 or 1000 ppm
+slow or fast, uniform jitter up to 10 or 40 ms, 50 frames arriving at once at start-up,
+delay steps of +60 and +100 ms and -100 ms, and a 300 ms spike of +100 ms. "Before" is
+commit d4eacfd, "after" 97479e4 (identical to the first "after" run at 8805d37, kept in
+`bench/results/v1/jitter_after.json`).
+
+<!-- BEGIN GENERATED jitter -->
+**Server mixer**, before -> after:
+
+| Scenario | longest silence, ms | gaps > 60 ms | late frames | median latency in the last 10 s, ms |
+|---|---|---|---|---|
+| `steady` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 87 -> 87 |
+| `jitter_0_10ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 87 -> 87 |
+| `jitter_0_40ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 107 -> 107 |
+| `slow_sender_1000ppm` | 540 -> 20 | 5 -> 0 | 120 -> 0 | 34.7 -> 74.3 |
+| `fast_sender_1000ppm` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 161.8 -> 81.9 |
+| `slow_sender_1000ppm_jitter_0_10ms` | 540 -> 20 | 79 -> 0 | 1248 -> 0 | 87.1 -> 74.3 |
+| `fast_sender_1000ppm_jitter_0_10ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 161.8 -> 84.7 |
+| `slow_sender_100ppm` | 540 -> 20 | 1 -> 0 | 24 -> 0 | 57.5 -> 77.5 |
+| `startup_burst_50` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 167 -> 87 |
+| `delay_step_up_60ms` | 540 -> 60 | 1 -> 0 | 24 -> 2 | 147 -> 147 |
+| `delay_step_up_100ms` | 540 -> 100 | 1 -> 1 | 22 -> 2 | 187 -> 187 |
+| `delay_step_down_100ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 167 -> 87 |
+| `delay_spike_100ms_for_300ms` | 300 -> 100 | 1 -> 1 | 15 -> 2 | 87 -> 87 |
+
+**Client**, before -> after:
+
+| Scenario | longest silence, ms | gaps > 60 ms | late frames | median latency in the last 10 s, ms |
+|---|---|---|---|---|
+| `steady` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 107 -> 107 |
+| `jitter_0_10ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 107 -> 107 |
+| `jitter_0_40ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 127 -> 127 |
+| `slow_sender_1000ppm` | 560 -> 20 | 3 -> 0 | 72 -> 0 | 52.1 -> 94.4 |
+| `fast_sender_1000ppm` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 201.8 -> 101.9 |
+| `slow_sender_1000ppm_jitter_0_10ms` | 560 -> 20 | 55 -> 0 | 731 -> 0 | 52.1 -> 94.4 |
+| `fast_sender_1000ppm_jitter_0_10ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 201.8 -> 104.7 |
+| `slow_sender_100ppm` | 560 -> 20 | 1 -> 0 | 24 -> 0 | 97.5 -> 97.5 |
+| `startup_burst_50` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 207 -> 107 |
+| `delay_step_up_60ms` | 0 -> 20 | 0 -> 0 | 0 -> 0 | 107 -> 167 |
+| `delay_step_up_100ms` | 560 -> 100 | 1 -> 1 | 23 -> 2 | 207 -> 207 |
+| `delay_step_down_100ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 207 -> 107 |
+| `delay_spike_100ms_for_300ms` | 300 -> 100 | 1 -> 1 | 15 -> 2 | 107 -> 107 |
+<!-- END GENERATED jitter -->
+
+- Clock drift: with a sender 1000 ppm slow, the server's buffer used to drain, then
+  go silent for up to 540 ms at a time (five gaps over 60 ms, 120 late frames; the
+  client's buffer 560 ms); now the longest silence is one 20 ms frame and nothing is
+  late. With a sender 1000 ppm fast, latency used to grow (to a median of 161.8 ms at
+  the server and 201.8 ms at the client in the last 10 s); now it stays at 81.9 and
+  101.9 ms.
+- Bursts and delay drops: after 50 frames at once at start-up, or after the delay fell
+  by 100 ms, the old buffers kept the extra latency (167 and 207 ms); the new ones drain
+  back to their target (87 and 107 ms).
+- Delay increases: after a +100 ms step the old buffers were silent for 540-560 ms; the
+  new ones for 100 ms, then re-anchor. The new client buffer handles a +60 ms step
+  differently from the old one: the old one absorbed it with no gap and no change in
+  latency, by playing with less cushion; the new one inserts one 20 ms gap and moves its
+  latency up by 60 ms (107 -> 167 ms) to restore its cushion.
+- Steady streams and jitter up to 40 ms: unchanged (no gaps; 87-107 ms at the server,
+  107-127 ms at the client).
+
 ## Go microbenchmarks
 
 `bench/run_micro.sh` runs `go test -bench . -benchmem -count 5 -cpu 1` for the
