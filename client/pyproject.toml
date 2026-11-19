@@ -24,6 +24,10 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
 ]
+# Only for bench/render.py (plots); not needed to run or test the client.
+bench = [
+    "matplotlib>=3.9",
+]
 
 [build-system]
 requires = ["hatchling>=1.25"]
