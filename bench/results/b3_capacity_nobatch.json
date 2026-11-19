@@ -1,0 +1,191 @@
+{
+  "benchmark": "B3 relay capacity",
+  "command": "sudo WIRES=\"v2\" SIZES=\"96 128 160 192 224\" SERVER_ARGS=\"-udp-batch 1\" TAG=nobatch bench/run_b3.sh",
+  "criteria": {
+    "delivery_ratio_min": 0.99,
+    "p99_latency_ms_max": 100.0
+  },
+  "setup": {
+    "loopback_mtu": 65536,
+    "room_size": 4,
+    "fps": 15,
+    "server_cpu": "1",
+    "loadgen_cpus": "2,3",
+    "v2_server_args": "-udp-batch 1",
+    "note": "server pinned with taskset to one CPU; loadgen pinned to two others; v2 frame delivery counts only frames whose every fragment arrived (FEC repair not used by the load generator)"
+  },
+  "systems": {
+    "v2": {
+      "sweep": [
+        {
+          "participants": 96,
+          "offered_upstream_mbps": 382.731648,
+          "frames_expected": 86400,
+          "frames_received": 86400,
+          "delivery_ratio": 1,
+          "latency_ms": {
+            "max": 8.531461715698242,
+            "mean": 0.6008737063269924,
+            "p50": 0.5313324928283691,
+            "p90": 0.8678265869617463,
+            "p99": 1.8487847495079022
+          },
+          "audio_delivery_ratio": 0.9999583333333333,
+          "server_cpu_seconds": 11.74,
+          "server_cpu_utilisation": 0.587,
+          "server_cpu_seconds_per_participant_minute": 0.366875,
+          "loadgen_cpu_utilisation": 0.9315,
+          "packets_sent": 1439602,
+          "send_errors": 0,
+          "incomplete_frames": 0,
+          "control_connections_lost": 0,
+          "window_seconds": 20,
+          "pass": true
+        },
+        {
+          "participants": 128,
+          "offered_upstream_mbps": 510.308864,
+          "frames_expected": 115200,
+          "frames_received": 115200,
+          "delivery_ratio": 1,
+          "latency_ms": {
+            "max": 16.074066162109375,
+            "mean": 0.8650996166780694,
+            "p50": 0.6316694915294647,
+            "p90": 1.4850237488746645,
+            "p99": 5.5215216255187665
+          },
+          "audio_delivery_ratio": 0.999875,
+          "server_cpu_seconds": 13.74,
+          "server_cpu_utilisation": 0.687,
+          "server_cpu_seconds_per_participant_minute": 0.32203125000000005,
+          "loadgen_cpu_utilisation": 1.1025,
+          "packets_sent": 1919492,
+          "send_errors": 0,
+          "incomplete_frames": 0,
+          "control_connections_lost": 0,
+          "window_seconds": 20,
+          "pass": true
+        },
+        {
+          "participants": 160,
+          "offered_upstream_mbps": 637.88608,
+          "frames_expected": 144000,
+          "frames_received": 143901,
+          "delivery_ratio": 0.9993125,
+          "latency_ms": {
+            "max": 39.042579650878906,
+            "mean": 2.7774097791859695,
+            "p50": 1.0997109413146973,
+            "p90": 6.308178901672363,
+            "p99": 23.897262573242188
+          },
+          "audio_delivery_ratio": 0.998625,
+          "server_cpu_seconds": 16.080000000000002,
+          "server_cpu_utilisation": 0.804,
+          "server_cpu_seconds_per_participant_minute": 0.30150000000000005,
+          "loadgen_cpu_utilisation": 1.2280000000000002,
+          "packets_sent": 2398348,
+          "send_errors": 0,
+          "incomplete_frames": 36,
+          "control_connections_lost": 0,
+          "window_seconds": 20,
+          "pass": true
+        },
+        {
+          "participants": 192,
+          "offered_upstream_mbps": 765.463296,
+          "frames_expected": 172800,
+          "frames_received": 172035,
+          "delivery_ratio": 0.9955729166666667,
+          "latency_ms": {
+            "max": 38.498226165771484,
+            "mean": 3.8354870860329666,
+            "p50": 0.9237729907035828,
+            "p90": 14.279961776733407,
+            "p99": 30.13927722930909
+          },
+          "audio_delivery_ratio": 0.969265625,
+          "server_cpu_seconds": 18.12,
+          "server_cpu_utilisation": 0.906,
+          "server_cpu_seconds_per_participant_minute": 0.283125,
+          "loadgen_cpu_utilisation": 1.3455,
+          "packets_sent": 2879452,
+          "send_errors": 0,
+          "incomplete_frames": 198,
+          "control_connections_lost": 0,
+          "window_seconds": 20,
+          "pass": true
+        },
+        {
+          "participants": 224,
+          "offered_upstream_mbps": 893.040512,
+          "frames_expected": 201600,
+          "frames_received": 174213,
+          "delivery_ratio": 0.8641517857142857,
+          "latency_ms": {
+            "max": 50.66617202758789,
+            "mean": 23.748163472024547,
+            "p50": 23.889680862426758,
+            "p90": 28.34108467102051,
+            "p99": 36.21126281738282
+          },
+          "audio_delivery_ratio": 0.7753080357142857,
+          "server_cpu_seconds": 19.89,
+          "server_cpu_utilisation": 0.9945,
+          "server_cpu_seconds_per_participant_minute": 0.2663839285714286,
+          "loadgen_cpu_utilisation": 1.4449999999999998,
+          "packets_sent": 3359304,
+          "send_errors": 0,
+          "incomplete_frames": 5595,
+          "control_connections_lost": 0,
+          "window_seconds": 20,
+          "pass": false
+        }
+      ],
+      "fixed": {
+        "participants": 16,
+        "offered_upstream_mbps": 63.788608,
+        "frames_expected": 43200,
+        "frames_received": 43200,
+        "delivery_ratio": 1,
+        "latency_ms": {
+          "max": 6.208378791809082,
+          "mean": 0.4312250023035126,
+          "p50": 0.40366050601005554,
+          "p90": 0.535410988330841,
+          "p99": 0.8668672490119945
+        },
+        "audio_delivery_ratio": 1,
+        "server_cpu_seconds": 8.84,
+        "server_cpu_utilisation": 0.14733333333333334,
+        "server_cpu_seconds_per_participant_minute": 0.5525,
+        "loadgen_cpu_utilisation": 0.26983333333333337,
+        "packets_sent": 609296,
+        "send_errors": 0,
+        "incomplete_frames": 0,
+        "control_connections_lost": 0,
+        "window_seconds": 60,
+        "pass": true
+      },
+      "capacity_participants": 192,
+      "first_failing_participants": 224
+    }
+  },
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "25e0e63",
+    "git_dirty": false,
+    "git_dirty_files": [],
+    "build": {
+      "git_commit": "25e0e63",
+      "utc": "2026-11-19T04:55:16Z",
+      "git_dirty_files": []
+    },
+    "utc": "2026-11-19T04:58:47Z"
+  }
+}

@@ -1,8 +1,9 @@
 # Real-Time Video Conferencing System
 
 A multi-party video conferencing system: a Go server that handles meetings over TCP and
-relays media over one UDP port (SFU-style video forwarding and server-side audio
-mixing), and a Python asyncio client with a split-screen window, chat and synthetic
+relays media over one UDP port (SFU-style video forwarding with FEC and NACK
+retransmission, server-side audio mixing, batched UDP I/O with GSO), and a Python
+asyncio client with a split-screen window, chat and synthetic
 media for headless use. It implements the CS305 (Computer Networks, SUSTech) course
 project specification: create, join, list, leave and cancel meetings; text chat with
 the sender's name and a timestamp; multi-party video and server-mixed audio; several
@@ -18,35 +19,41 @@ has the methodology and full results.
 
 ## Results at a glance
 
-All numbers were measured in one 4-vCPU Linux container (single runs; methodology in
+All numbers were measured in one 4-vCPU Linux container (single runs unless noted; methodology in
 [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)).
 
 **Loss resilience (B1).** Video frames delivered complete within 200 ms over a link
 with random packet loss (1500-byte MTU, same 480x480 JPEG frames for all systems):
 
 <!-- BEGIN GENERATED summary_b1 -->
-| Random packet loss | legacy (original) | v2 with FEC | v2 without FEC |
-|---|---|---|---|
-| 1 % | 69.0 % | 99.0 % | 77.2 % |
-| 2 % | 32.5 % | 98.3 % | 58.3 % |
-| 5 % | 10.7 % | 86.1 % | 23.3 % |
-| 10 % | 4.3 % | 56.0 % | 5.8 % |
+| Random packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|---|---|
+| 1 % | 65.5 % | 78.0 % | 99.5 % | 99.1 % | 100.0 % |
+| 2 % | 36.0 % | 58.8 % | 97.3 % | 98.5 % | 100.0 % |
+| 5 % | 11.9 % | 29.7 % | 88.7 % | 98.5 % | 100.0 % |
+| 10 % | 3.6 % | 5.5 % | 57.8 % | 98.6 % | 99.7 % |
 <!-- END GENERATED summary_b1 -->
 
 The original sends each 31 kB frame as one UDP datagram, which the network splits into
 21 or 22 IP fragments; losing any fragment loses the frame, and the kernel's reassembly queue
 fills up under sustained loss, so it does worse than independent loss would predict.
-v2 sends fragments of at most 1200 bytes and one XOR parity packet per four fragments.
+v2 sends fragments of at most 1200 bytes and one XOR parity packet per four fragments,
+and a receiver that still misses a packet asks for it again with an RTCP generic NACK;
+the server resends it from a buffer of each sender's last 256 video packets. FEC and
+NACK together, the client's default, cost repaired frames a few milliseconds (p99 frame
+latency 17.0 ms at 10 % loss against 2.6 ms with FEC alone, on a sub-millisecond round
+trip). NACK alone misses losses at the end of a frame, which show only when the next
+frame arrives ([`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md#211-nack-retransmission-for-video-b1)).
 
 **Multi-talker audio (B2).** Everybody talks and sends video:
 
 <!-- BEGIN GENERATED summary_b2 -->
 | | 3 parties, legacy (original) | 3 parties, v2 | 5 parties, legacy (original) | 5 parties, v2 |
 |---|---|---|---|---|
-| Audio latency, median | 595 ms | 120 ms | 1003 ms | 127 ms |
-| Audio played, worst talker | 41.4 % | 100.0 % | 14.8 % | 100.0 % |
+| Audio latency, median | 593 ms | 119 ms | 999 ms | 131 ms |
+| Audio played, worst talker | 41.4 % | 100.0 % | 15.2 % | 100.0 % |
 | Downstream audio per receiver | 525 kbit/s | 415 kbit/s | 1050 kbit/s | 420 kbit/s |
-| Video frames processed | 24.9 % | 100.0 % | 8.1 % | 100.0 % |
+| Video frames processed | 25.0 % | 100.0 % | 8.1 % | 100.0 % |
 <!-- END GENERATED summary_b2 -->
 
 The original plays every talker's chunks one after another on a blocking audio stream,
@@ -62,16 +69,27 @@ one CPU, on loopback:
 <!-- BEGIN GENERATED summary_b3 -->
 | Loopback MTU | System | Participants sustained (largest size swept that passed) | Server CPU-seconds per participant-minute (16 participants) |
 |---|---|---|---|
-| MTU 65536 (Linux default) | legacy (original) | 448 (every size swept passed) | 0.147 |
-| MTU 65536 (Linux default) | v2 | 160 (fails at 192) | 0.595 |
+| MTU 65536 (Linux default) | legacy (original) | 448 (every size swept passed) | 0.138 |
+| MTU 65536 (Linux default) | v2 | 256 (fails at 320) | 0.464 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 192 (fails at 224) | 0.552 |
+| MTU 1500 (Ethernet) | legacy (original) | 448 (every size swept passed) | 0.190 |
+| MTU 1500 (Ethernet) | v2 | 256 (fails at 320) | 0.437 |
 <!-- END GENERATED summary_b3 -->
 
-This comparison does not favour v2. On loopback with Linux's default 64 KiB MTU the
-original's 31 kB datagrams are never fragmented, so it handles one packet per frame,
-while v2 handles about 33 (26 MTU-sized fragments and 7 parity packets) plus 75 audio
-packets per second per participant, and pays for each one in system calls. v2 trades
-server CPU for loss resilience and MTU safety; [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b3-relay-capacity)
-discusses this, and the profile-guided batching work that follows from it.
+This comparison does not favour v2: for the same media it sends about 19 times as many
+packets as the original (26 MTU-sized fragments and 7 parity packets per frame and 75
+audio packets per second, against one datagram per frame or audio chunk, because
+loopback's 64 KiB MTU never fragments the original's 31 kB datagrams), and the kernel's
+per-packet work is what costs CPU. A CPU profile at 128 participants showed that
+cutting system calls alone (`recvmmsg`/`sendmmsg`, 20-90 datagrams per call) saved 4 %
+of the server's CPU, while sending each sender's fragments for one receiver as UDP GSO
+messages cut the packets going through the IP stack 10-fold and saved 29 %. On the same
+binary that raised capacity from 192 to 256 participants (the "one system call per
+datagram" row). With a 1500-byte loopback MTU the original's datagrams are fragmented
+as well and its CPU per participant-minute rises from 0.138 to 0.190 s, still below
+v2's; [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b3-relay-capacity) explains where the
+kernel charges fragmentation and reassembly on loopback, and the profiles. v2 trades
+server CPU for loss resilience and MTU safety.
 
 ## Architecture
 
@@ -85,7 +103,7 @@ flowchart LR
     subgraph server["confserver (Go)"]
         SIG["signaling<br/>TCP :6100<br/>reader + writer goroutine<br/>per connection"]
         REG["room registry<br/>life cycle, P2P/relay decision"]
-        RT["media router<br/>UDP :6100<br/>SSRC + address check,<br/>rate limit, SFU forwarding"]
+        RT["media router<br/>UDP :6100<br/>SSRC + address check,<br/>rate limit, SFU forwarding,<br/>NACK resends, recvmmsg/sendmmsg + GSO"]
         MIX["mixer per room<br/>20 ms tick, mix-minus"]
         MET["/metrics, pprof<br/>127.0.0.1:6101"]
     end
@@ -93,7 +111,7 @@ flowchart LR
     SIG --> REG
     REG -->|"immutable view,<br/>atomic swap"| RT
     RT -->|"audio"| MIX
-    A & B & C <-->|"RTP: video fragments, audio,<br/>XOR parity; REGISTER"| RT
+    A & B & C <-->|"RTP: video fragments, audio,<br/>XOR parity; REGISTER; RTCP NACK"| RT
     MIX -->|"one mixed stream<br/>per receiver"| RT
 ```
 
@@ -109,7 +127,10 @@ flowchart LR
   decode them with "Decode As... RTP").
 - **Video** is JPEG, one independent image per frame, split into fragments of at most
   1200 bytes (no IP fragmentation on a 1500-byte path), with one XOR parity packet per
-  four fragments. The server forwards fragments unchanged to the other members (SFU).
+  four fragments. The server forwards fragments unchanged to the other members (SFU)
+  and keeps each sender's last 256 video packets; in relay mode a receiver that is still
+  missing a packet at least 5 ms after the gap sends an RTCP generic NACK (RFC 4585) and gets that
+  packet again, to itself only.
 - **Audio** is 16 kHz mono 16-bit PCM in 20 ms frames. The server keeps a small jitter
   buffer per sender, and every 20 ms sums all active senders once and subtracts each
   receiver's own frame (mix-minus), so every receiver gets one stream whatever the
@@ -121,7 +142,11 @@ flowchart LR
   relaying for 1 s, so switching loses nothing in flight.
 - **Hot path.** The routing table is rebuilt on control-plane changes and swapped
   atomically; forwarding takes no lock except the sender's rate limiter and allocates
-  nothing per packet (`bench/results/micro.json`).
+  nothing per packet (`bench/results/micro.json`). On 64-bit Linux the media socket
+  reads up to 64 datagrams per `recvmmsg` and sends all copies of a read with one
+  `sendmmsg`, packing each sender's consecutive fragments for one receiver into a UDP GSO
+  message, so the kernel's IP stack runs once per message instead of once per datagram
+  (`server/internal/udpio`; one system call per datagram elsewhere).
 
 ### Joining a meeting
 
@@ -184,7 +209,10 @@ go build -o bin/confserver ./cmd/confserver      # Windows: go build -o bin\conf
 `./bin/confserver -h` lists the limits (room size, rooms, clients, per-sender rate,
 relay grace period), `-p2p=false` forces relay mode, `-pprof` adds `/debug/pprof/` to
 the metrics address (127.0.0.1:6101 by default), and `-log-format json` switches to
-structured JSON logs.
+structured JSON logs. `-udp-batch 1` turns system-call batching off, `-udp-gso=false`
+keeps batching but sends every datagram as its own message, and `-nack-buffer 0`
+disables retransmission. `/metrics` counts packets by kind and drop reason,
+retransmissions (`kind="video_rtx"`) and the read and send system calls.
 
 With Docker (a static binary on an empty base image, running as a non-root user):
 
@@ -236,6 +264,7 @@ so that it cannot flood a shared network by accident:
 |---|---|---|
 | Server sockets | bind to 127.0.0.1 only | `-control-addr`, `-media-addr` |
 | Server, per sender | 8 Mbit/s media ingress (token bucket, 256 KiB burst); excess is dropped and counted | `-max-ingress-kbps`, `-ingress-burst-kib` |
+| Server, per receiver | retransmissions on NACK capped by a second token bucket of the same size; NACKs count against the requester's ingress limit, must come from its registered address and may only name other members' streams in its room | `-max-ingress-kbps`, `-ingress-burst-kib`, `-nack-buffer` |
 | Server | 16 members per room, 256 rooms, 1024 clients; 50 control requests/s per connection; 2000 REGISTERs/s in total | `-max-room-size`, `-max-rooms`, `-max-clients` |
 | Metrics and pprof | 127.0.0.1:6101; pprof off | `-metrics-addr`, `-pprof` |
 | Client | 6000 kbit/s total upload (token bucket); whole video frames are skipped when over budget | `--max-send-kbps` |
@@ -275,6 +304,8 @@ for network namespaces and nftables, and every timing-sensitive step runs under
 sudo bench/run_b1.sh                 # B1 loss resilience
 sudo bench/run_b2.sh                 # B2 multi-talker audio
 sudo bench/run_b3.sh                 # B3 relay capacity (sudo MTU=1500 bench/run_b3.sh for Ethernet MTU)
+sudo WIRES=v2 SERVER_ARGS="-udp-batch 1" TAG=nobatch bench/run_b3.sh   # B3 with batching off
+sudo LABEL=v2-gso bench/profile_b3.sh   # CPU profile of the v2 server at 128 participants
 bench/run_micro.sh                   # Go microbenchmarks
 (cd client && uv run --group bench python ../bench/render.py)   # tables and plots
 ```
@@ -294,8 +325,10 @@ configured IP address before importing it.
   binds a participant to a UDP address.
 - P2P uses the address the server observed, with no ICE/STUN/TURN, so it works on a LAN
   or through permissive NATs only; otherwise rooms of two must run with `-p2p=false`.
-- Loss repair is XOR parity only (one loss per group of four fragments); there is no
-  retransmission and no congestion control or adaptive bitrate.
+- Loss repair is XOR parity (one loss per group of four fragments) plus NACK
+  retransmission of video in relay mode only; audio is not retransmitted, P2P rooms have
+  FEC only, the retry interval is fixed (30 ms) rather than derived from the round trip,
+  and there is no congestion control or adaptive bitrate.
 - The host role is not transferred when the host leaves; such a room closes when it
   becomes empty.
 - Benchmarks ran on one shared machine over loopback and veth links, one run per point.
@@ -303,7 +336,7 @@ configured IP address before importing it.
 ## Repository layout
 
 ```
-server/            Go module: cmd/confserver, cmd/loadgen, internal/{protocol,room,signaling,media,metrics,app,client}
+server/            Go module: cmd/confserver, cmd/loadgen, internal/{protocol,room,signaling,media,udpio,metrics,app,client}
 client/            Python package confclient (uv project) and its tests
 protocol-testdata/ golden vectors shared by the Go and Python tests
 bench/             benchmark scripts, the legacy harness, results and plots

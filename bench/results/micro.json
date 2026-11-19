@@ -10,17 +10,17 @@
       "median": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 6.687
+        "ns/op": 6.113
       },
       "min": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 6.537
+        "ns/op": 5.995
       },
       "max": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 7.295
+        "ns/op": 6.475
       }
     },
     {
@@ -29,17 +29,17 @@
       "median": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 6.168
+        "ns/op": 5.9
       },
       "min": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 5.883
+        "ns/op": 5.818
       },
       "max": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 6.787
+        "ns/op": 6.026
       }
     },
     {
@@ -47,21 +47,21 @@
       "runs": 5,
       "median": {
         "B/op": 0.0,
-        "MB/s": 24576.86,
+        "MB/s": 24628.54,
         "allocs/op": 0.0,
-        "ns/op": 198.6
+        "ns/op": 198.1
       },
       "min": {
         "B/op": 0.0,
-        "MB/s": 22033.93,
+        "MB/s": 23681.41,
         "allocs/op": 0.0,
-        "ns/op": 194.9
+        "ns/op": 192.0
       },
       "max": {
         "B/op": 0.0,
-        "MB/s": 25040.66,
+        "MB/s": 25411.72,
         "allocs/op": 0.0,
-        "ns/op": 221.5
+        "ns/op": 206.1
       }
     },
     {
@@ -69,21 +69,21 @@
       "runs": 5,
       "median": {
         "B/op": 0.0,
-        "MB/s": 7894.01,
+        "MB/s": 7628.71,
         "allocs/op": 0.0,
-        "ns/op": 154.5
+        "ns/op": 159.9
       },
       "min": {
         "B/op": 0.0,
-        "MB/s": 7536.89,
+        "MB/s": 6970.31,
         "allocs/op": 0.0,
-        "ns/op": 151.7
+        "ns/op": 152.3
       },
       "max": {
         "B/op": 0.0,
-        "MB/s": 8040.99,
+        "MB/s": 8012.56,
         "allocs/op": 0.0,
-        "ns/op": 161.9
+        "ns/op": 175.0
       }
     },
     {
@@ -92,19 +92,19 @@
       "median": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 3691.0,
+        "ns/op": 3725.0,
         "packets/op": 4.5
       },
       "min": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 3655.0,
+        "ns/op": 3629.0,
         "packets/op": 4.5
       },
       "max": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 4091.0,
+        "ns/op": 4033.0,
         "packets/op": 4.5
       }
     },
@@ -114,19 +114,19 @@
       "median": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 5032.0,
+        "ns/op": 5164.0,
         "packets/op": 6.0
       },
       "min": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 4950.0,
+        "ns/op": 4949.0,
         "packets/op": 6.0
       },
       "max": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 5562.0,
+        "ns/op": 5576.0,
         "packets/op": 6.0
       }
     },
@@ -136,19 +136,19 @@
       "median": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 6369.0,
+        "ns/op": 6389.0,
         "packets/op": 7.5
       },
       "min": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 6246.0,
+        "ns/op": 6114.0,
         "packets/op": 7.5
       },
       "max": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 6410.0,
+        "ns/op": 6842.0,
         "packets/op": 7.5
       }
     },
@@ -158,19 +158,19 @@
       "median": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 21171.0,
+        "ns/op": 21121.0,
         "packets/op": 24.0
       },
       "min": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 20193.0,
+        "ns/op": 20346.0,
         "packets/op": 24.0
       },
       "max": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 21626.0,
+        "ns/op": 21324.0,
         "packets/op": 24.0
       }
     },
@@ -180,39 +180,237 @@
       "median": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 1861.0
+        "ns/op": 1895.0
       },
       "min": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 1794.0
+        "ns/op": 1877.0
       },
       "max": {
         "B/op": 0.0,
         "allocs/op": 0.0,
-        "ns/op": 1869.0
+        "ns/op": 1939.0
       }
     },
     {
-      "name": "media.BenchmarkForwardVideo",
+      "name": "media.BenchmarkForwardVideo/unbatched",
       "runs": 5,
       "median": {
         "B/op": 0.0,
-        "MB/s": 909.32,
+        "MB/s": 927.53,
         "allocs/op": 0.0,
-        "ns/op": 4025.0
+        "ns/op": 3946.0
       },
       "min": {
         "B/op": 0.0,
-        "MB/s": 821.99,
+        "MB/s": 886.26,
         "allocs/op": 0.0,
-        "ns/op": 3620.0
+        "ns/op": 3781.0
       },
       "max": {
         "B/op": 0.0,
-        "MB/s": 1011.16,
+        "MB/s": 967.92,
         "allocs/op": 0.0,
-        "ns/op": 4453.0
+        "ns/op": 4130.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/sendmmsg/batch=1",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 969.77,
+        "allocs/op": 0.0,
+        "ns/op": 3774.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 919.98,
+        "allocs/op": 0.0,
+        "ns/op": 3656.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 1001.01,
+        "allocs/op": 0.0,
+        "ns/op": 3978.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/sendmmsg/batch=16",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 1053.21,
+        "allocs/op": 0.0,
+        "ns/op": 3475.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 991.11,
+        "allocs/op": 0.0,
+        "ns/op": 3261.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 1122.43,
+        "allocs/op": 0.0,
+        "ns/op": 3693.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/sendmmsg/batch=64",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 1240.54,
+        "allocs/op": 0.0,
+        "ns/op": 2950.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 1162.77,
+        "allocs/op": 0.0,
+        "ns/op": 2894.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 1264.69,
+        "allocs/op": 0.0,
+        "ns/op": 3148.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/gso/batch=16",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3365.22,
+        "allocs/op": 0.0,
+        "ns/op": 1088.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 3047.34,
+        "allocs/op": 0.0,
+        "ns/op": 1023.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 3576.22,
+        "allocs/op": 0.0,
+        "ns/op": 1201.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/gso/batch=64",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3627.74,
+        "allocs/op": 0.0,
+        "ns/op": 1009.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 3335.87,
+        "allocs/op": 0.0,
+        "ns/op": 1002.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 3651.06,
+        "allocs/op": 0.0,
+        "ns/op": 1097.0
+      }
+    },
+    {
+      "name": "media.BenchmarkForwardVideo/gso+nack-buffer/batch=64",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3169.68,
+        "allocs/op": 0.0,
+        "ns/op": 1155.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 3041.75,
+        "allocs/op": 0.0,
+        "ns/op": 1021.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 3585.89,
+        "allocs/op": 0.0,
+        "ns/op": 1203.0
+      }
+    },
+    {
+      "name": "udpio.BenchmarkSendFrame/sendto",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 951.63,
+        "allocs/op": 0.0,
+        "ns/op": 30768.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 921.81,
+        "allocs/op": 0.0,
+        "ns/op": 30023.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 975.26,
+        "allocs/op": 0.0,
+        "ns/op": 31764.0
+      }
+    },
+    {
+      "name": "udpio.BenchmarkSendFrame/sendmmsg",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 1064.09,
+        "allocs/op": 0.0,
+        "ns/op": 27516.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 966.02,
+        "allocs/op": 0.0,
+        "ns/op": 26194.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 1117.8,
+        "allocs/op": 0.0,
+        "ns/op": 30310.0
+      }
+    },
+    {
+      "name": "udpio.BenchmarkSendFrame/sendmmsg+gso",
+      "runs": 5,
+      "median": {
+        "B/op": 0.0,
+        "MB/s": 3880.13,
+        "allocs/op": 0.0,
+        "ns/op": 7546.0
+      },
+      "min": {
+        "B/op": 0.0,
+        "MB/s": 3619.23,
+        "allocs/op": 0.0,
+        "ns/op": 7086.0
+      },
+      "max": {
+        "B/op": 0.0,
+        "MB/s": 4132.37,
+        "allocs/op": 0.0,
+        "ns/op": 8090.0
       }
     }
   ],
@@ -222,13 +420,14 @@
     "cpus": 4,
     "python": "3.13.18",
     "go": "go version go1.24.7 linux/amd64",
-    "git_commit": "dcf2468",
-    "git_dirty": true,
-    "git_dirty_files": [
-      "?? bench/analyze_micro.py",
-      "?? bench/results/micro.txt",
-      "?? bench/run_micro.sh"
-    ],
-    "utc": "2026-11-19T02:14:34Z"
+    "git_commit": "25e0e63",
+    "git_dirty": false,
+    "git_dirty_files": [],
+    "build": {
+      "git_commit": "25e0e63",
+      "utc": "2026-11-19T05:17:39Z",
+      "git_dirty_files": []
+    },
+    "utc": "2026-11-19T05:24:04Z"
   }
 }

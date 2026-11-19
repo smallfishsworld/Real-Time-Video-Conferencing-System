@@ -20,13 +20,14 @@
         "model_ratio_independent_loss": 1.0,
         "latency_ms": {
           "n": 579,
-          "mean": 0.7311814818654614,
-          "p50": 0.7223629995678493,
-          "p95": 0.8540367997738942,
-          "p99": 1.175093439860576,
-          "max": 2.678111000022909
+          "mean": 0.6859857892923739,
+          "p50": 0.6667819998256164,
+          "p95": 0.8376499998576037,
+          "p99": 1.0411727800783415,
+          "max": 2.397234000000026
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": null
       },
       "audio": {
         "frames_sent": 579,
@@ -41,158 +42,1012 @@
         "ip_reasm_timeout": 0,
         "udp_in_datagrams": 1238,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.1,
+            0.0
+          ],
+          [
+            1.1,
+            0.0
+          ],
+          [
+            2.1,
+            0.0
+          ],
+          [
+            3.1,
+            0.0
+          ],
+          [
+            4.1,
+            0.0
+          ],
+          [
+            5.1,
+            0.0
+          ],
+          [
+            6.1,
+            0.0
+          ],
+          [
+            7.1,
+            0.0
+          ],
+          [
+            8.1,
+            0.0
+          ],
+          [
+            9.1,
+            0.0
+          ],
+          [
+            10.1,
+            0.0
+          ],
+          [
+            11.1,
+            0.0
+          ],
+          [
+            12.1,
+            0.0
+          ],
+          [
+            13.1,
+            0.0
+          ],
+          [
+            14.1,
+            0.0
+          ],
+          [
+            15.1,
+            0.0
+          ],
+          [
+            16.1,
+            0.0
+          ],
+          [
+            17.1,
+            0.0
+          ],
+          [
+            18.1,
+            0.0
+          ],
+          [
+            19.1,
+            0.0
+          ],
+          [
+            20.1,
+            0.0
+          ],
+          [
+            21.1,
+            0.0
+          ],
+          [
+            22.1,
+            0.0
+          ],
+          [
+            23.1,
+            0.0
+          ],
+          [
+            24.1,
+            0.0
+          ],
+          [
+            25.1,
+            0.0
+          ],
+          [
+            26.1,
+            0.0
+          ],
+          [
+            27.1,
+            0.0
+          ],
+          [
+            28.1,
+            0.0
+          ],
+          [
+            29.1,
+            0.0
+          ],
+          [
+            30.1,
+            0.0
+          ],
+          [
+            31.1,
+            0.0
+          ],
+          [
+            32.1,
+            0.0
+          ],
+          [
+            33.1,
+            0.0
+          ],
+          [
+            34.1,
+            0.0
+          ],
+          [
+            35.1,
+            0.0
+          ],
+          [
+            36.1,
+            0.0
+          ],
+          [
+            37.1,
+            0.0
+          ],
+          [
+            38.1,
+            0.0
+          ],
+          [
+            39.1,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "legacy",
       "loss_percent": 1.0,
-      "measured_udp_packet_loss": 0.009852216748768473,
+      "measured_udp_packet_loss": 0.010262725779967159,
       "video": {
         "frames_sent": 580,
-        "frames_complete": 400,
-        "frames_on_time": 400,
-        "delivery_ratio": 0.6896551724137931,
-        "complete_ratio": 0.6896551724137931,
+        "frames_complete": 380,
+        "frames_on_time": 380,
+        "delivery_ratio": 0.6551724137931034,
+        "complete_ratio": 0.6551724137931034,
         "delivery_ratio_first_half": 0.8068965517241379,
-        "delivery_ratio_second_half": 0.5724137931034483,
+        "delivery_ratio_second_half": 0.503448275862069,
         "model_ratio_independent_loss": 0.8051610030444905,
         "latency_ms": {
-          "n": 400,
-          "mean": 0.7008432800046194,
-          "p50": 0.6895280000662751,
-          "p95": 0.8255655998937071,
-          "p99": 1.0625050199769248,
-          "max": 1.8138310001631908
+          "n": 380,
+          "mean": 0.7261741552742693,
+          "p50": 0.6910934996540163,
+          "p95": 0.837094400026217,
+          "p99": 1.4321377301212075,
+          "max": 6.84824599966305
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": null
       },
       "audio": {
         "frames_sent": 580,
         "frame_ms": 64,
-        "residual_loss": 0.1448275862068965,
-        "gap_fraction_after_concealment": 0.1448275862068965
+        "residual_loss": 0.19999999999999996,
+        "gap_fraction_after_concealment": 0.19999999999999996
       },
       "receiver_kernel": {
-        "ip_reasm_reqds": 14472,
-        "ip_reasm_oks": 970,
-        "ip_reasm_fails": 1821,
-        "ip_reasm_timeout": 26,
-        "udp_in_datagrams": 970,
+        "ip_reasm_reqds": 14466,
+        "ip_reasm_oks": 916,
+        "ip_reasm_fails": 2444,
+        "ip_reasm_timeout": 22,
+        "udp_in_datagrams": 916,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 4196008,
+        "max_queues": 101,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": 24.7,
+        "series_s_mib": [
+          [
+            0.2,
+            0.043
+          ],
+          [
+            1.2,
+            0.181
+          ],
+          [
+            2.2,
+            0.271
+          ],
+          [
+            3.2,
+            0.452
+          ],
+          [
+            4.2,
+            0.496
+          ],
+          [
+            5.2,
+            0.587
+          ],
+          [
+            6.2,
+            0.72
+          ],
+          [
+            7.2,
+            0.765
+          ],
+          [
+            8.2,
+            0.945
+          ],
+          [
+            9.2,
+            1.036
+          ],
+          [
+            10.2,
+            1.13
+          ],
+          [
+            11.2,
+            1.174
+          ],
+          [
+            12.2,
+            1.31
+          ],
+          [
+            13.2,
+            1.486
+          ],
+          [
+            14.2,
+            1.71
+          ],
+          [
+            15.2,
+            1.844
+          ],
+          [
+            16.2,
+            2.018
+          ],
+          [
+            17.2,
+            2.198
+          ],
+          [
+            18.2,
+            2.336
+          ],
+          [
+            19.2,
+            2.56
+          ],
+          [
+            20.2,
+            2.787
+          ],
+          [
+            21.2,
+            2.921
+          ],
+          [
+            22.2,
+            3.136
+          ],
+          [
+            23.2,
+            3.409
+          ],
+          [
+            24.2,
+            3.589
+          ],
+          [
+            25.2,
+            3.809
+          ],
+          [
+            26.2,
+            4.002
+          ],
+          [
+            27.2,
+            4.002
+          ],
+          [
+            28.2,
+            4.002
+          ],
+          [
+            29.2,
+            4.002
+          ],
+          [
+            30.2,
+            4.002
+          ],
+          [
+            31.2,
+            4.002
+          ],
+          [
+            32.2,
+            3.866
+          ],
+          [
+            33.2,
+            3.955
+          ],
+          [
+            34.2,
+            3.775
+          ],
+          [
+            35.2,
+            3.821
+          ],
+          [
+            36.2,
+            3.638
+          ],
+          [
+            37.2,
+            3.772
+          ],
+          [
+            38.2,
+            3.594
+          ],
+          [
+            39.2,
+            3.596
+          ]
+        ]
       }
     },
     {
       "system": "legacy",
       "loss_percent": 2.0,
-      "measured_udp_packet_loss": 0.022609289617486338,
+      "measured_udp_packet_loss": 0.017925561029009305,
       "video": {
-        "frames_sent": 581,
-        "frames_complete": 189,
-        "frames_on_time": 189,
-        "delivery_ratio": 0.3253012048192771,
-        "complete_ratio": 0.3253012048192771,
-        "delivery_ratio_first_half": 0.4570446735395189,
-        "delivery_ratio_second_half": 0.19310344827586207,
+        "frames_sent": 580,
+        "frames_complete": 209,
+        "frames_on_time": 209,
+        "delivery_ratio": 0.3603448275862069,
+        "complete_ratio": 0.3603448275862069,
+        "delivery_ratio_first_half": 0.5862068965517241,
+        "delivery_ratio_second_half": 0.13448275862068965,
         "model_ratio_independent_loss": 0.6468758067570228,
         "latency_ms": {
-          "n": 189,
-          "mean": 0.724033576711653,
-          "p50": 0.721505999990768,
-          "p95": 0.8312883999678888,
-          "p99": 0.9220970401111119,
-          "max": 1.2284529998396465
+          "n": 209,
+          "mean": 0.6428555598220416,
+          "p50": 0.6467769999289885,
+          "p95": 0.7458029999725113,
+          "p99": 0.773753360226692,
+          "max": 0.813012999969942
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": null
       },
       "audio": {
-        "frames_sent": 581,
+        "frames_sent": 580,
         "frame_ms": 64,
-        "residual_loss": 0.48364888123924266,
-        "gap_fraction_after_concealment": 0.48364888123924266
+        "residual_loss": 0.46896551724137936,
+        "gap_fraction_after_concealment": 0.46896551724137936
       },
       "receiver_kernel": {
-        "ip_reasm_reqds": 14309,
-        "ip_reasm_oks": 521,
-        "ip_reasm_fails": 6729,
-        "ip_reasm_timeout": 61,
-        "udp_in_datagrams": 521,
+        "ip_reasm_reqds": 14354,
+        "ip_reasm_oks": 584,
+        "ip_reasm_fails": 5982,
+        "ip_reasm_timeout": 54,
+        "udp_in_datagrams": 584,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 4195744,
+        "max_queues": 100,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": 15.7,
+        "series_s_mib": [
+          [
+            0.2,
+            0.0
+          ],
+          [
+            1.2,
+            0.181
+          ],
+          [
+            2.2,
+            0.451
+          ],
+          [
+            3.2,
+            0.638
+          ],
+          [
+            4.2,
+            0.818
+          ],
+          [
+            5.2,
+            0.994
+          ],
+          [
+            6.2,
+            1.171
+          ],
+          [
+            7.2,
+            1.624
+          ],
+          [
+            8.2,
+            1.886
+          ],
+          [
+            9.2,
+            2.021
+          ],
+          [
+            10.2,
+            2.2
+          ],
+          [
+            11.2,
+            2.424
+          ],
+          [
+            12.2,
+            2.557
+          ],
+          [
+            13.2,
+            2.875
+          ],
+          [
+            14.2,
+            3.091
+          ],
+          [
+            15.2,
+            3.358
+          ],
+          [
+            16.2,
+            3.709
+          ],
+          [
+            17.2,
+            3.935
+          ],
+          [
+            18.2,
+            4.001
+          ],
+          [
+            19.2,
+            4.001
+          ],
+          [
+            20.2,
+            4.001
+          ],
+          [
+            21.2,
+            4.001
+          ],
+          [
+            22.2,
+            4.001
+          ],
+          [
+            23.2,
+            4.001
+          ],
+          [
+            24.2,
+            4.001
+          ],
+          [
+            25.2,
+            4.001
+          ],
+          [
+            26.2,
+            4.001
+          ],
+          [
+            27.2,
+            4.001
+          ],
+          [
+            28.2,
+            4.001
+          ],
+          [
+            29.2,
+            4.001
+          ],
+          [
+            30.2,
+            4.001
+          ],
+          [
+            31.2,
+            4.001
+          ],
+          [
+            32.2,
+            3.953
+          ],
+          [
+            33.2,
+            4.0
+          ],
+          [
+            34.2,
+            3.723
+          ],
+          [
+            35.2,
+            4.001
+          ],
+          [
+            36.2,
+            3.738
+          ],
+          [
+            37.2,
+            3.966
+          ],
+          [
+            38.2,
+            3.55
+          ],
+          [
+            39.2,
+            3.774
+          ]
+        ]
       }
     },
     {
       "system": "legacy",
       "loss_percent": 5.0,
-      "measured_udp_packet_loss": 0.052545155993431854,
+      "measured_udp_packet_loss": 0.049534756431308155,
       "video": {
         "frames_sent": 580,
-        "frames_complete": 62,
-        "frames_on_time": 62,
-        "delivery_ratio": 0.10689655172413794,
-        "complete_ratio": 0.10689655172413794,
-        "delivery_ratio_first_half": 0.1310344827586207,
-        "delivery_ratio_second_half": 0.08275862068965517,
+        "frames_complete": 69,
+        "frames_on_time": 69,
+        "delivery_ratio": 0.11896551724137931,
+        "complete_ratio": 0.11896551724137931,
+        "delivery_ratio_first_half": 0.13793103448275862,
+        "delivery_ratio_second_half": 0.1,
         "model_ratio_independent_loss": 0.3309577884267899,
         "latency_ms": {
-          "n": 62,
-          "mean": 0.692338112927363,
-          "p50": 0.6790535001073295,
-          "p95": 0.8010007501297878,
-          "p99": 0.8470431700243353,
-          "max": 0.8945029999267717
+          "n": 69,
+          "mean": 0.7008952318532122,
+          "p50": 0.7020440002634132,
+          "p95": 0.8479342003738565,
+          "p99": 0.8701224801916395,
+          "max": 0.8834430000206339
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": null
       },
       "audio": {
         "frames_sent": 580,
         "frame_ms": 64,
-        "residual_loss": 0.6775862068965517,
-        "gap_fraction_after_concealment": 0.6775862068965517
+        "residual_loss": 0.6913793103448276,
+        "gap_fraction_after_concealment": 0.6913793103448276
       },
       "receiver_kernel": {
-        "ip_reasm_reqds": 13848,
-        "ip_reasm_oks": 279,
-        "ip_reasm_fails": 8573,
-        "ip_reasm_timeout": 103,
-        "udp_in_datagrams": 279,
+        "ip_reasm_reqds": 13892,
+        "ip_reasm_oks": 296,
+        "ip_reasm_fails": 8429,
+        "ip_reasm_timeout": 108,
+        "udp_in_datagrams": 296,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 4195936,
+        "max_queues": 108,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": 8.2,
+        "series_s_mib": [
+          [
+            0.2,
+            0.132
+          ],
+          [
+            1.2,
+            0.607
+          ],
+          [
+            2.2,
+            1.147
+          ],
+          [
+            3.2,
+            1.515
+          ],
+          [
+            4.2,
+            1.915
+          ],
+          [
+            5.2,
+            2.442
+          ],
+          [
+            6.2,
+            2.841
+          ],
+          [
+            7.2,
+            3.378
+          ],
+          [
+            8.2,
+            3.769
+          ],
+          [
+            9.2,
+            4.002
+          ],
+          [
+            10.2,
+            4.002
+          ],
+          [
+            11.2,
+            4.002
+          ],
+          [
+            12.2,
+            4.002
+          ],
+          [
+            13.2,
+            4.002
+          ],
+          [
+            14.2,
+            4.002
+          ],
+          [
+            15.2,
+            4.002
+          ],
+          [
+            16.2,
+            4.002
+          ],
+          [
+            17.2,
+            4.002
+          ],
+          [
+            18.2,
+            4.002
+          ],
+          [
+            19.2,
+            4.002
+          ],
+          [
+            20.2,
+            4.002
+          ],
+          [
+            21.2,
+            4.002
+          ],
+          [
+            22.2,
+            4.002
+          ],
+          [
+            23.2,
+            4.002
+          ],
+          [
+            24.2,
+            4.002
+          ],
+          [
+            25.2,
+            4.002
+          ],
+          [
+            26.2,
+            4.002
+          ],
+          [
+            27.2,
+            4.002
+          ],
+          [
+            28.2,
+            4.002
+          ],
+          [
+            29.2,
+            4.002
+          ],
+          [
+            30.2,
+            4.002
+          ],
+          [
+            31.2,
+            3.516
+          ],
+          [
+            32.2,
+            4.001
+          ],
+          [
+            33.2,
+            3.098
+          ],
+          [
+            34.2,
+            3.665
+          ],
+          [
+            35.2,
+            3.075
+          ],
+          [
+            36.2,
+            3.507
+          ],
+          [
+            37.2,
+            3.891
+          ],
+          [
+            38.2,
+            3.313
+          ],
+          [
+            39.2,
+            3.842
+          ]
+        ]
       }
     },
     {
       "system": "legacy",
       "loss_percent": 10.0,
-      "measured_udp_packet_loss": 0.10214833059660645,
+      "measured_udp_packet_loss": 0.09685792349726775,
       "video": {
-        "frames_sent": 580,
-        "frames_complete": 25,
-        "frames_on_time": 25,
-        "delivery_ratio": 0.04310344827586207,
-        "complete_ratio": 0.04310344827586207,
-        "delivery_ratio_first_half": 0.027586206896551724,
-        "delivery_ratio_second_half": 0.05862068965517241,
+        "frames_sent": 581,
+        "frames_complete": 21,
+        "frames_on_time": 21,
+        "delivery_ratio": 0.03614457831325301,
+        "complete_ratio": 0.03614457831325301,
+        "delivery_ratio_first_half": 0.030927835051546393,
+        "delivery_ratio_second_half": 0.041379310344827586,
         "model_ratio_independent_loss": 0.10324775814449512,
         "latency_ms": {
-          "n": 25,
-          "mean": 0.6706761600071331,
-          "p50": 0.6739970003764029,
-          "p95": 0.8295846000692108,
-          "p99": 0.8407449198239192,
-          "max": 0.8411149997300527
+          "n": 21,
+          "mean": 0.7424264285223866,
+          "p50": 0.7073669999044796,
+          "p95": 0.8464590000585304,
+          "p99": 1.405432600040513,
+          "max": 1.5451760000360082
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": null
       },
       "audio": {
-        "frames_sent": 580,
+        "frames_sent": 581,
         "frame_ms": 64,
-        "residual_loss": 0.7396551724137931,
-        "gap_fraction_after_concealment": 0.7396551724137931
+        "residual_loss": 0.7435456110154905,
+        "gap_fraction_after_concealment": 0.7435456110154905
       },
       "receiver_kernel": {
-        "ip_reasm_reqds": 13123,
-        "ip_reasm_oks": 202,
-        "ip_reasm_fails": 8645,
-        "ip_reasm_timeout": 115,
-        "udp_in_datagrams": 202,
+        "ip_reasm_reqds": 13222,
+        "ip_reasm_oks": 196,
+        "ip_reasm_fails": 8824,
+        "ip_reasm_timeout": 109,
+        "udp_in_datagrams": 196,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 4195632,
+        "max_queues": 118,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": 6.2,
+        "series_s_mib": [
+          [
+            0.2,
+            0.127
+          ],
+          [
+            1.2,
+            0.74
+          ],
+          [
+            2.2,
+            1.374
+          ],
+          [
+            3.2,
+            1.934
+          ],
+          [
+            4.2,
+            2.52
+          ],
+          [
+            5.2,
+            3.168
+          ],
+          [
+            6.2,
+            3.758
+          ],
+          [
+            7.2,
+            4.001
+          ],
+          [
+            8.2,
+            4.001
+          ],
+          [
+            9.2,
+            4.001
+          ],
+          [
+            10.2,
+            4.001
+          ],
+          [
+            11.2,
+            4.001
+          ],
+          [
+            12.2,
+            4.001
+          ],
+          [
+            13.2,
+            4.001
+          ],
+          [
+            14.2,
+            4.001
+          ],
+          [
+            15.2,
+            4.001
+          ],
+          [
+            16.2,
+            4.001
+          ],
+          [
+            17.2,
+            4.001
+          ],
+          [
+            18.2,
+            4.001
+          ],
+          [
+            19.2,
+            4.001
+          ],
+          [
+            20.2,
+            4.001
+          ],
+          [
+            21.2,
+            4.001
+          ],
+          [
+            22.2,
+            4.001
+          ],
+          [
+            23.2,
+            4.001
+          ],
+          [
+            24.2,
+            4.001
+          ],
+          [
+            25.2,
+            4.001
+          ],
+          [
+            26.2,
+            4.001
+          ],
+          [
+            27.2,
+            4.001
+          ],
+          [
+            28.2,
+            4.001
+          ],
+          [
+            29.2,
+            4.001
+          ],
+          [
+            30.2,
+            4.001
+          ],
+          [
+            31.2,
+            3.835
+          ],
+          [
+            32.2,
+            4.001
+          ],
+          [
+            33.2,
+            3.054
+          ],
+          [
+            34.2,
+            3.643
+          ],
+          [
+            35.2,
+            3.027
+          ],
+          [
+            36.2,
+            3.587
+          ],
+          [
+            37.2,
+            3.069
+          ],
+          [
+            38.2,
+            3.617
+          ],
+          [
+            39.2,
+            4.001
+          ]
+        ]
       }
     },
     {
@@ -210,13 +1065,19 @@
         "model_ratio_independent_loss": 1.0,
         "latency_ms": {
           "n": 583,
-          "mean": 0.8551538747825029,
-          "p50": 0.8097650002127921,
-          "p95": 1.1164813999585022,
-          "p99": 1.814939720052279,
-          "max": 5.621449000045686
+          "mean": 0.9051571080616423,
+          "p50": 0.8778649998930632,
+          "p95": 1.1618935002388753,
+          "p99": 1.7930284398971674,
+          "max": 2.63016000008065
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
@@ -232,39 +1093,215 @@
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 18494,
+        "udp_in_datagrams": 18493,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.4,
+            0.0
+          ],
+          [
+            1.4,
+            0.0
+          ],
+          [
+            2.4,
+            0.0
+          ],
+          [
+            3.4,
+            0.0
+          ],
+          [
+            4.4,
+            0.0
+          ],
+          [
+            5.4,
+            0.0
+          ],
+          [
+            6.4,
+            0.0
+          ],
+          [
+            7.4,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-nofec",
       "loss_percent": 1.0,
-      "measured_udp_packet_loss": 0.00984102952308857,
+      "measured_udp_packet_loss": 0.009786957932302368,
       "video": {
         "frames_sent": 583,
-        "frames_complete": 450,
-        "frames_on_time": 450,
-        "delivery_ratio": 0.7718696397941681,
-        "complete_ratio": 0.7718696397941681,
-        "delivery_ratio_first_half": 0.797945205479452,
-        "delivery_ratio_second_half": 0.7457044673539519,
+        "frames_complete": 455,
+        "frames_on_time": 455,
+        "delivery_ratio": 0.7804459691252144,
+        "complete_ratio": 0.7804459691252144,
+        "delivery_ratio_first_half": 0.7808219178082192,
+        "delivery_ratio_second_half": 0.7800687285223368,
         "model_ratio_independent_loss": 0.7664494555604591,
         "latency_ms": {
-          "n": 450,
-          "mean": 0.8039935555573012,
-          "p50": 0.7862894999561831,
-          "p95": 1.0223819999282568,
-          "p99": 1.2260280501868683,
-          "max": 1.4309470002444868
+          "n": 455,
+          "mean": 0.8722298087817323,
+          "p50": 0.8648219995848194,
+          "p95": 1.0824346999470436,
+          "p99": 1.2336599201807985,
+          "max": 1.8838900000446301
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
         "frame_ms": 20,
-        "residual_loss": 0.008038585209003246,
+        "residual_loss": 0.006966773847802754,
         "ticks": 1856,
-        "concealed_fraction": 0.008081896551724138,
+        "concealed_fraction": 0.007004310344827586,
         "gap_fraction_after_concealment": 0.0,
         "fec_recovered_packets": 0
       },
@@ -273,39 +1310,215 @@
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 18312,
+        "udp_in_datagrams": 18313,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.4,
+            0.0
+          ],
+          [
+            1.4,
+            0.0
+          ],
+          [
+            2.4,
+            0.0
+          ],
+          [
+            3.4,
+            0.0
+          ],
+          [
+            4.4,
+            0.0
+          ],
+          [
+            5.4,
+            0.0
+          ],
+          [
+            6.4,
+            0.0
+          ],
+          [
+            7.4,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-nofec",
       "loss_percent": 2.0,
-      "measured_udp_packet_loss": 0.019952417000108143,
+      "measured_udp_packet_loss": 0.019411701092246134,
       "video": {
         "frames_sent": 583,
-        "frames_complete": 340,
-        "frames_on_time": 340,
-        "delivery_ratio": 0.5831903945111492,
-        "complete_ratio": 0.5831903945111492,
-        "delivery_ratio_first_half": 0.541095890410959,
-        "delivery_ratio_second_half": 0.6254295532646048,
+        "frames_complete": 343,
+        "frames_on_time": 343,
+        "delivery_ratio": 0.5883361921097771,
+        "complete_ratio": 0.5883361921097771,
+        "delivery_ratio_first_half": 0.6027397260273972,
+        "delivery_ratio_second_half": 0.5738831615120275,
         "model_ratio_independent_loss": 0.5858792847813558,
         "latency_ms": {
-          "n": 340,
-          "mean": 0.8214016705885703,
-          "p50": 0.8081989999482175,
-          "p95": 1.0111590999258624,
-          "p99": 1.1024723000991798,
-          "max": 1.319832000262977
+          "n": 343,
+          "mean": 0.9393117492775834,
+          "p50": 0.8896470003492141,
+          "p95": 1.3472948001890472,
+          "p99": 1.633088060079899,
+          "max": 2.761115999874164
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
         "frame_ms": 20,
-        "residual_loss": 0.025723472668810254,
+        "residual_loss": 0.01768488745980712,
         "ticks": 1856,
-        "concealed_fraction": 0.02586206896551724,
+        "concealed_fraction": 0.01670258620689655,
         "gap_fraction_after_concealment": 0.0,
         "fec_recovered_packets": 0
       },
@@ -314,39 +1527,215 @@
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 18125,
+        "udp_in_datagrams": 18135,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.4,
+            0.0
+          ],
+          [
+            1.4,
+            0.0
+          ],
+          [
+            2.4,
+            0.0
+          ],
+          [
+            3.4,
+            0.0
+          ],
+          [
+            4.4,
+            0.0
+          ],
+          [
+            5.4,
+            0.0
+          ],
+          [
+            6.4,
+            0.0
+          ],
+          [
+            7.4,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-nofec",
       "loss_percent": 5.0,
-      "measured_udp_packet_loss": 0.04953225544800735,
+      "measured_udp_packet_loss": 0.047910020007570435,
       "video": {
         "frames_sent": 583,
-        "frames_complete": 136,
-        "frames_on_time": 136,
-        "delivery_ratio": 0.2332761578044597,
-        "complete_ratio": 0.2332761578044597,
-        "delivery_ratio_first_half": 0.23972602739726026,
-        "delivery_ratio_second_half": 0.2268041237113402,
+        "frames_complete": 173,
+        "frames_on_time": 173,
+        "delivery_ratio": 0.2967409948542024,
+        "complete_ratio": 0.2967409948542024,
+        "delivery_ratio_first_half": 0.2705479452054795,
+        "delivery_ratio_second_half": 0.3230240549828179,
         "model_ratio_independent_loss": 0.2573883979518839,
         "latency_ms": {
-          "n": 136,
-          "mean": 0.8353704705708718,
-          "p50": 0.8232580000822054,
-          "p95": 1.0495557501144503,
-          "p99": 1.1499056499133078,
-          "max": 1.367608999771619
+          "n": 173,
+          "mean": 0.8656857630030257,
+          "p50": 0.8359319999726722,
+          "p95": 1.071599799888645,
+          "p99": 1.6248363200429599,
+          "max": 2.046847999736201
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
         "frame_ms": 20,
-        "residual_loss": 0.051982851018220755,
+        "residual_loss": 0.04180064308681675,
         "ticks": 1855,
-        "concealed_fraction": 0.0522911051212938,
+        "concealed_fraction": 0.04150943396226415,
         "gap_fraction_after_concealment": 0.0,
         "fec_recovered_packets": 0
       },
@@ -355,39 +1744,215 @@
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 17577,
+        "udp_in_datagrams": 17607,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-nofec",
       "loss_percent": 10.0,
-      "measured_udp_packet_loss": 0.10280121133463119,
+      "measured_udp_packet_loss": 0.10814902936246147,
       "video": {
         "frames_sent": 583,
-        "frames_complete": 34,
-        "frames_on_time": 34,
-        "delivery_ratio": 0.058319039451114926,
-        "complete_ratio": 0.058319039451114926,
-        "delivery_ratio_first_half": 0.05136986301369863,
-        "delivery_ratio_second_half": 0.06529209621993128,
+        "frames_complete": 32,
+        "frames_on_time": 32,
+        "delivery_ratio": 0.0548885077186964,
+        "complete_ratio": 0.0548885077186964,
+        "delivery_ratio_first_half": 0.06164383561643835,
+        "delivery_ratio_second_half": 0.048109965635738834,
         "model_ratio_independent_loss": 0.06161574848761636,
         "latency_ms": {
-          "n": 34,
-          "mean": 0.8773774412234429,
-          "p50": 0.7958774999679008,
-          "p95": 0.9368618003009033,
-          "p99": 2.6149418600698526,
-          "max": 3.4368589999758115
+          "n": 32,
+          "mean": 0.9678429375270525,
+          "p50": 0.8677574996909243,
+          "p95": 1.183223400130373,
+          "p99": 2.809222960249829,
+          "max": 3.4568390001368243
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
         "frame_ms": 20,
-        "residual_loss": 0.11521972132904612,
-        "ticks": 1855,
-        "concealed_fraction": 0.11536388140161725,
+        "residual_loss": 0.10182207931404075,
+        "ticks": 1856,
+        "concealed_fraction": 0.10183189655172414,
         "gap_fraction_after_concealment": 0.0,
         "fec_recovered_packets": 0
       },
@@ -396,8 +1961,178 @@
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 16591,
+        "udp_in_datagrams": 16475,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.3,
+            0.0
+          ],
+          [
+            21.3,
+            0.0
+          ],
+          [
+            22.3,
+            0.0
+          ],
+          [
+            23.3,
+            0.0
+          ],
+          [
+            24.3,
+            0.0
+          ],
+          [
+            25.3,
+            0.0
+          ],
+          [
+            26.3,
+            0.0
+          ],
+          [
+            27.3,
+            0.0
+          ],
+          [
+            28.3,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
@@ -415,19 +2150,25 @@
         "model_ratio_independent_loss": 1.0,
         "latency_ms": {
           "n": 583,
-          "mean": 1.2036880034398287,
-          "p50": 1.1354520001987112,
-          "p95": 1.703159700173273,
-          "p99": 2.2351012599756355,
-          "max": 9.035865999976522
+          "mean": 1.2409025368725728,
+          "p50": 1.1355269998603035,
+          "p95": 1.96498050036098,
+          "p99": 2.3136823201457433,
+          "max": 4.17198000013741
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
         "frame_ms": 20,
         "residual_loss": 0.0,
-        "ticks": 1856,
+        "ticks": 1855,
         "concealed_fraction": 0.0,
         "gap_fraction_after_concealment": 0.0,
         "fec_recovered_packets": 0
@@ -439,170 +2180,3214 @@
         "ip_reasm_timeout": 0,
         "udp_in_datagrams": 23848,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.4,
+            0.0
+          ],
+          [
+            1.4,
+            0.0
+          ],
+          [
+            2.4,
+            0.0
+          ],
+          [
+            3.4,
+            0.0
+          ],
+          [
+            4.4,
+            0.0
+          ],
+          [
+            5.4,
+            0.0
+          ],
+          [
+            6.4,
+            0.0
+          ],
+          [
+            7.4,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-fec",
       "loss_percent": 1.0,
-      "measured_udp_packet_loss": 0.010440689337079123,
+      "measured_udp_packet_loss": 0.009057363300905737,
       "video": {
         "frames_sent": 583,
-        "frames_complete": 577,
-        "frames_on_time": 577,
-        "delivery_ratio": 0.9897084048027445,
-        "complete_ratio": 0.9897084048027445,
-        "delivery_ratio_first_half": 0.9794520547945206,
-        "delivery_ratio_second_half": 1.0,
+        "frames_complete": 580,
+        "frames_on_time": 580,
+        "delivery_ratio": 0.9948542024013722,
+        "complete_ratio": 0.9948542024013722,
+        "delivery_ratio_first_half": 0.9965753424657534,
+        "delivery_ratio_second_half": 0.993127147766323,
         "model_ratio_independent_loss": 0.9936977762646543,
         "latency_ms": {
-          "n": 577,
-          "mean": 1.1203055078152218,
-          "p50": 1.089831999706803,
-          "p95": 1.3972416001706731,
-          "p99": 2.0970575995670515,
-          "max": 4.119012999581173
+          "n": 580,
+          "mean": 1.081546612065973,
+          "p50": 1.0125015000994608,
+          "p95": 1.3251334497908827,
+          "p99": 2.0066248999683016,
+          "max": 14.64412200039078
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
         "frame_ms": 20,
         "residual_loss": 0.0,
-        "ticks": 1856,
+        "ticks": 1855,
         "concealed_fraction": 0.0,
         "gap_fraction_after_concealment": 0.0,
-        "fec_recovered_packets": 184
+        "fec_recovered_packets": 161
       },
       "receiver_kernel": {
         "ip_reasm_reqds": 0,
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 23600,
+        "udp_in_datagrams": 23632,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-fec",
       "loss_percent": 2.0,
-      "measured_udp_packet_loss": 0.02028389047539056,
+      "measured_udp_packet_loss": 0.020126630047381442,
       "video": {
-        "frames_sent": 582,
-        "frames_complete": 572,
-        "frames_on_time": 572,
-        "delivery_ratio": 0.9828178694158075,
-        "complete_ratio": 0.9828178694158075,
-        "delivery_ratio_first_half": 0.9828178694158075,
-        "delivery_ratio_second_half": 0.9828178694158075,
+        "frames_sent": 583,
+        "frames_complete": 567,
+        "frames_on_time": 567,
+        "delivery_ratio": 0.9725557461406518,
+        "complete_ratio": 0.9725557461406518,
+        "delivery_ratio_first_half": 0.976027397260274,
+        "delivery_ratio_second_half": 0.9690721649484536,
         "model_ratio_independent_loss": 0.9754719592633059,
         "latency_ms": {
-          "n": 572,
-          "mean": 1.1511045332217118,
-          "p50": 1.1133869998047885,
-          "p95": 1.4314655001271592,
-          "p99": 1.7202919493865882,
-          "max": 4.595564000737795
+          "n": 567,
+          "mean": 1.1067255996618204,
+          "p50": 1.0804870007632417,
+          "p95": 1.4081910000641071,
+          "p99": 1.627498159887182,
+          "max": 4.31816299987986
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
-        "frames_sent": 1863,
+        "frames_sent": 1866,
         "frame_ms": 20,
-        "residual_loss": 0.0021470746108427363,
-        "ticks": 1853,
-        "concealed_fraction": 0.0021586616297895305,
+        "residual_loss": 0.000535905680600246,
+        "ticks": 1856,
+        "concealed_fraction": 0.0005387931034482759,
         "gap_fraction_after_concealment": 0.0,
-        "fec_recovered_packets": 353
+        "fec_recovered_packets": 348
       },
       "receiver_kernel": {
         "ip_reasm_reqds": 0,
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 23329,
+        "udp_in_datagrams": 23369,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.4,
+            0.0
+          ],
+          [
+            5.4,
+            0.0
+          ],
+          [
+            6.4,
+            0.0
+          ],
+          [
+            7.4,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-fec",
       "loss_percent": 5.0,
-      "measured_udp_packet_loss": 0.04968970144246897,
+      "measured_udp_packet_loss": 0.04951989601241142,
       "video": {
         "frames_sent": 583,
-        "frames_complete": 502,
-        "frames_on_time": 502,
-        "delivery_ratio": 0.8610634648370498,
-        "complete_ratio": 0.8610634648370498,
-        "delivery_ratio_first_half": 0.8801369863013698,
-        "delivery_ratio_second_half": 0.8419243986254296,
+        "frames_complete": 517,
+        "frames_on_time": 517,
+        "delivery_ratio": 0.8867924528301887,
+        "complete_ratio": 0.8867924528301887,
+        "delivery_ratio_first_half": 0.8698630136986302,
+        "delivery_ratio_second_half": 0.9037800687285223,
         "model_ratio_independent_loss": 0.8627429004119195,
         "latency_ms": {
-          "n": 502,
-          "mean": 1.2811808326794025,
-          "p50": 1.195538000047236,
-          "p95": 1.6501908997724968,
-          "p99": 2.526655710189521,
-          "max": 7.844716999898083
+          "n": 517,
+          "mean": 1.1778362359918673,
+          "p50": 1.1388089997126372,
+          "p95": 1.4838994002275285,
+          "p99": 2.051558600214774,
+          "max": 3.6393980008142535
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
         "frames_sent": 1866,
         "frame_ms": 20,
-        "residual_loss": 0.004823151125401881,
+        "residual_loss": 0.006430868167202619,
         "ticks": 1856,
-        "concealed_fraction": 0.004849137931034483,
+        "concealed_fraction": 0.00646551724137931,
         "gap_fraction_after_concealment": 0.0,
-        "fec_recovered_packets": 753
+        "fec_recovered_packets": 788
       },
       "receiver_kernel": {
         "ip_reasm_reqds": 0,
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 22663,
+        "udp_in_datagrams": 22668,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.4,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     },
     {
       "system": "v2-fec",
       "loss_percent": 10.0,
-      "measured_udp_packet_loss": 0.10063421395270696,
+      "measured_udp_packet_loss": 0.09925360617242536,
       "video": {
-        "frames_sent": 582,
-        "frames_complete": 326,
-        "frames_on_time": 326,
-        "delivery_ratio": 0.5601374570446735,
-        "complete_ratio": 0.5601374570446735,
-        "delivery_ratio_first_half": 0.5601374570446735,
-        "delivery_ratio_second_half": 0.5601374570446735,
+        "frames_sent": 583,
+        "frames_complete": 337,
+        "frames_on_time": 337,
+        "delivery_ratio": 0.5780445969125214,
+        "complete_ratio": 0.5780445969125214,
+        "delivery_ratio_first_half": 0.5993150684931506,
+        "delivery_ratio_second_half": 0.5567010309278351,
         "model_ratio_independent_loss": 0.5768543684752366,
         "latency_ms": {
-          "n": 326,
-          "mean": 1.4297850613668301,
-          "p50": 1.2986890001229767,
-          "p95": 2.081073499766717,
-          "p99": 3.921817249420201,
-          "max": 5.938176999734424
+          "n": 337,
+          "mean": 1.3742353561130412,
+          "p50": 1.3063500000498607,
+          "p95": 1.7506533995401694,
+          "p99": 2.595834320163697,
+          "max": 5.702247000044736
         },
-        "sender_frames_rate_limited": 0
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
       },
       "audio": {
-        "frames_sent": 1863,
+        "frames_sent": 1866,
         "frame_ms": 20,
-        "residual_loss": 0.024154589371980673,
-        "ticks": 1852,
-        "concealed_fraction": 0.02429805615550756,
+        "residual_loss": 0.019292604501607746,
+        "ticks": 1855,
+        "concealed_fraction": 0.01940700808625337,
         "gap_fraction_after_concealment": 0.0,
-        "fec_recovered_packets": 1241
+        "fec_recovered_packets": 1260
       },
       "receiver_kernel": {
         "ip_reasm_reqds": 0,
         "ip_reasm_oks": 0,
         "ip_reasm_fails": 0,
         "ip_reasm_timeout": 0,
-        "udp_in_datagrams": 21413,
+        "udp_in_datagrams": 21481,
         "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-nack",
+      "loss_percent": 0.0,
+      "measured_udp_packet_loss": 0.0,
+      "video": {
+        "frames_sent": 582,
+        "frames_complete": 582,
+        "frames_on_time": 582,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 1.0,
+        "latency_ms": {
+          "n": 582,
+          "mean": 0.9462698642617028,
+          "p50": 0.9200064996548463,
+          "p95": 1.2275319498712634,
+          "p99": 1.6822959904038706,
+          "max": 2.9527380002036807
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1863,
+        "frame_ms": 20,
+        "residual_loss": 0.0,
+        "ticks": 1852,
+        "concealed_fraction": 0.0,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18466,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.3,
+            0.0
+          ],
+          [
+            21.3,
+            0.0
+          ],
+          [
+            22.3,
+            0.0
+          ],
+          [
+            23.3,
+            0.0
+          ],
+          [
+            24.3,
+            0.0
+          ],
+          [
+            25.3,
+            0.0
+          ],
+          [
+            26.3,
+            0.0
+          ],
+          [
+            27.3,
+            0.0
+          ],
+          [
+            28.3,
+            0.0
+          ],
+          [
+            29.3,
+            0.0
+          ],
+          [
+            30.3,
+            0.0
+          ],
+          [
+            31.3,
+            0.0
+          ],
+          [
+            32.3,
+            0.0
+          ],
+          [
+            33.3,
+            0.0
+          ],
+          [
+            34.3,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-nack",
+      "loss_percent": 1.0,
+      "measured_udp_packet_loss": 0.009009009009009009,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 578,
+        "frames_on_time": 578,
+        "delivery_ratio": 0.9914236706689536,
+        "complete_ratio": 0.9914236706689536,
+        "delivery_ratio_first_half": 0.9931506849315068,
+        "delivery_ratio_second_half": 0.9896907216494846,
+        "model_ratio_independent_loss": 0.9999997353300324,
+        "latency_ms": {
+          "n": 578,
+          "mean": 3.5026962197196454,
+          "p50": 0.9226880001733662,
+          "p95": 14.76422504952097,
+          "p99": 16.511443610270362,
+          "max": 78.68961900021532
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 144,
+          "requested": 155,
+          "recovered": 153,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.006430868167202619,
+        "ticks": 1855,
+        "concealed_fraction": 0.00646900269541779,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18480,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-nack",
+      "loss_percent": 2.0,
+      "measured_udp_packet_loss": 0.02116710875331565,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 574,
+        "frames_on_time": 574,
+        "delivery_ratio": 0.9845626072041166,
+        "complete_ratio": 0.9845626072041166,
+        "delivery_ratio_first_half": 0.9897260273972602,
+        "delivery_ratio_second_half": 0.979381443298969,
+        "model_ratio_independent_loss": 0.9999957652886309,
+        "latency_ms": {
+          "n": 574,
+          "mean": 6.1210015330846765,
+          "p50": 1.0463440003150026,
+          "p95": 15.736968300188892,
+          "p99": 43.468580320168236,
+          "max": 81.05171999977756
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 283,
+          "requested": 357,
+          "recovered": 350,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.021972132904608754,
+        "ticks": 1855,
+        "concealed_fraction": 0.022102425876010783,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18451,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-nack",
+      "loss_percent": 5.0,
+      "measured_udp_packet_loss": 0.0502094213764931,
+      "video": {
+        "frames_sent": 582,
+        "frames_complete": 573,
+        "frames_on_time": 573,
+        "delivery_ratio": 0.9845360824742269,
+        "complete_ratio": 0.9845360824742269,
+        "delivery_ratio_first_half": 0.9759450171821306,
+        "delivery_ratio_second_half": 0.993127147766323,
+        "model_ratio_independent_loss": 0.9998345944201488,
+        "latency_ms": {
+          "n": 573,
+          "mean": 13.34936485513388,
+          "p50": 11.267620000580791,
+          "p95": 47.36386139975365,
+          "p99": 79.50765163997856,
+          "max": 80.67435499924613
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 494,
+          "requested": 873,
+          "recovered": 832,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1863,
+        "frame_ms": 20,
+        "residual_loss": 0.04777241009125066,
+        "ticks": 1852,
+        "concealed_fraction": 0.048056155507559394,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18368,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.3,
+            0.0
+          ],
+          [
+            21.3,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-nack",
+      "loss_percent": 10.0,
+      "measured_udp_packet_loss": 0.10335702033815242,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 575,
+        "frames_on_time": 575,
+        "delivery_ratio": 0.9862778730703259,
+        "complete_ratio": 0.9862778730703259,
+        "delivery_ratio_first_half": 0.9828767123287672,
+        "delivery_ratio_second_half": 0.9896907216494846,
+        "model_ratio_independent_loss": 0.9973566689790669,
+        "latency_ms": {
+          "n": 575,
+          "mean": 24.715799963479462,
+          "p50": 12.665989999732119,
+          "p95": 76.62332540039642,
+          "p99": 79.689429860573,
+          "max": 110.2901539998129
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 747,
+          "requested": 1911,
+          "recovered": 1713,
+          "abandoned": 1
+        }
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.10021436227224012,
+        "ticks": 1856,
+        "concealed_fraction": 0.10075431034482758,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18296,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-fec-nack",
+      "loss_percent": 0.0,
+      "measured_udp_packet_loss": 0.0,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 583,
+        "frames_on_time": 583,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 1.0,
+        "latency_ms": {
+          "n": 583,
+          "mean": 1.13259642536456,
+          "p50": 1.0942839999188436,
+          "p95": 1.3895381999645906,
+          "p99": 1.7321057200024288,
+          "max": 5.33705399993778
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 0,
+          "requested": 0,
+          "recovered": 0,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.0,
+        "ticks": 1855,
+        "concealed_fraction": 0.0,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 23846,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-fec-nack",
+      "loss_percent": 1.0,
+      "measured_udp_packet_loss": 0.010349451101986089,
+      "video": {
+        "frames_sent": 582,
+        "frames_complete": 582,
+        "frames_on_time": 582,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 0.9999997353300324,
+        "latency_ms": {
+          "n": 582,
+          "mean": 1.2648962491519817,
+          "p50": 1.1437875000410713,
+          "p95": 1.5925299000173248,
+          "p99": 3.1105840899453634,
+          "max": 11.930835999919509
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 44,
+          "requested": 53,
+          "recovered": 53,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1863,
+        "frame_ms": 20,
+        "residual_loss": 0.0005367686527106841,
+        "ticks": 1852,
+        "concealed_fraction": 0.0005399568034557236,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 182
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 23619,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.3,
+            0.0
+          ],
+          [
+            21.3,
+            0.0
+          ],
+          [
+            22.3,
+            0.0
+          ],
+          [
+            23.3,
+            0.0
+          ],
+          [
+            24.3,
+            0.0
+          ],
+          [
+            25.3,
+            0.0
+          ],
+          [
+            26.3,
+            0.0
+          ],
+          [
+            27.3,
+            0.0
+          ],
+          [
+            28.3,
+            0.0
+          ],
+          [
+            29.3,
+            0.0
+          ],
+          [
+            30.3,
+            0.0
+          ],
+          [
+            31.3,
+            0.0
+          ],
+          [
+            32.3,
+            0.0
+          ],
+          [
+            33.3,
+            0.0
+          ],
+          [
+            34.3,
+            0.0
+          ],
+          [
+            35.3,
+            0.0
+          ],
+          [
+            36.3,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-fec-nack",
+      "loss_percent": 2.0,
+      "measured_udp_packet_loss": 0.019146539857339506,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 583,
+        "frames_on_time": 583,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 0.9999957652886309,
+        "latency_ms": {
+          "n": 583,
+          "mean": 1.3734641989556287,
+          "p50": 1.1097470005552168,
+          "p95": 1.4263894003306632,
+          "p99": 11.045722560120295,
+          "max": 16.61750099992787
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 102,
+          "requested": 125,
+          "recovered": 125,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.000535905680600246,
+        "ticks": 1855,
+        "concealed_fraction": 0.0005390835579514825,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 322
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 23514,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.4,
+            0.0
+          ],
+          [
+            5.4,
+            0.0
+          ],
+          [
+            6.4,
+            0.0
+          ],
+          [
+            7.4,
+            0.0
+          ],
+          [
+            8.4,
+            0.0
+          ],
+          [
+            9.4,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-fec-nack",
+      "loss_percent": 5.0,
+      "measured_udp_packet_loss": 0.04751271554397717,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 583,
+        "frames_on_time": 583,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 0.9998345944201488,
+        "latency_ms": {
+          "n": 583,
+          "mean": 2.5691697598707877,
+          "p50": 1.1665920001178165,
+          "p95": 13.281216699579087,
+          "p99": 15.99179581962744,
+          "max": 39.33631499967305
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 212,
+          "requested": 335,
+          "recovered": 323,
+          "abandoned": 0
+        }
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.004823151125401881,
+        "ticks": 1855,
+        "concealed_fraction": 0.004851752021563342,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 796
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 23007,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.3,
+            0.0
+          ],
+          [
+            11.3,
+            0.0
+          ],
+          [
+            12.3,
+            0.0
+          ],
+          [
+            13.3,
+            0.0
+          ],
+          [
+            14.3,
+            0.0
+          ],
+          [
+            15.3,
+            0.0
+          ],
+          [
+            16.3,
+            0.0
+          ],
+          [
+            17.3,
+            0.0
+          ],
+          [
+            18.3,
+            0.0
+          ],
+          [
+            19.3,
+            0.0
+          ],
+          [
+            20.3,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
+      }
+    },
+    {
+      "system": "v2-fec-nack",
+      "loss_percent": 10.0,
+      "measured_udp_packet_loss": 0.10024489140471315,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 581,
+        "frames_on_time": 581,
+        "delivery_ratio": 0.9965694682675815,
+        "complete_ratio": 0.9965694682675815,
+        "delivery_ratio_first_half": 0.9965753424657534,
+        "delivery_ratio_second_half": 0.9965635738831615,
+        "model_ratio_independent_loss": 0.9973566689790669,
+        "latency_ms": {
+          "n": 581,
+          "mean": 5.801864139413703,
+          "p50": 1.311883000198577,
+          "p95": 15.772299999298411,
+          "p99": 16.98437259965431,
+          "max": 80.41077200050495
+        },
+        "sender_frames_rate_limited": 0,
+        "nack": {
+          "nacks_sent": 485,
+          "requested": 1061,
+          "recovered": 1004,
+          "abandoned": 1
+        }
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.02357984994640938,
+        "ticks": 1856,
+        "concealed_fraction": 0.023706896551724137,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 1423
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 22412,
+        "udp_rcvbuf_errors": 0
+      },
+      "receiver_frag_memory": {
+        "samples": 80,
+        "max_bytes": 0,
+        "max_queues": 0,
+        "ipfrag_high_thresh": 4194304,
+        "ipfrag_time_s": 30,
+        "first_near_limit_s": null,
+        "series_s_mib": [
+          [
+            0.3,
+            0.0
+          ],
+          [
+            1.3,
+            0.0
+          ],
+          [
+            2.3,
+            0.0
+          ],
+          [
+            3.3,
+            0.0
+          ],
+          [
+            4.3,
+            0.0
+          ],
+          [
+            5.3,
+            0.0
+          ],
+          [
+            6.3,
+            0.0
+          ],
+          [
+            7.3,
+            0.0
+          ],
+          [
+            8.3,
+            0.0
+          ],
+          [
+            9.3,
+            0.0
+          ],
+          [
+            10.4,
+            0.0
+          ],
+          [
+            11.4,
+            0.0
+          ],
+          [
+            12.4,
+            0.0
+          ],
+          [
+            13.4,
+            0.0
+          ],
+          [
+            14.4,
+            0.0
+          ],
+          [
+            15.4,
+            0.0
+          ],
+          [
+            16.4,
+            0.0
+          ],
+          [
+            17.4,
+            0.0
+          ],
+          [
+            18.4,
+            0.0
+          ],
+          [
+            19.4,
+            0.0
+          ],
+          [
+            20.4,
+            0.0
+          ],
+          [
+            21.4,
+            0.0
+          ],
+          [
+            22.4,
+            0.0
+          ],
+          [
+            23.4,
+            0.0
+          ],
+          [
+            24.4,
+            0.0
+          ],
+          [
+            25.4,
+            0.0
+          ],
+          [
+            26.4,
+            0.0
+          ],
+          [
+            27.4,
+            0.0
+          ],
+          [
+            28.4,
+            0.0
+          ],
+          [
+            29.4,
+            0.0
+          ],
+          [
+            30.4,
+            0.0
+          ],
+          [
+            31.4,
+            0.0
+          ],
+          [
+            32.4,
+            0.0
+          ],
+          [
+            33.4,
+            0.0
+          ],
+          [
+            34.4,
+            0.0
+          ],
+          [
+            35.4,
+            0.0
+          ],
+          [
+            36.4,
+            0.0
+          ],
+          [
+            37.4,
+            0.0
+          ],
+          [
+            38.4,
+            0.0
+          ],
+          [
+            39.4,
+            0.0
+          ]
+        ]
       }
     }
   ],
@@ -612,8 +5397,14 @@
     "cpus": 4,
     "python": "3.13.18",
     "go": "go version go1.24.7 linux/amd64",
-    "git_commit": "b81293a",
-    "git_dirty": true,
-    "utc": "2026-11-19T01:57:40Z"
+    "git_commit": "25e0e63",
+    "git_dirty": false,
+    "git_dirty_files": [],
+    "build": {
+      "git_commit": "25e0e63",
+      "utc": "2026-11-19T04:22:19Z",
+      "git_dirty_files": []
+    },
+    "utc": "2026-11-19T04:40:10Z"
   }
 }
