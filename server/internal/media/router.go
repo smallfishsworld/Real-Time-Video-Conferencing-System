@@ -711,6 +711,28 @@ func (r *Router) Sync() {
 	r.syncMu.Unlock()
 }
 
+// WaitToken waits, at most timeout, until the routing table has the member that owns
+// tok, so that a REGISTER carrying it is answered. It reports whether the table has it.
+func (r *Router) WaitToken(tok protocol.Token, timeout time.Duration) bool {
+	known := func() bool { return r.table.Load().byToken[tok] != nil }
+	if known() {
+		return true
+	}
+	deadline := time.Now().Add(timeout)
+	wake := time.AfterFunc(timeout, func() {
+		r.syncMu.Lock()
+		r.syncCond.Broadcast()
+		r.syncMu.Unlock()
+	})
+	defer wake.Stop()
+	r.syncMu.Lock()
+	defer r.syncMu.Unlock()
+	for !known() && !r.stopped && time.Now().Before(deadline) {
+		r.syncCond.Wait()
+	}
+	return known()
+}
+
 // rebuildLoop rebuilds the routing table after views arrive, at most once every
 // minRebuildInterval; changes that arrive meanwhile are handled by one rebuild.
 func (r *Router) rebuildLoop() {

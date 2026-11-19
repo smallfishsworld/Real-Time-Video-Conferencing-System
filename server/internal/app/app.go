@@ -16,6 +16,7 @@ import (
 
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/metrics"
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/room"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/signaling"
 )
@@ -55,6 +56,11 @@ func DefaultConfig() Config {
 // accepts by default: connections that have not sent hello yet, or are about to be
 // refused with limit_reached.
 const ConnHeadroom = 64
+
+// joinGateTimeout bounds how long a `joined` reply waits for the routing table (which
+// is rebuilt at most every 2 ms); past it the reply goes out anyway and the client's
+// REGISTER retry covers the gap.
+const joinGateTimeout = 100 * time.Millisecond
 
 // effective fills in the derived settings.
 func (cfg Config) effective() Config {
@@ -118,6 +124,9 @@ func Start(cfg Config) (*Server, error) {
 	s.Registry.SetMediaPort(int(s.Router.LocalAddr().Port()))
 	s.Registry.Observe(s.Router.OnView)
 	s.Control = signaling.New(s.Registry, cfg.Signaling, log)
+	// A client may register its media address as soon as it has `joined`: hold that
+	// reply until the routing table, rebuilt asynchronously, has the member's token.
+	s.Control.SetMediaGate(func(tok protocol.Token) { s.Router.WaitToken(tok, joinGateTimeout) })
 	s.Metrics.Attach(s.Router, s.Registry, s.Control)
 
 	if cfg.MetricsAddr != "" {

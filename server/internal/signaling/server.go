@@ -64,7 +64,15 @@ type Server struct {
 	active atomic.Int64
 	total  atomic.Uint64
 	slow   atomic.Uint64
+
+	// mediaGate, when set, is called by a connection's writer before it writes the
+	// `joined` reply: it waits until the media plane routes the member's token.
+	mediaGate func(protocol.Token)
 }
+
+// SetMediaGate makes every `joined` reply wait for wait(token) before it is written,
+// so that the client can register its media address at once. Call it before Serve.
+func (s *Server) SetMediaGate(wait func(protocol.Token)) { s.mediaGate = wait }
 
 // New creates a control server for reg.
 func New(reg *room.Registry, cfg Config, log *slog.Logger) *Server {
@@ -215,6 +223,17 @@ type conn struct {
 
 	disconnectReason string      // set by the reader goroutine before it returns
 	slowClosed       atomic.Bool // closed because its outbox overflowed
+
+	// hold is the token of a `joined` reply that is about to be queued; the writer
+	// waits until the media plane routes it before writing anything further.
+	hold atomic.Pointer[protocol.Token]
+}
+
+// HoldUntilRoutable implements room.MediaGate.
+func (c *conn) HoldUntilRoutable(token protocol.Token) {
+	if c.s.mediaGate != nil {
+		c.hold.Store(&token)
+	}
 }
 
 // Send implements room.Notifier. It never blocks: a client whose outbox is full is
@@ -444,6 +463,11 @@ func (c *conn) writeLoop() {
 	defer c.s.forget(c)
 	bw := bufio.NewWriter(c.nc)
 	write := func(frame []byte) bool {
+		if tok := c.hold.Swap(nil); tok != nil {
+			// The frame is (or follows) a `joined` reply: write it only once the
+			// client's first REGISTER would be answered.
+			c.s.mediaGate(*tok)
+		}
 		_, err := bw.Write(frame)
 		return err == nil
 	}

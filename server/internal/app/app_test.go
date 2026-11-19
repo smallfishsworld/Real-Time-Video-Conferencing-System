@@ -527,3 +527,39 @@ func TestShutdownNotifiesMembers(t *testing.T) {
 		t.Fatalf("room_closed on shutdown: %+v %v", m, err)
 	}
 }
+
+// A client may register as soon as it has `joined`: the reply is held back until the
+// routing table (rebuilt asynchronously) has the member's token, so the first
+// REGISTER is answered and no retry is needed. Before, the first REGISTER after
+// `joined` usually arrived before the table had the token and was dropped as
+// bad_token, and registration took one retry interval (200 ms for the clients).
+func TestFirstRegisterAfterJoinedIsAnswered(t *testing.T) {
+	srv := startServer(t)
+	var roomID uint32
+	for i := 0; i < 8; i++ {
+		c := dial(t, srv, "p")
+		var joined client.Message
+		var err error
+		if i == 0 {
+			joined, err = c.Request(ctx(t), map[string]any{"type": "create_room", "title": "t"})
+			roomID = joined.RoomID
+		} else {
+			joined, err = c.Request(ctx(t), map[string]any{"type": "join_room", "room_id": roomID})
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, err := client.ListenMedia("127.0.0.1:0", netip.MustParseAddrPort(srv.MediaAddr()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = m.Close() })
+		// One attempt per REGISTER: a retry interval longer than the whole timeout.
+		if _, err := m.Register(joined.Token, 5*time.Second, time.Second); err != nil {
+			t.Fatalf("participant %d: the first REGISTER after joined was not answered: %v", i, err)
+		}
+	}
+	if n := srv.Router.Stats().Snapshot().Drops[media.DropBadToken.String()]; n != 0 {
+		t.Fatalf("%d REGISTERs dropped as bad_token", n)
+	}
+}

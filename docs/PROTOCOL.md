@@ -152,7 +152,10 @@ path (IPv4 or IPv6).
 
 After `joined`, the client sends `REGISTER` from the UDP socket it will use for media,
 every 200 ms until it receives a final `REGISTER_ACK`, and then every 5 s as a
-keepalive (this also keeps NAT bindings open).
+keepalive (this also keeps NAT bindings open). The server writes `joined` only once its
+media plane knows the new token (it waits at most 100 ms for that), so the first
+`REGISTER` is answered and registration normally takes one round trip for the
+challenge and one for the final `REGISTER_ACK`.
 
 The server binds an address only after a return-routability check, as STUN and ICE do,
 so that a token holder cannot point a room's downstream at an address that never asked

@@ -39,6 +39,14 @@ type Notifier interface {
 	Send(frame []byte)
 }
 
+// MediaGate is implemented by a Notifier that can hold a member's `joined` reply back
+// until the media plane routes the member's token, so that a client may send its
+// first REGISTER as soon as it has the reply (the routing table is rebuilt
+// asynchronously after the registry publishes a change).
+type MediaGate interface {
+	HoldUntilRoutable(token protocol.Token)
+}
+
 // Config holds the registry limits and policies.
 type Config struct {
 	MaxRoomSize int           // members per room
@@ -434,6 +442,9 @@ func (r *Registry) addMember(c *Client, rm *Room, seq *int64) {
 	r.tokens[m.token] = m
 	c.member = m
 	r.cfg.Logger.Info("member joined", "room", rm.id, "client", c.ID, "members", len(rm.members))
+	if g, ok := c.notifier.(MediaGate); ok {
+		g.HoldUntilRoutable(m.token)
+	}
 	r.send(c, protocol.Joined{
 		Type:            protocol.TypeJoined,
 		Seq:             seq,
