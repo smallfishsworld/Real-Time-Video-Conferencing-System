@@ -13,7 +13,7 @@ import socket
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from .aio import cancel_and_wait
 from .assembler import AssemblerStats, FrameAssembler, VideoFrame
@@ -189,8 +189,9 @@ class MediaSession(asyncio.DatagramProtocol):
         return observed
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        assert isinstance(transport, asyncio.DatagramTransport)
-        self._transport = transport
+        # A datagram endpoint's transport. Before Python 3.12 its class does not derive
+        # from asyncio.DatagramTransport, so this must be a cast, not an isinstance check.
+        self._transport = cast(asyncio.DatagramTransport, transport)
 
     @property
     def local_addr(self) -> Addr:

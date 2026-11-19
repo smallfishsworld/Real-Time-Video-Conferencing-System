@@ -9,7 +9,7 @@ import itertools
 import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 from confclient.assembler import VideoFrame
 from confclient.jitter import AudioPlayout
@@ -47,8 +47,7 @@ class FakeServer(asyncio.DatagramProtocol):
         self.challenges = 0
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        assert isinstance(transport, asyncio.DatagramTransport)
-        self.transport = transport
+        self.transport = cast(asyncio.DatagramTransport, transport)  # not a subclass before 3.12
 
     def datagram_received(self, data: bytes, addr: tuple[Any, ...]) -> None:
         src = (str(addr[0]), int(addr[1]))
