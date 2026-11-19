@@ -25,7 +25,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from confclient.app import ClientConfig, ConferenceApp, Devices
 from confclient.assembler import VideoFrame
 from confclient.control import ServerError
-from confclient.devices import AudioCallback, AudioSink, AudioSource, PullFrame, _Pacer
+from confclient.devices import (
+    AudioCallback,
+    AudioSink,
+    AudioSource,
+    CapturedFrame,
+    PullFrame,
+    VideoSource,
+    _Pacer,
+)
 from confclient.jitter import AudioPlayout
 from confclient.media import MediaConfig
 from confclient.protocol import AUDIO_FRAME_SECONDS, AUDIO_SAMPLES_PER_FRAME
@@ -107,6 +115,23 @@ class RecordingSpeaker(AudioSink):
         self._stop.set()
 
 
+class StandInCamera(VideoSource):
+    """Opens like a camera, so the app announces video on, but yields no frames:
+    video_loop sends the corpus frames itself, at times it records."""
+
+    fps = 15.0
+
+    def __init__(self) -> None:
+        self._closed = threading.Event()
+
+    def capture(self) -> CapturedFrame | None:
+        self._closed.wait(0.2)
+        return None
+
+    def close(self) -> None:
+        self._closed.set()
+
+
 class BenchApp(ConferenceApp):
     def __init__(self, *a: Any, **kw: Any) -> None:
         super().__init__(*a, **kw)
@@ -168,7 +193,13 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         speakers.append(s)
         return s
 
-    devices = Devices(video=None, microphone=(lambda: mic) if mic else None, speaker=speaker)
+    # A participant that sends video announces it (media_state video on) through the
+    # stand-in camera; before, video=None made it announce video off while sending.
+    devices = Devices(
+        video=StandInCamera if args.send_video else None,
+        microphone=(lambda: mic) if mic else None,
+        speaker=speaker,
+    )
     app = BenchApp(
         ClientConfig(name=args.name, server=args.server, port=args.port, media=media), devices, out=print
     )
