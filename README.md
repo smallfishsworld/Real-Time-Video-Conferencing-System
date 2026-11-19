@@ -242,7 +242,7 @@ still answers.
 
 ```sh
 cd client
-uv sync                                                   # numpy and Pillow only
+uv sync              # runtime: numpy and Pillow (plus the dev tools); no OpenCV or PyAudio
 uv run confclient --name alice --fake-media               # synthetic camera and tone
 uv run confclient --name bob --fake-media --headless --join 1
 ```

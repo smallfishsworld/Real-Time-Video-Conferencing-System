@@ -13,9 +13,9 @@ Each item was checked against the code in `legacy/` before it was fixed.
 | # | Problem in `legacy/` | Where | Consequence |
 |---|---|---|---|
 | 1 | Media datagrams are `pickle.dumps((ID, kind, data))` and the receiver calls `pickle.loads()` on whatever arrives on its UDP port | `my_client.py` `keep_share` / `keep_recv` | Anyone who can send one UDP packet to a client can run code on it |
-| 2 | A whole JPEG frame (about 31 kB for the test corpus) is one UDP datagram | `keep_share` | On a 1500-byte MTU it becomes 21 or 22 IP fragments; losing any one loses the frame (section 3.1) |
+| 2 | A whole JPEG frame (about 31 kB for the test corpus) is one UDP datagram | `keep_share` | On a 1500-byte MTU it becomes 21 or 22 IP fragments; losing any one loses the frame (sections 2.2 and 2.3) |
 | 3 | No sequence numbers, jitter buffer, FEC or retransmission | media threads | No way to detect, conceal or repair loss |
-| 4 | No audio mixing: each received chunk is written to a blocking output stream, one after another | `keep_recv` | With two or more talkers playback falls behind real time without bound, and because the same thread receives video, video stalls too (section 3.2) |
+| 4 | No audio mixing: each received chunk is written to a blocking output stream, one after another | `keep_recv` | With two or more talkers playback falls behind real time without bound, and because the same thread receives video, video stalls too (section 2.4) |
 | 5 | The relay identifies senders by IP address and skips every receiver with the sender's IP | `my_server.py` `handle_data` | Two clients on one host cannot hear or see each other |
 | 6 | Ports are derived from user IDs (TCP 20000+ID, UDP 20000+100·ID, conference ports 10000+ID) | `my_client.py`, `my_server.py` | At most about 455 users per host; fixed, guessable ports; one UDP socket and thread per meeting |
 | 7 | TCP messages assume that one `recv()` returns one message (the MainServer reads each 10-byte field with its own `recv(10)`) | `my_server.py` | Requests coalesced by TCP are mis-parsed; the benchmark harness has to pause between fields to work around it |
@@ -315,7 +315,7 @@ has FEC only.
 | Cancel rights | Only the creator (host) can cancel; the host role is not transferred when the host leaves | The specification gives the cancel right to the creator |
 | Room size | 16 members by default (`-max-room-size`), 256 rooms, 1024 clients | Conservative limits; configurable |
 | Chat timestamps | Stamped by the server (name and server time) | Clients' clocks are not trusted |
-| Rate limits | Server: 8 Mbit/s ingress per sender (token bucket, 256 KiB burst), 50 control requests/s per connection, 2000 REGISTERs/s in total. Client: 6000 kbit/s send cap; whole video frames are dropped rather than single fragments when over budget | Owner requirement (campus network); dropping whole frames avoids sending fragments of frames that cannot be completed |
+| Rate limits | Server: 8 Mbit/s ingress per sender (token bucket, 256 KiB burst), 50 control requests/s per connection, 2000 REGISTERs/s in total. Client: 6000 kbit/s send cap; whole video frames are dropped rather than single fragments when over budget | The system runs on a shared campus network, so every sender is capped; dropping whole frames avoids sending fragments of frames that cannot be completed |
 | Empty room | Closed when the last member leaves; ids are never reused | Specification: a meeting ends when everyone has left |
 | Observability | Prometheus `/metrics` and optional pprof on 127.0.0.1:6101 | Never exposed on a public interface by default |
 | Batched I/O | `recvmmsg` up to 64 datagrams, `sendmmsg` per read, UDP GSO for each sender's runs (`-udp-batch`, `-udp-gso`) | Profile-driven (section 2.10); the flags keep the old one-call-per-datagram path for comparison |
