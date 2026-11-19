@@ -5,7 +5,8 @@
   "raw_files": "bench/tmp/b3/20261119T110241Z-2243",
   "criteria": {
     "delivery_ratio_min": 0.99,
-    "p99_latency_ms_max": 100.0
+    "p99_latency_ms_max": 100.0,
+    "flag_core_busier_than_process_by": 0.03
   },
   "setup": {
     "run_id": "20261119T110241Z-2243",
@@ -42,7 +43,7 @@
       ],
       "split": true
     },
-    "note": "server pinned with taskset to one CPU; loadgen pinned to two others; points interleaved by repeat, size and system, each under the bench lock; v2 frame delivery counts only frames whose every fragment arrived (the load generator does not use FEC repair); server CPU is the process's utime+stime from /proc, which on loopback includes the softirq receive work of the packets it sends (kernel_config: no IRQ_TIME_ACCOUNTING)"
+    "note": "server pinned with taskset to one CPU; loadgen pinned to two others; points interleaved by repeat, size and system, each under the bench lock; v2 frame delivery counts only frames whose every fragment arrived (the load generator does not use FEC repair); server CPU is the process's utime+stime from /proc, which on loopback includes the softirq receive work of the packets it sends (kernel_config: no IRQ_TIME_ACCOUNTING); server_cpu_excluding_core_softirq subtracts the pinned core's softirq time from it"
   },
   "systems": {
     "v2-gso": {
@@ -50,6 +51,11 @@
       "capacity_by_repeat": [
         304,
         304,
+        272
+      ],
+      "capacity_last_pass_before_first_failure_by_repeat": [
+        304,
+        272,
         272
       ],
       "capacity_participants": {
@@ -72,6 +78,50 @@
           true
         ]
       },
+      "flagged_points": [
+        {
+          "label": "20261119T110241Z-2243/v2-gso/fixed/r1",
+          "participants": 16,
+          "server_core_utilisation": 0.39133333333332604,
+          "server_cpu_utilisation": 0.134,
+          "server_core_minus_process": 0.25733333333332603
+        },
+        {
+          "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
+          "participants": 192,
+          "server_core_utilisation": 0.7360000000000582,
+          "server_cpu_utilisation": 0.6925000000000001,
+          "server_core_minus_process": 0.04350000000005805
+        },
+        {
+          "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
+          "participants": 256,
+          "server_core_utilisation": 0.9855000000000473,
+          "server_cpu_utilisation": 0.8425,
+          "server_core_minus_process": 0.1430000000000473
+        },
+        {
+          "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
+          "participants": 272,
+          "server_core_utilisation": 0.9894999999999528,
+          "server_cpu_utilisation": 0.8695,
+          "server_core_minus_process": 0.1199999999999527
+        },
+        {
+          "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
+          "participants": 288,
+          "server_core_utilisation": 0.9734999999999673,
+          "server_cpu_utilisation": 0.8825,
+          "server_core_minus_process": 0.09099999999996733
+        },
+        {
+          "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
+          "participants": 304,
+          "server_core_utilisation": 0.9725000000000363,
+          "server_cpu_utilisation": 0.9185000000000001,
+          "server_core_minus_process": 0.05400000000003624
+        }
+      ],
       "sweep": [
         {
           "participants": 128,
@@ -112,6 +162,18 @@
             "median": 0.20234291799786808,
             "min": 0.19590958019376983,
             "max": 0.20717131474101058
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.09499999999999317,
+            "min": 0.09099999999999682,
+            "max": 0.10399999999999636
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.4170000000000032,
+            "min": 0.40150000000000685,
+            "max": 0.43100000000000355
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -186,6 +248,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.19590958019376983,
+              "server_core_softirq_utilisation": 0.09099999999999682,
+              "server_cpu_excluding_core_softirq": 0.4170000000000032,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.1954687500000015,
+              "server_core_seconds_per_participant_minute": 0.21773437499997783,
+              "server_core_minus_process": -0.04350000000004728,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -271,6 +338,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.20717131474101058,
+              "server_core_softirq_utilisation": 0.10399999999999636,
+              "server_cpu_excluding_core_softirq": 0.43100000000000355,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20203125000000166,
+              "server_core_seconds_per_participant_minute": 0.23531250000002046,
+              "server_core_minus_process": -0.032999999999956287,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -356,6 +428,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.20234291799786808,
+              "server_core_softirq_utilisation": 0.09499999999999317,
+              "server_cpu_excluding_core_softirq": 0.40150000000000685,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.1882031250000032,
+              "server_core_seconds_per_participant_minute": 0.22007812499998636,
+              "server_core_minus_process": -0.027000000000029112,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -428,6 +505,18 @@
             "median": 0.20588235294115892,
             "min": 0.19558964525406583,
             "max": 0.22243346007606707
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.10199999999999818,
+            "min": 0.09799999999999613,
+            "max": 0.11699999999999591
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.4390000000000039,
+            "min": 0.42400000000000415,
+            "max": 0.45100000000000184
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -502,6 +591,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.20588235294115892,
+              "server_core_softirq_utilisation": 0.09799999999999613,
+              "server_cpu_excluding_core_softirq": 0.4390000000000039,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.18291666666666828,
+              "server_core_seconds_per_participant_minute": 0.19833333333334244,
+              "server_core_minus_process": -0.06099999999997818,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -587,6 +681,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.19558964525406583,
+              "server_core_softirq_utilisation": 0.10199999999999818,
+              "server_cpu_excluding_core_softirq": 0.45100000000000184,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.18791666666666743,
+              "server_core_seconds_per_participant_minute": 0.21729166666667274,
+              "server_core_minus_process": -0.03149999999998554,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -672,6 +771,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.22243346007606707,
+              "server_core_softirq_utilisation": 0.11699999999999591,
+              "server_cpu_excluding_core_softirq": 0.42400000000000415,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.1766666666666684,
+              "server_core_seconds_per_participant_minute": 0.21916666666663787,
+              "server_core_minus_process": -0.01500000000006918,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -744,6 +848,18 @@
             "median": 0.20271580989332058,
             "min": 0.1668202764976957,
             "max": 0.21235521235518287
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.10450000000000159,
+            "min": 0.09050000000000295,
+            "max": 0.10999999999999091
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5039999999999971,
+            "min": 0.4595000000000091,
+            "max": 0.5039999999999984
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -818,6 +934,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.20271580989332058,
+              "server_core_softirq_utilisation": 0.10450000000000159,
+              "server_cpu_excluding_core_softirq": 0.5039999999999984,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.18899999999999942,
+              "server_core_seconds_per_participant_minute": 0.19331249999999045,
+              "server_core_minus_process": -0.0930000000000255,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -903,6 +1024,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.1668202764976957,
+              "server_core_softirq_utilisation": 0.09050000000000295,
+              "server_cpu_excluding_core_softirq": 0.5039999999999971,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.1889999999999989,
+              "server_core_seconds_per_participant_minute": 0.20343750000000682,
+              "server_core_minus_process": -0.05199999999998184,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -988,6 +1114,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.21235521235518287,
+              "server_core_softirq_utilisation": 0.10999999999999091,
+              "server_cpu_excluding_core_softirq": 0.4595000000000091,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.17231250000000342,
+              "server_core_seconds_per_participant_minute": 0.19425000000001091,
+              "server_core_minus_process": -0.0514999999999709,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1060,6 +1191,18 @@
             "median": 0.20653133274491908,
             "min": 0.19964819700969086,
             "max": 0.20671378091873605
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.11699999999999591,
+            "min": 0.11349999999999909,
+            "max": 0.11700000000000159
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5050000000000041,
+            "min": 0.5039999999999984,
+            "max": 0.510000000000001
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -1134,6 +1277,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.20671378091873605,
+              "server_core_softirq_utilisation": 0.11700000000000159,
+              "server_cpu_excluding_core_softirq": 0.5039999999999984,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.17181818181818131,
+              "server_core_seconds_per_participant_minute": 0.1929545454545405,
+              "server_core_minus_process": -0.05500000000001459,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1219,6 +1367,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.19964819700969086,
+              "server_core_softirq_utilisation": 0.11349999999999909,
+              "server_cpu_excluding_core_softirq": 0.510000000000001,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.17386363636363672,
+              "server_core_seconds_per_participant_minute": 0.19380681818180082,
+              "server_core_minus_process": -0.05500000000005101,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1304,6 +1457,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.20653133274491908,
+              "server_core_softirq_utilisation": 0.11699999999999591,
+              "server_cpu_excluding_core_softirq": 0.5050000000000041,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.17215909090909234,
+              "server_core_seconds_per_participant_minute": 0.19312499999999877,
+              "server_core_minus_process": -0.05550000000000366,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1376,6 +1534,18 @@
             "median": 0.2001551590379891,
             "min": 0.15896739130432969,
             "max": 0.2140672782874595
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.12899999999999637,
+            "min": 0.11699999999999591,
+            "max": 0.13999999999999774
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5405000000000036,
+            "min": 0.5335000000000023,
+            "max": 0.5755000000000042
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -1450,6 +1620,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.2001551590379891,
+              "server_core_softirq_utilisation": 0.12899999999999637,
+              "server_cpu_excluding_core_softirq": 0.5405000000000036,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16890625000000115,
+              "server_core_seconds_per_participant_minute": 0.20140625000001933,
+              "server_core_minus_process": -0.024999999999938183,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1535,6 +1710,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.15896739130432969,
+              "server_core_softirq_utilisation": 0.11699999999999591,
+              "server_cpu_excluding_core_softirq": 0.5755000000000042,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.17984375000000133,
+              "server_core_seconds_per_participant_minute": 0.2300000000000182,
+              "server_core_minus_process": 0.04350000000005805,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1620,6 +1800,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.2140672782874595,
+              "server_core_softirq_utilisation": 0.13999999999999774,
+              "server_cpu_excluding_core_softirq": 0.5335000000000023,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16671875000000072,
+              "server_core_seconds_per_participant_minute": 0.20437499999999886,
+              "server_core_minus_process": -0.019500000000003626,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1692,6 +1877,18 @@
             "median": 0.19799857040743568,
             "min": 0.18133129303748613,
             "max": 0.19857594936709702
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.12549999999999956,
+            "min": 0.11849999999999454,
+            "max": 0.1384999999999991
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5945000000000054,
+            "min": 0.5740000000000005,
+            "max": 0.5960000000000009
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -1766,6 +1963,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.19799857040743568,
+              "server_core_softirq_utilisation": 0.1384999999999991,
+              "server_cpu_excluding_core_softirq": 0.5960000000000009,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.17192307692307718,
+              "server_core_seconds_per_participant_minute": 0.201778846153843,
+              "server_core_minus_process": -0.0350000000000108,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1851,6 +2053,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.18133129303748613,
+              "server_core_softirq_utilisation": 0.11849999999999454,
+              "server_cpu_excluding_core_softirq": 0.5945000000000054,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.17149038461538618,
+              "server_core_seconds_per_participant_minute": 0.1885096153846112,
+              "server_core_minus_process": -0.05950000000001443,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -1936,6 +2143,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.19857594936709702,
+              "server_core_softirq_utilisation": 0.12549999999999956,
+              "server_cpu_excluding_core_softirq": 0.5740000000000005,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16557692307692326,
+              "server_core_seconds_per_participant_minute": 0.18230769230768393,
+              "server_core_minus_process": -0.0675000000000292,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2008,6 +2220,18 @@
             "median": 0.19286256643888966,
             "min": 0.1880900508351452,
             "max": 0.20714806710431066
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.12950000000000159,
+            "min": 0.12700000000000955,
+            "max": 0.1419999999999959
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.6085000000000041,
+            "min": 0.6009999999999904,
+            "max": 0.6154999999999983
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -2082,6 +2306,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.1880900508351452,
+              "server_core_softirq_utilisation": 0.12950000000000159,
+              "server_cpu_excluding_core_softirq": 0.6154999999999983,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16486607142857096,
+              "server_core_seconds_per_participant_minute": 0.18441964285714868,
+              "server_core_minus_process": -0.05649999999997801,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2167,6 +2396,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.20714806710431066,
+              "server_core_softirq_utilisation": 0.1419999999999959,
+              "server_cpu_excluding_core_softirq": 0.6085000000000041,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16299107142857253,
+              "server_core_seconds_per_participant_minute": 0.18361607142855974,
+              "server_core_minus_process": -0.06500000000004369,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2252,6 +2486,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.19286256643888966,
+              "server_core_softirq_utilisation": 0.12700000000000955,
+              "server_cpu_excluding_core_softirq": 0.6009999999999904,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16098214285714027,
+              "server_core_seconds_per_participant_minute": 0.17638392857142954,
+              "server_core_minus_process": -0.06949999999999634,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2324,6 +2563,18 @@
             "median": 0.1812749003984137,
             "min": 0.17935142289875963,
             "max": 0.18615284128018714
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.1365000000000009,
+            "min": 0.1355000000000018,
+            "max": 0.14249999999999546
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.6470000000000045,
+            "min": 0.6434999999999991,
+            "max": 0.6659999999999983
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -2398,6 +2649,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.1812749003984137,
+              "server_core_softirq_utilisation": 0.1365000000000009,
+              "server_cpu_excluding_core_softirq": 0.6434999999999991,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16087499999999977,
+              "server_core_seconds_per_participant_minute": 0.18824999999999364,
+              "server_core_minus_process": -0.027000000000025448,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2483,6 +2739,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.17935142289875963,
+              "server_core_softirq_utilisation": 0.1355000000000018,
+              "server_cpu_excluding_core_softirq": 0.6659999999999983,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16649999999999957,
+              "server_core_seconds_per_participant_minute": 0.18887499999998453,
+              "server_core_minus_process": -0.04600000000006199,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2568,6 +2829,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.18615284128018714,
+              "server_core_softirq_utilisation": 0.14249999999999546,
+              "server_cpu_excluding_core_softirq": 0.6470000000000045,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16175000000000112,
+              "server_core_seconds_per_participant_minute": 0.19137500000001637,
+              "server_core_minus_process": -0.023999999999934518,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2640,6 +2906,18 @@
             "median": 0.1878386514147972,
             "min": 0.14408929477421523,
             "max": 0.19053627760254
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.15099999999999908,
+            "min": 0.1419999999999959,
+            "max": 0.15599999999999453
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.6965000000000052,
+            "min": 0.6695000000000007,
+            "max": 0.7005000000000041
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -2714,6 +2992,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.19053627760254,
+              "server_core_softirq_utilisation": 0.15099999999999908,
+              "server_cpu_excluding_core_softirq": 0.6695000000000007,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.15691406250000017,
+              "server_core_seconds_per_participant_minute": 0.18574218749998295,
+              "server_core_minus_process": -0.028000000000072522,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2799,6 +3082,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.14408929477421523,
+              "server_core_softirq_utilisation": 0.1419999999999959,
+              "server_cpu_excluding_core_softirq": 0.7005000000000041,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16417968750000098,
+              "server_core_seconds_per_participant_minute": 0.23097656250001108,
+              "server_core_minus_process": 0.1430000000000473,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2884,6 +3172,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.1878386514147972,
+              "server_core_softirq_utilisation": 0.15599999999999453,
+              "server_cpu_excluding_core_softirq": 0.6965000000000052,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.16324218750000125,
+              "server_core_seconds_per_participant_minute": 0.19464843750000682,
+              "server_core_minus_process": -0.02199999999997071,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -2956,6 +3249,18 @@
             "median": 0.17861339600469364,
             "min": 0.15310763011622625,
             "max": 0.1821538461538484
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.15149999999999864,
+            "min": 0.14800000000000182,
+            "max": 0.1519999999999982
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.7180000000000014,
+            "min": 0.7089999999999982,
+            "max": 0.7195000000000018
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -3030,6 +3335,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.1821538461538484,
+              "server_core_softirq_utilisation": 0.14800000000000182,
+              "server_cpu_excluding_core_softirq": 0.7089999999999982,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.156397058823529,
+              "server_core_seconds_per_participant_minute": 0.1792279411764706,
+              "server_core_minus_process": -0.044499999999999984,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3115,6 +3425,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.17861339600469364,
+              "server_core_softirq_utilisation": 0.1519999999999982,
+              "server_cpu_excluding_core_softirq": 0.7195000000000018,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.15871323529411804,
+              "server_core_seconds_per_participant_minute": 0.1877205882352989,
+              "server_core_minus_process": -0.02049999999997809,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3200,6 +3515,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.15310763011622625,
+              "server_core_softirq_utilisation": 0.15149999999999864,
+              "server_cpu_excluding_core_softirq": 0.7180000000000014,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.15838235294117678,
+              "server_core_seconds_per_participant_minute": 0.21827205882351897,
+              "server_core_minus_process": 0.1199999999999527,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3272,6 +3592,18 @@
             "median": 0.17257142857143404,
             "min": 0.15613764766307478,
             "max": 0.17904656319291506
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.1519999999999982,
+            "min": 0.15100000000000477,
+            "max": 0.16150000000000092
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.7424999999999993,
+            "min": 0.7305000000000017,
+            "max": 0.7484999999999952
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -3346,6 +3678,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.17257142857143404,
+              "server_core_softirq_utilisation": 0.15100000000000477,
+              "server_cpu_excluding_core_softirq": 0.7484999999999952,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.15593749999999898,
+              "server_core_seconds_per_participant_minute": 0.18229166666666666,
+              "server_core_minus_process": -0.024499999999999966,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3431,6 +3768,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": false,
               "server_core_softirq_share": 0.17904656319291506,
+              "server_core_softirq_utilisation": 0.16150000000000092,
+              "server_cpu_excluding_core_softirq": 0.7424999999999993,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.15468749999999984,
+              "server_core_seconds_per_participant_minute": 0.18791666666665682,
+              "server_core_minus_process": -0.0020000000000474083,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3516,6 +3858,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": false,
               "server_core_softirq_share": 0.15613764766307478,
+              "server_core_softirq_utilisation": 0.1519999999999982,
+              "server_cpu_excluding_core_softirq": 0.7305000000000017,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.15218750000000036,
+              "server_core_seconds_per_participant_minute": 0.20281249999999318,
+              "server_core_minus_process": 0.09099999999996733,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3588,6 +3935,18 @@
             "median": 0.17851239669421895,
             "min": 0.16143958868894512,
             "max": 0.1855500821018073
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.16200000000000045,
+            "min": 0.157000000000005,
+            "max": 0.169500000000005
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.7614999999999951,
+            "min": 0.7599999999999996,
+            "max": 0.768999999999995
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -3662,6 +4021,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.1855500821018073,
+              "server_core_softirq_utilisation": 0.169500000000005,
+              "server_cpu_excluding_core_softirq": 0.768999999999995,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.1517763157894727,
+              "server_core_seconds_per_participant_minute": 0.18029605263158327,
+              "server_core_minus_process": -0.02499999999997815,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3747,6 +4111,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.17851239669421895,
+              "server_core_softirq_utilisation": 0.16200000000000045,
+              "server_cpu_excluding_core_softirq": 0.7599999999999996,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.14999999999999994,
+              "server_core_seconds_per_participant_minute": 0.17911184210525957,
+              "server_core_minus_process": -0.014500000000018276,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3832,6 +4201,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r3",
               "pass": false,
               "server_core_softirq_share": 0.16143958868894512,
+              "server_core_softirq_utilisation": 0.157000000000005,
+              "server_cpu_excluding_core_softirq": 0.7614999999999951,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.15029605263157797,
+              "server_core_seconds_per_participant_minute": 0.1919407894736914,
+              "server_core_minus_process": 0.05400000000003624,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -3904,6 +4278,18 @@
             "median": 0.1822966354491898,
             "min": 0.1784599375650458,
             "max": 0.18613333333333382
+          },
+          "server_core_softirq_utilisation": {
+            "n": 2,
+            "median": 0.17300000000000182,
+            "min": 0.17150000000000318,
+            "max": 0.17450000000000046
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 2,
+            "median": 0.7859999999999983,
+            "min": 0.7809999999999996,
+            "max": 0.7909999999999968
           },
           "datagrams_per_read_call": {
             "n": 2,
@@ -3978,6 +4364,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r1",
               "pass": false,
               "server_core_softirq_share": 0.1784599375650458,
+              "server_core_softirq_utilisation": 0.17150000000000318,
+              "server_cpu_excluding_core_softirq": 0.7909999999999968,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.1483124999999994,
+              "server_core_seconds_per_participant_minute": 0.18018749999999387,
+              "server_core_minus_process": -0.0015000000000328084,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -4063,6 +4454,11 @@
               "label": "20261119T110241Z-2243/v2-gso/sweep/r2",
               "pass": false,
               "server_core_softirq_share": 0.18613333333333382,
+              "server_core_softirq_utilisation": 0.17450000000000046,
+              "server_cpu_excluding_core_softirq": 0.7809999999999996,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.14643749999999991,
+              "server_core_seconds_per_participant_minute": 0.17578125,
+              "server_core_minus_process": -0.018000000000000016,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": true,
@@ -4111,6 +4507,24 @@
           "median": 0.134,
           "min": 0.12766666666666668,
           "max": 0.13416666666666666
+        },
+        "server_cpu_seconds_per_participant_minute_excluding_core_softirq": {
+          "n": 3,
+          "median": 0.42250000000000176,
+          "min": 0.4106250000000051,
+          "max": 0.42937500000001017
+        },
+        "server_core_seconds_per_participant_minute": {
+          "n": 3,
+          "median": 0.4831249999999727,
+          "min": 0.47499999999990905,
+          "max": 1.4674999999999727
+        },
+        "server_core_utilisation": {
+          "n": 3,
+          "median": 0.12883333333332606,
+          "min": 0.12666666666664242,
+          "max": 0.39133333333332604
         },
         "server_core_softirq_share": {
           "n": 3,
@@ -4179,6 +4593,11 @@
             "label": "20261119T110241Z-2243/v2-gso/fixed/r1",
             "pass": true,
             "server_core_softirq_share": 0.05451448040885845,
+            "server_core_softirq_utilisation": 0.021333333333332878,
+            "server_cpu_excluding_core_softirq": 0.11266666666666714,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.42250000000000176,
+            "server_core_seconds_per_participant_minute": 1.4674999999999727,
+            "server_core_minus_process": 0.25733333333332603,
             "server_counters": {
               "udp_batching_enabled": true,
               "udp_gso_enabled": true,
@@ -4264,6 +4683,11 @@
             "label": "20261119T110241Z-2243/v2-gso/fixed/r2",
             "pass": true,
             "server_core_softirq_share": 0.14342105263159563,
+            "server_core_softirq_utilisation": 0.0181666666666653,
+            "server_cpu_excluding_core_softirq": 0.10950000000000137,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.4106250000000051,
+            "server_core_seconds_per_participant_minute": 0.47499999999990905,
+            "server_core_minus_process": -0.0010000000000242593,
             "server_counters": {
               "udp_batching_enabled": true,
               "udp_gso_enabled": true,
@@ -4349,6 +4773,11 @@
             "label": "20261119T110241Z-2243/v2-gso/fixed/r3",
             "pass": true,
             "server_core_softirq_share": 0.15265200517463168,
+            "server_core_softirq_utilisation": 0.01966666666666394,
+            "server_cpu_excluding_core_softirq": 0.11450000000000271,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.42937500000001017,
+            "server_core_seconds_per_participant_minute": 0.4831249999999727,
+            "server_core_minus_process": -0.005333333333340601,
             "server_counters": {
               "udp_batching_enabled": true,
               "udp_gso_enabled": true,
@@ -4390,6 +4819,11 @@
         176,
         192
       ],
+      "capacity_last_pass_before_first_failure_by_repeat": [
+        160,
+        176,
+        192
+      ],
       "capacity_participants": {
         "n": 3,
         "median": 176.0,
@@ -4410,6 +4844,22 @@
           false
         ]
       },
+      "flagged_points": [
+        {
+          "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
+          "participants": 144,
+          "server_core_utilisation": 0.7600000000000364,
+          "server_cpu_utilisation": 0.7195,
+          "server_core_minus_process": 0.040500000000036396
+        },
+        {
+          "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
+          "participants": 160,
+          "server_core_utilisation": 0.8075000000000727,
+          "server_cpu_utilisation": 0.7755,
+          "server_core_minus_process": 0.03200000000007275
+        }
+      ],
       "sweep": [
         {
           "participants": 128,
@@ -4450,6 +4900,18 @@
             "median": 0.2702290076335775,
             "min": 0.2677636499625899,
             "max": 0.278350515463917
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.17900000000000205,
+            "min": 0.1769999999999982,
+            "max": 0.18899999999999864
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.4910000000000013,
+            "min": 0.4870000000000019,
+            "max": 0.506499999999998
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -4524,6 +4986,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.278350515463917,
+              "server_core_softirq_utilisation": 0.18899999999999864,
+              "server_cpu_excluding_core_softirq": 0.4910000000000013,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.23015625000000065,
+              "server_core_seconds_per_participant_minute": 0.3182812499999983,
+              "server_core_minus_process": -0.0010000000000035536,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -4609,6 +5076,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.2677636499625899,
+              "server_core_softirq_utilisation": 0.17900000000000205,
+              "server_cpu_excluding_core_softirq": 0.506499999999998,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.23742187499999906,
+              "server_core_seconds_per_participant_minute": 0.31335937500001876,
+              "server_core_minus_process": -0.016999999999959936,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -4694,6 +5166,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.2702290076335775,
+              "server_core_softirq_utilisation": 0.1769999999999982,
+              "server_cpu_excluding_core_softirq": 0.4870000000000019,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.22828125000000088,
+              "server_core_seconds_per_participant_minute": 0.3070312500000085,
+              "server_core_minus_process": -0.0089999999999818,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -4766,6 +5243,18 @@
             "median": 0.2664473684210518,
             "min": 0.26240652617268817,
             "max": 0.2755170113408976
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.2025000000000091,
+            "min": 0.19300000000000067,
+            "max": 0.20649999999999977
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5404999999999993,
+            "min": 0.5169999999999909,
+            "max": 0.5415000000000001
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -4840,6 +5329,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.26240652617268817,
+              "server_core_softirq_utilisation": 0.19300000000000067,
+              "server_cpu_excluding_core_softirq": 0.5404999999999993,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.22520833333333304,
+              "server_core_seconds_per_participant_minute": 0.3064583333333151,
+              "server_core_minus_process": 0.001999999999956259,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -4925,6 +5419,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.2755170113408976,
+              "server_core_softirq_utilisation": 0.20649999999999977,
+              "server_cpu_excluding_core_softirq": 0.5415000000000001,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.22562500000000005,
+              "server_core_seconds_per_participant_minute": 0.31229166666666214,
+              "server_core_minus_process": 0.0014999999999891767,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5010,6 +5509,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.2664473684210518,
+              "server_core_softirq_utilisation": 0.2025000000000091,
+              "server_cpu_excluding_core_softirq": 0.5169999999999909,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.2154166666666629,
+              "server_core_seconds_per_participant_minute": 0.3166666666666818,
+              "server_core_minus_process": 0.040500000000036396,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5082,6 +5586,18 @@
             "median": 0.25386996904023323,
             "min": 0.24774774774776429,
             "max": 0.2696139476961435
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.20500000000000682,
+            "min": 0.19250000000000114,
+            "max": 0.21649999999999636
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5735000000000037,
+            "min": 0.5704999999999931,
+            "max": 0.5749999999999988
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -5156,6 +5672,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.2696139476961435,
+              "server_core_softirq_utilisation": 0.21649999999999636,
+              "server_cpu_excluding_core_softirq": 0.5735000000000037,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21506250000000138,
+              "server_core_seconds_per_participant_minute": 0.30112499999999043,
+              "server_core_minus_process": 0.012999999999974476,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5241,6 +5762,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.24774774774776429,
+              "server_core_softirq_utilisation": 0.19250000000000114,
+              "server_cpu_excluding_core_softirq": 0.5749999999999988,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21562499999999957,
+              "server_core_seconds_per_participant_minute": 0.29137499999998223,
+              "server_core_minus_process": 0.009499999999952768,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5326,6 +5852,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.25386996904023323,
+              "server_core_softirq_utilisation": 0.20500000000000682,
+              "server_cpu_excluding_core_softirq": 0.5704999999999931,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.2139374999999974,
+              "server_core_seconds_per_participant_minute": 0.3028125000000273,
+              "server_core_minus_process": 0.03200000000007275,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5398,6 +5929,18 @@
             "median": 0.2533333333333303,
             "min": 0.24896755162240308,
             "max": 0.25339087546238176
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.2089999999999975,
+            "min": 0.20550000000000637,
+            "max": 0.2109999999999957
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.6194999999999936,
+            "min": 0.6135000000000026,
+            "max": 0.6355000000000044
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -5472,6 +6015,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r1",
               "pass": false,
               "server_core_softirq_share": 0.2533333333333303,
+              "server_core_softirq_utilisation": 0.2089999999999975,
+              "server_cpu_excluding_core_softirq": 0.6135000000000026,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20914772727272818,
+              "server_core_seconds_per_participant_minute": 0.28125,
+              "server_core_minus_process": 0.0024999999999998357,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5557,6 +6105,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.24896755162240308,
+              "server_core_softirq_utilisation": 0.2109999999999957,
+              "server_cpu_excluding_core_softirq": 0.6355000000000044,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21664772727272877,
+              "server_core_seconds_per_participant_minute": 0.28892045454546694,
+              "server_core_minus_process": 0.0010000000000363052,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5642,6 +6195,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.25339087546238176,
+              "server_core_softirq_utilisation": 0.20550000000000637,
+              "server_cpu_excluding_core_softirq": 0.6194999999999936,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21119318181817964,
+              "server_core_seconds_per_participant_minute": 0.27647727272729256,
+              "server_core_minus_process": -0.013999999999941726,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5714,6 +6272,18 @@
             "median": 0.23846153846155452,
             "min": 0.2283464566929019,
             "max": 0.24455611390285564
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.21700000000000158,
+            "min": 0.20299999999999727,
+            "max": 0.21900000000000547
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.6895000000000028,
+            "min": 0.6629999999999945,
+            "max": 0.6929999999999983
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -5788,6 +6358,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r1",
               "pass": false,
               "server_core_softirq_share": 0.23846153846155452,
+              "server_core_softirq_utilisation": 0.21700000000000158,
+              "server_cpu_excluding_core_softirq": 0.6929999999999983,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21656249999999946,
+              "server_core_seconds_per_participant_minute": 0.28437499999998295,
+              "server_core_minus_process": -5.4511950509095186e-14,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5873,6 +6448,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r2",
               "pass": false,
               "server_core_softirq_share": 0.2283464566929019,
+              "server_core_softirq_utilisation": 0.20299999999999727,
+              "server_cpu_excluding_core_softirq": 0.6895000000000028,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21546875000000087,
+              "server_core_seconds_per_participant_minute": 0.27781250000001023,
+              "server_core_minus_process": -0.003499999999967307,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -5958,6 +6538,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.24455611390285564,
+              "server_core_softirq_utilisation": 0.21900000000000547,
+              "server_cpu_excluding_core_softirq": 0.6629999999999945,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20718749999999828,
+              "server_core_seconds_per_participant_minute": 0.2798437499999977,
+              "server_core_minus_process": 0.01349999999999274,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -6030,6 +6615,18 @@
             "median": 0.23725314353800075,
             "min": 0.21779141104295,
             "max": 0.25671487603305154
+          },
+          "server_core_softirq_utilisation": {
+            "n": 2,
+            "median": 0.23075000000000045,
+            "min": 0.21299999999999955,
+            "max": 0.24850000000000136
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 2,
+            "median": 0.7319999999999995,
+            "min": 0.7129999999999986,
+            "max": 0.7510000000000006
           },
           "datagrams_per_read_call": {
             "n": 2,
@@ -6104,6 +6701,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r2",
               "pass": false,
               "server_core_softirq_share": 0.21779141104295,
+              "server_core_softirq_utilisation": 0.21299999999999955,
+              "server_cpu_excluding_core_softirq": 0.7510000000000006,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21663461538461554,
+              "server_core_seconds_per_participant_minute": 0.2821153846153773,
+              "server_core_minus_process": 0.013999999999974477,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -6189,6 +6791,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
               "pass": false,
               "server_core_softirq_share": 0.25671487603305154,
+              "server_core_softirq_utilisation": 0.24850000000000136,
+              "server_cpu_excluding_core_softirq": 0.7129999999999986,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20567307692307654,
+              "server_core_seconds_per_participant_minute": 0.27923076923077766,
+              "server_core_minus_process": 0.006500000000029038,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -6261,6 +6868,18 @@
             "median": 0.22388805597203282,
             "min": 0.22388805597203282,
             "max": 0.22388805597203282
+          },
+          "server_core_softirq_utilisation": {
+            "n": 1,
+            "median": 0.22400000000000092,
+            "min": 0.22400000000000092,
+            "max": 0.22400000000000092
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 1,
+            "median": 0.765499999999999,
+            "min": 0.765499999999999,
+            "max": 0.765499999999999
           },
           "datagrams_per_read_call": {
             "n": 1,
@@ -6335,6 +6954,11 @@
               "label": "20261119T110241Z-2243/v2-nobatch/sweep/r3",
               "pass": false,
               "server_core_softirq_share": 0.22388805597203282,
+              "server_core_softirq_utilisation": 0.22400000000000092,
+              "server_cpu_excluding_core_softirq": 0.765499999999999,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20504464285714258,
+              "server_core_seconds_per_participant_minute": 0.26799107142855,
+              "server_core_minus_process": 0.010999999999920074,
               "server_counters": {
                 "udp_batching_enabled": false,
                 "udp_gso_enabled": false,
@@ -6383,6 +7007,24 @@
           "median": 0.15916666666666668,
           "min": 0.1525,
           "max": 0.16349999999999998
+        },
+        "server_cpu_seconds_per_participant_minute_excluding_core_softirq": {
+          "n": 3,
+          "median": 0.4574999999999989,
+          "min": 0.4281250000000028,
+          "max": 0.46374999999999367
+        },
+        "server_core_seconds_per_participant_minute": {
+          "n": 3,
+          "median": 0.5731250000000045,
+          "min": 0.5418750000000045,
+          "max": 0.6518750000000182
+        },
+        "server_core_utilisation": {
+          "n": 3,
+          "median": 0.15283333333333454,
+          "min": 0.1445000000000012,
+          "max": 0.1738333333333382
         },
         "server_core_softirq_share": {
           "n": 3,
@@ -6451,6 +7093,11 @@
             "label": "20261119T110241Z-2243/v2-nobatch/fixed/r1",
             "pass": true,
             "server_core_softirq_share": 0.24318429661941118,
+            "server_core_softirq_utilisation": 0.03716666666666697,
+            "server_cpu_excluding_core_softirq": 0.1219999999999997,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.4574999999999989,
+            "server_core_seconds_per_participant_minute": 0.5731250000000045,
+            "server_core_minus_process": -0.006333333333332136,
             "server_counters": {
               "udp_batching_enabled": false,
               "udp_gso_enabled": false,
@@ -6536,6 +7183,11 @@
             "label": "20261119T110241Z-2243/v2-nobatch/fixed/r2",
             "pass": true,
             "server_core_softirq_share": 0.2652825836216765,
+            "server_core_softirq_utilisation": 0.038333333333332574,
+            "server_cpu_excluding_core_softirq": 0.11416666666666742,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.4281250000000028,
+            "server_core_seconds_per_participant_minute": 0.5418750000000045,
+            "server_core_minus_process": -0.007999999999998786,
             "server_counters": {
               "udp_batching_enabled": false,
               "udp_gso_enabled": false,
@@ -6621,6 +7273,11 @@
             "label": "20261119T110241Z-2243/v2-nobatch/fixed/r3",
             "pass": true,
             "server_core_softirq_share": 0.22914669223394377,
+            "server_core_softirq_utilisation": 0.039833333333335004,
+            "server_cpu_excluding_core_softirq": 0.12366666666666498,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.46374999999999367,
+            "server_core_seconds_per_participant_minute": 0.6518750000000182,
+            "server_core_minus_process": 0.010333333333338218,
             "server_counters": {
               "udp_batching_enabled": false,
               "udp_gso_enabled": false,
@@ -6662,6 +7319,11 @@
         192,
         192
       ],
+      "capacity_last_pass_before_first_failure_by_repeat": [
+        192,
+        192,
+        192
+      ],
       "capacity_participants": {
         "n": 3,
         "median": 192.0,
@@ -6682,6 +7344,7 @@
           false
         ]
       },
+      "flagged_points": [],
       "sweep": [
         {
           "participants": 128,
@@ -6722,6 +7385,18 @@
             "median": 0.24939271255059406,
             "min": 0.2401785714285404,
             "max": 0.24957698815566873
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.14749999999999658,
+            "min": 0.13449999999999135,
+            "max": 0.15399999999999636
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.4805000000000033,
+            "min": 0.4730000000000086,
+            "max": 0.5025000000000037
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -6796,6 +7471,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.24957698815566873,
+              "server_core_softirq_utilisation": 0.14749999999999658,
+              "server_cpu_excluding_core_softirq": 0.4805000000000033,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.22523437500000157,
+              "server_core_seconds_per_participant_minute": 0.2770312499999932,
+              "server_core_minus_process": -0.037000000000014466,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -6881,6 +7561,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.24939271255059406,
+              "server_core_softirq_utilisation": 0.15399999999999636,
+              "server_cpu_excluding_core_softirq": 0.5025000000000037,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.23554687500000177,
+              "server_core_seconds_per_participant_minute": 0.2894531250000085,
+              "server_core_minus_process": -0.03899999999998194,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -6966,6 +7651,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.2401785714285404,
+              "server_core_softirq_utilisation": 0.13449999999999135,
+              "server_cpu_excluding_core_softirq": 0.4730000000000086,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.22171875000000402,
+              "server_core_seconds_per_participant_minute": 0.26250000000001705,
+              "server_core_minus_process": -0.04749999999996357,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7038,6 +7728,18 @@
             "median": 0.24714828897339086,
             "min": 0.24617860016089088,
             "max": 0.2531250000000151
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.16200000000000045,
+            "min": 0.15299999999999728,
+            "max": 0.1625
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5105000000000028,
+            "min": 0.5054999999999996,
+            "max": 0.5175000000000001
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -7112,6 +7814,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.24617860016089088,
+              "server_core_softirq_utilisation": 0.15299999999999728,
+              "server_cpu_excluding_core_softirq": 0.5105000000000028,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21270833333333453,
+              "server_core_seconds_per_participant_minute": 0.2589583333333394,
+              "server_core_minus_process": -0.04199999999998549,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7197,6 +7904,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.24714828897339086,
+              "server_core_softirq_utilisation": 0.1625,
+              "server_cpu_excluding_core_softirq": 0.5175000000000001,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21562500000000004,
+              "server_core_seconds_per_participant_minute": 0.27395833333332575,
+              "server_core_minus_process": -0.022500000000018283,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7282,6 +7994,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.2531250000000151,
+              "server_core_softirq_utilisation": 0.16200000000000045,
+              "server_cpu_excluding_core_softirq": 0.5054999999999996,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21062499999999984,
+              "server_core_seconds_per_participant_minute": 0.2666666666666515,
+              "server_core_minus_process": -0.027500000000036495,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7354,6 +8071,18 @@
             "median": 0.2564821303433756,
             "min": 0.24244459368704868,
             "max": 0.25835654596099483
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.1830000000000041,
+            "min": 0.1805000000000007,
+            "max": 0.18550000000000183
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.5489999999999982,
+            "min": 0.5469999999999959,
+            "max": 0.5744999999999995
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -7428,6 +8157,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.24244459368704868,
+              "server_core_softirq_utilisation": 0.1805000000000007,
+              "server_cpu_excluding_core_softirq": 0.5744999999999995,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21543749999999978,
+              "server_core_seconds_per_participant_minute": 0.2791874999999891,
+              "server_core_minus_process": -0.010500000000029264,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7513,6 +8247,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.25835654596099483,
+              "server_core_softirq_utilisation": 0.18550000000000183,
+              "server_cpu_excluding_core_softirq": 0.5489999999999982,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.2058749999999993,
+              "server_core_seconds_per_participant_minute": 0.2692500000000109,
+              "server_core_minus_process": -0.016499999999970982,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7598,6 +8337,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.2564821303433756,
+              "server_core_softirq_utilisation": 0.1830000000000041,
+              "server_cpu_excluding_core_softirq": 0.5469999999999959,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20512499999999848,
+              "server_core_seconds_per_participant_minute": 0.2675625000000082,
+              "server_core_minus_process": -0.0164999999999782,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7670,6 +8414,18 @@
             "median": 0.22969543147207833,
             "min": 0.2276923076923105,
             "max": 0.24035420619861333
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.18500000000000227,
+            "min": 0.18100000000000022,
+            "max": 0.18999999999999773
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.6275,
+            "min": 0.5995000000000023,
+            "max": 0.6399999999999977
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -7744,6 +8500,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.22969543147207833,
+              "server_core_softirq_utilisation": 0.18100000000000022,
+              "server_cpu_excluding_core_softirq": 0.6275,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21392045454545452,
+              "server_core_seconds_per_participant_minute": 0.2686363636363674,
+              "server_core_minus_process": -0.020499999999989194,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7829,6 +8590,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.2276923076923105,
+              "server_core_softirq_utilisation": 0.18500000000000227,
+              "server_cpu_excluding_core_softirq": 0.6399999999999977,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21818181818181742,
+              "server_core_seconds_per_participant_minute": 0.27698863636363635,
+              "server_core_minus_process": -0.012499999999999956,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7914,6 +8680,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.24035420619861333,
+              "server_core_softirq_utilisation": 0.18999999999999773,
+              "server_cpu_excluding_core_softirq": 0.5995000000000023,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20437500000000078,
+              "server_core_seconds_per_participant_minute": 0.2694886363636277,
+              "server_core_minus_process": 0.0009999999999745768,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -7986,6 +8757,18 @@
             "median": 0.23623853211011625,
             "min": 0.23539140022049013,
             "max": 0.2377662636730131
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.20649999999999977,
+            "min": 0.2060000000000059,
+            "max": 0.21349999999999908
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.6574999999999942,
+            "min": 0.6570000000000001,
+            "max": 0.7030000000000007
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -8060,6 +8843,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.2377662636730131,
+              "server_core_softirq_utilisation": 0.20649999999999977,
+              "server_cpu_excluding_core_softirq": 0.6570000000000001,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20531250000000004,
+              "server_core_seconds_per_participant_minute": 0.2714062499999841,
+              "server_core_minus_process": 0.004999999999949156,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8145,6 +8933,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.23539140022049013,
+              "server_core_softirq_utilisation": 0.21349999999999908,
+              "server_cpu_excluding_core_softirq": 0.7030000000000007,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21968750000000023,
+              "server_core_seconds_per_participant_minute": 0.2834375000000193,
+              "server_core_minus_process": -0.009499999999938002,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8230,6 +9023,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.23623853211011625,
+              "server_core_softirq_utilisation": 0.2060000000000059,
+              "server_cpu_excluding_core_softirq": 0.6574999999999942,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.2054687499999982,
+              "server_core_seconds_per_participant_minute": 0.27249999999997954,
+              "server_core_minus_process": 0.008499999999934338,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8302,6 +9100,18 @@
             "median": 0.23366440146368084,
             "min": 0.21044219499200606,
             "max": 0.23369848721961403
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.22350000000000136,
+            "min": 0.19750000000000228,
+            "max": 0.22400000000000092
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.7269999999999985,
+            "min": 0.7234999999999991,
+            "max": 0.7494999999999978
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -8376,6 +9186,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r1",
               "pass": false,
               "server_core_softirq_share": 0.23369848721961403,
+              "server_core_softirq_utilisation": 0.22400000000000092,
+              "server_cpu_excluding_core_softirq": 0.7234999999999991,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20870192307692284,
+              "server_core_seconds_per_participant_minute": 0.27649038461538566,
+              "server_core_minus_process": 0.011000000000003674,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8461,6 +9276,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r2",
               "pass": false,
               "server_core_softirq_share": 0.21044219499200606,
+              "server_core_softirq_utilisation": 0.19750000000000228,
+              "server_cpu_excluding_core_softirq": 0.7494999999999978,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.21620192307692246,
+              "server_core_seconds_per_participant_minute": 0.27072115384616013,
+              "server_core_minus_process": -0.008499999999978192,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8546,6 +9366,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r3",
               "pass": false,
               "server_core_softirq_share": 0.23366440146368084,
+              "server_core_softirq_utilisation": 0.22350000000000136,
+              "server_cpu_excluding_core_softirq": 0.7269999999999985,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20971153846153806,
+              "server_core_seconds_per_participant_minute": 0.27591346153845003,
+              "server_core_minus_process": 0.005999999999960037,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8618,6 +9443,18 @@
             "median": 0.22777777777779143,
             "min": 0.2069693769799548,
             "max": 0.2458354366481698
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.22550000000000522,
+            "min": 0.19600000000000364,
+            "max": 0.2435000000000059
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.7514999999999964,
+            "min": 0.738999999999994,
+            "max": 0.7544999999999948
           },
           "datagrams_per_read_call": {
             "n": 3,
@@ -8692,6 +9529,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r1",
               "pass": false,
               "server_core_softirq_share": 0.22777777777779143,
+              "server_core_softirq_utilisation": 0.22550000000000522,
+              "server_cpu_excluding_core_softirq": 0.7544999999999948,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.2020982142857129,
+              "server_core_seconds_per_participant_minute": 0.26517857142856166,
+              "server_core_minus_process": 0.009999999999963483,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8777,6 +9619,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r2",
               "pass": false,
               "server_core_softirq_share": 0.2458354366481698,
+              "server_core_softirq_utilisation": 0.2435000000000059,
+              "server_cpu_excluding_core_softirq": 0.738999999999994,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.19794642857142697,
+              "server_core_seconds_per_participant_minute": 0.2653124999999932,
+              "server_core_minus_process": 0.007999999999974583,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8862,6 +9709,11 @@
               "label": "20261119T110241Z-2243/v2-nogso/sweep/r3",
               "pass": false,
               "server_core_softirq_share": 0.2069693769799548,
+              "server_core_softirq_utilisation": 0.19600000000000364,
+              "server_cpu_excluding_core_softirq": 0.7514999999999964,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.20129464285714188,
+              "server_core_seconds_per_participant_minute": 0.25366071428569675,
+              "server_core_minus_process": -0.0005000000000654481,
               "server_counters": {
                 "udp_batching_enabled": true,
                 "udp_gso_enabled": false,
@@ -8910,6 +9762,24 @@
           "median": 0.15066666666666667,
           "min": 0.14716666666666667,
           "max": 0.15200000000000002
+        },
+        "server_cpu_seconds_per_participant_minute_excluding_core_softirq": {
+          "n": 3,
+          "median": 0.4581250000000024,
+          "min": 0.44500000000001194,
+          "max": 0.4612499999999949
+        },
+        "server_core_seconds_per_participant_minute": {
+          "n": 3,
+          "median": 0.5831249999999955,
+          "min": 0.5062500000000227,
+          "max": 0.6131250000000819
+        },
+        "server_core_utilisation": {
+          "n": 3,
+          "median": 0.15549999999999878,
+          "min": 0.13500000000000606,
+          "max": 0.16350000000002182
         },
         "server_core_softirq_share": {
           "n": 3,
@@ -8978,6 +9848,11 @@
             "label": "20261119T110241Z-2243/v2-nogso/fixed/r1",
             "pass": true,
             "server_core_softirq_share": 0.16921508664626506,
+            "server_core_softirq_utilisation": 0.02766666666666803,
+            "server_cpu_excluding_core_softirq": 0.12299999999999864,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.4612499999999949,
+            "server_core_seconds_per_participant_minute": 0.6131250000000819,
+            "server_core_minus_process": 0.012833333333355151,
             "server_counters": {
               "udp_batching_enabled": true,
               "udp_gso_enabled": false,
@@ -9063,6 +9938,11 @@
             "label": "20261119T110241Z-2243/v2-nogso/fixed/r2",
             "pass": true,
             "server_core_softirq_share": 0.21111111111107805,
+            "server_core_softirq_utilisation": 0.028499999999996816,
+            "server_cpu_excluding_core_softirq": 0.11866666666666985,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.44500000000001194,
+            "server_core_seconds_per_participant_minute": 0.5062500000000227,
+            "server_core_minus_process": -0.012166666666660608,
             "server_counters": {
               "udp_batching_enabled": true,
               "udp_gso_enabled": false,
@@ -9148,6 +10028,11 @@
             "label": "20261119T110241Z-2243/v2-nogso/fixed/r3",
             "pass": true,
             "server_core_softirq_share": 0.19185423365487433,
+            "server_core_softirq_utilisation": 0.029833333333332726,
+            "server_cpu_excluding_core_softirq": 0.1221666666666673,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.4581250000000024,
+            "server_core_seconds_per_participant_minute": 0.5831249999999955,
+            "server_core_minus_process": 0.003499999999998754,
             "server_counters": {
               "udp_batching_enabled": true,
               "udp_gso_enabled": false,
@@ -9188,6 +10073,11 @@
         448,
         448
       ],
+      "capacity_last_pass_before_first_failure_by_repeat": [
+        448,
+        448,
+        448
+      ],
       "capacity_participants": {
         "n": 3,
         "median": 448.0,
@@ -9204,6 +10094,29 @@
         "udp_batching_enabled": [],
         "udp_gso_enabled": []
       },
+      "flagged_points": [
+        {
+          "label": "20261119T110241Z-2243/legacy/fixed/r1",
+          "participants": 16,
+          "server_core_utilisation": 0.09883333333333819,
+          "server_cpu_utilisation": 0.042,
+          "server_core_minus_process": 0.05683333333333818
+        },
+        {
+          "label": "20261119T110241Z-2243/legacy/fixed/r2",
+          "participants": 16,
+          "server_core_utilisation": 0.0883333333333212,
+          "server_cpu_utilisation": 0.0405,
+          "server_core_minus_process": 0.0478333333333212
+        },
+        {
+          "label": "20261119T110241Z-2243/legacy/fixed/r3",
+          "participants": 16,
+          "server_core_utilisation": 0.1695000000000012,
+          "server_cpu_utilisation": 0.043500000000000004,
+          "server_core_minus_process": 0.1260000000000012
+        }
+      ],
       "sweep": [
         {
           "participants": 448,
@@ -9244,6 +10157,18 @@
             "median": 0.18757921419519993,
             "min": 0.16475095785441754,
             "max": 0.20979899497487797
+          },
+          "server_core_softirq_utilisation": {
+            "n": 3,
+            "median": 0.07400000000000091,
+            "min": 0.06450000000000386,
+            "max": 0.08349999999999227
+          },
+          "server_cpu_excluding_core_softirq": {
+            "n": 3,
+            "median": 0.32249999999999907,
+            "min": 0.2980000000000077,
+            "max": 0.3299999999999962
           },
           "datagrams_per_read_call": {
             "n": 0,
@@ -9318,6 +10243,11 @@
               "label": "20261119T110241Z-2243/legacy/sweep/r1",
               "pass": true,
               "server_core_softirq_share": 0.16475095785441754,
+              "server_core_softirq_utilisation": 0.06450000000000386,
+              "server_cpu_excluding_core_softirq": 0.3299999999999962,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.044196428571428054,
+              "server_core_seconds_per_participant_minute": 0.052433035714285224,
+              "server_core_minus_process": -0.0030000000000036664,
               "repeat": 1
             },
             {
@@ -9374,6 +10304,11 @@
               "label": "20261119T110241Z-2243/legacy/sweep/r2",
               "pass": true,
               "server_core_softirq_share": 0.20979899497487797,
+              "server_core_softirq_utilisation": 0.08349999999999227,
+              "server_cpu_excluding_core_softirq": 0.2980000000000077,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.03991071428571531,
+              "server_core_seconds_per_participant_minute": 0.05330357142856558,
+              "server_core_minus_process": 0.016499999999956383,
               "repeat": 2
             },
             {
@@ -9430,6 +10365,11 @@
               "label": "20261119T110241Z-2243/legacy/sweep/r3",
               "pass": true,
               "server_core_softirq_share": 0.18757921419519993,
+              "server_core_softirq_utilisation": 0.07400000000000091,
+              "server_cpu_excluding_core_softirq": 0.32249999999999907,
+              "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.04319196428571416,
+              "server_core_seconds_per_participant_minute": 0.052834821428567526,
+              "server_core_minus_process": -0.0020000000000290896,
               "repeat": 3
             }
           ]
@@ -9449,6 +10389,24 @@
           "median": 0.042,
           "min": 0.0405,
           "max": 0.043500000000000004
+        },
+        "server_cpu_seconds_per_participant_minute_excluding_core_softirq": {
+          "n": 3,
+          "median": 0.05437500000000342,
+          "min": 0.051249999999997166,
+          "max": 0.11312500000000285
+        },
+        "server_core_seconds_per_participant_minute": {
+          "n": 3,
+          "median": 0.3706250000000182,
+          "min": 0.3312499999999545,
+          "max": 0.6356250000000045
+        },
+        "server_core_utilisation": {
+          "n": 3,
+          "median": 0.09883333333333819,
+          "min": 0.0883333333333212,
+          "max": 0.1695000000000012
         },
         "server_core_softirq_share": {
           "n": 3,
@@ -9517,6 +10475,11 @@
             "label": "20261119T110241Z-2243/legacy/fixed/r1",
             "pass": true,
             "server_core_softirq_share": 0.286677908937599,
+            "server_core_softirq_utilisation": 0.02833333333333409,
+            "server_cpu_excluding_core_softirq": 0.013666666666665911,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.051249999999997166,
+            "server_core_seconds_per_participant_minute": 0.3706250000000182,
+            "server_core_minus_process": 0.05683333333333818,
             "repeat": 1
           },
           {
@@ -9573,6 +10536,11 @@
             "label": "20261119T110241Z-2243/legacy/fixed/r2",
             "pass": true,
             "server_core_softirq_share": 0.29433962264153957,
+            "server_core_softirq_utilisation": 0.02599999999999909,
+            "server_cpu_excluding_core_softirq": 0.014500000000000911,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.05437500000000342,
+            "server_core_seconds_per_participant_minute": 0.3312499999999545,
+            "server_core_minus_process": 0.0478333333333212,
             "repeat": 2
           },
           {
@@ -9629,6 +10597,11 @@
             "label": "20261119T110241Z-2243/legacy/fixed/r3",
             "pass": true,
             "server_core_softirq_share": 0.07866273352998514,
+            "server_core_softirq_utilisation": 0.013333333333332576,
+            "server_cpu_excluding_core_softirq": 0.030166666666667428,
+            "server_cpu_seconds_per_participant_minute_excluding_core_softirq": 0.11312500000000285,
+            "server_core_seconds_per_participant_minute": 0.6356250000000045,
+            "server_core_minus_process": 0.1260000000000012,
             "repeat": 3
           }
         ]
@@ -9643,12 +10616,12 @@
       "CONFIG_TICK_CPU_ACCOUNTING": "y",
       "CONFIG_HZ": "250"
     },
-    "loadavg": "0.60 0.83 0.80 6/207 25489",
+    "loadavg": "0.06 0.08 0.02 1/160 26172",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "cpus": 4,
     "python": "3.13.18",
     "go": "go version go1.24.7 linux/amd64",
-    "git_commit": "2b1b7d1",
+    "git_commit": "06ffd71",
     "git_dirty": false,
     "git_dirty_files": [],
     "build": {
@@ -9662,6 +10635,6 @@
         "loadgen": "0943c7b352f339d9867623e71850021f0af91c9894d1bdaa89fe0475bdfb1252"
       }
     },
-    "utc": "2026-11-19T12:56:35Z"
+    "utc": "2026-11-19T17:18:39Z"
   }
 }
