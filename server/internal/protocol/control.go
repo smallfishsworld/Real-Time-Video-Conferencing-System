@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -100,17 +101,23 @@ func ReadFrame(r io.Reader, buf []byte) ([]byte, error) {
 }
 
 // EncodeFrame marshals msg to JSON and prefixes it with its length.
+//
+// Strings are not HTML-escaped ('<', '>' and '&' stay one byte each instead of six),
+// so user text cannot inflate a message six-fold.
 func EncodeFrame(msg any) ([]byte, error) {
-	body, err := json.Marshal(msg)
-	if err != nil {
+	var buf bytes.Buffer
+	buf.Write([]byte{0, 0, 0, 0})
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(msg); err != nil {
 		return nil, err
 	}
-	if len(body) > MaxControlMessage {
+	out := bytes.TrimSuffix(buf.Bytes(), []byte("\n"))
+	n := len(out) - 4
+	if n > MaxControlMessage {
 		return nil, ErrFrameTooLarge
 	}
-	out := make([]byte, 4+len(body))
-	binary.BigEndian.PutUint32(out[:4], uint32(len(body)))
-	copy(out[4:], body)
+	binary.BigEndian.PutUint32(out[:4], uint32(n))
 	return out, nil
 }
 
@@ -165,6 +172,10 @@ type RoomList struct {
 	Type  string     `json:"type"`
 	Seq   *int64     `json:"seq,omitempty"`
 	Rooms []RoomInfo `json:"rooms"`
+	// Truncated is set when the list was cut to fit one control message; Total is then
+	// the number of open rooms.
+	Truncated bool `json:"truncated,omitempty"`
+	Total     int  `json:"total,omitempty"`
 }
 
 // Joined answers create_room and join_room.

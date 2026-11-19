@@ -14,6 +14,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
@@ -22,14 +23,17 @@ import (
 
 // Config holds per-connection limits.
 type Config struct {
-	HelloTimeout   time.Duration // time allowed between accept and hello
+	HelloTimeout   time.Duration // time allowed between accept and a successful hello
 	IdleTimeout    time.Duration // connection closed after this long without a message
 	WriteTimeout   time.Duration // per flush
 	OutboxSize     int           // queued frames before a client counts as too slow
-	RequestsPerSec float64       // sustained request rate per connection
+	RequestsPerSec float64       // sustained rate of frames per connection, valid or not
 	RequestBurst   int
 	MaxConns       int
 }
+
+// maxMalformed is how many malformed frames in a row close a connection.
+const maxMalformed = 3
 
 // DefaultConfig returns the server defaults. Clients ping every 15 s, well inside the
 // 60 s idle timeout.
@@ -89,20 +93,46 @@ func (s *Server) Serve(ln net.Listener) error {
 	}
 	s.ln = ln
 	s.mu.Unlock()
+	var backoff time.Duration
 	for {
 		nc, err := ln.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				return nil
 			}
-			var ne net.Error
-			if errors.As(err, &ne) && ne.Timeout() {
-				continue
+			if !temporaryAcceptError(err) {
+				return err
 			}
-			return err
+			// Out of file descriptors or memory: wait and retry, as net/http does,
+			// instead of stopping the control plane for good.
+			backoff = min(max(2*backoff, 5*time.Millisecond), time.Second)
+			s.log.Warn("accept failed; retrying", "err", err, "retry_in", backoff)
+			s.mu.Lock()
+			closed := s.closed
+			s.mu.Unlock()
+			if closed {
+				return nil
+			}
+			time.Sleep(backoff)
+			continue
 		}
+		backoff = 0
 		s.accept(nc)
 	}
+}
+
+// temporaryAcceptError reports whether an Accept error may go away by itself.
+func temporaryAcceptError(err error) bool {
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		return true
+	}
+	for _, e := range []error{syscall.EMFILE, syscall.ENFILE, syscall.ENOBUFS, syscall.ENOMEM, syscall.ECONNABORTED} {
+		if errors.Is(err, e) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) accept(nc net.Conn) {
@@ -182,6 +212,9 @@ type conn struct {
 	closed    chan struct{}
 	client    *room.Client
 	bucket    *requestBucket
+
+	disconnectReason string      // set by the reader goroutine before it returns
+	slowClosed       atomic.Bool // closed because its outbox overflowed
 }
 
 // Send implements room.Notifier. It never blocks: a client whose outbox is full is
@@ -195,6 +228,7 @@ func (c *conn) Send(frame []byte) {
 	select {
 	case c.out <- frame:
 	default:
+		c.slowClosed.Store(true)
 		c.s.slow.Add(1)
 		c.s.log.Warn("closing slow control connection", "remote", c.nc.RemoteAddr().String())
 		c.close()
@@ -214,6 +248,41 @@ func (c *conn) send(msg any) {
 	c.Send(frame)
 }
 
+// reply sends msg, the reply to a request with seq; if it cannot be encoded the
+// requester gets an error with that seq instead of no answer.
+func (c *conn) reply(seq *int64, msg any) {
+	frame, err := protocol.EncodeFrame(msg)
+	if err != nil {
+		c.s.log.Error("encode control reply", "err", err)
+		c.sendError(seq, protocol.CodeInternal, "reply could not be encoded")
+		return
+	}
+	c.Send(frame)
+}
+
+// roomList builds the room_list reply, cut to fit one control message.
+func (c *conn) roomList(seq *int64) protocol.RoomList {
+	rooms := c.s.reg.ListRooms()
+	list := protocol.RoomList{Type: protocol.TypeRoomList, Seq: seq, Rooms: rooms}
+	if _, err := protocol.EncodeFrame(list); err == nil {
+		return list
+	}
+	// Find the longest prefix that fits.
+	lo, hi := 0, len(rooms)
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		list.Rooms = rooms[:mid]
+		list.Truncated, list.Total = true, len(rooms)
+		if _, err := protocol.EncodeFrame(list); err == nil {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	list.Rooms, list.Truncated, list.Total = rooms[:lo], true, len(rooms)
+	return list
+}
+
 func (c *conn) sendError(seq *int64, code, message string) {
 	c.send(protocol.Error{Type: protocol.TypeError, Seq: seq, Code: code, Message: message})
 }
@@ -221,40 +290,72 @@ func (c *conn) sendError(seq *int64, code, message string) {
 func (c *conn) readLoop() {
 	defer c.s.wg.Done()
 	defer func() {
+		if c.slowClosed.Load() {
+			c.disconnectReason = "outbox overflow (slow client)"
+		}
 		if c.client != nil {
+			c.s.log.Info("client disconnected", "client", c.client.ID, "reason", c.disconnectReason)
 			c.s.reg.Goodbye(c.client)
+		} else {
+			c.s.log.Debug("control connection closed before hello", "remote", c.nc.RemoteAddr().String(), "reason", c.disconnectReason)
 		}
 		c.close()
 	}()
 	br := bufio.NewReader(c.nc)
 	var buf []byte
-	_ = c.nc.SetReadDeadline(time.Now().Add(c.s.cfg.HelloTimeout))
+	// One absolute deadline for hello: frames before it do not extend it.
+	helloDeadline := time.Now().Add(c.s.cfg.HelloTimeout)
+	_ = c.nc.SetReadDeadline(helloDeadline)
+	malformed := 0
 	for {
 		body, err := protocol.ReadFrame(br, buf)
 		if err != nil {
 			if errors.Is(err, protocol.ErrFrameTooLarge) || errors.Is(err, protocol.ErrEmptyFrame) {
 				c.sendError(nil, protocol.CodeTooLarge, err.Error())
 			}
+			c.disconnectReason = readErrorReason(err)
 			return
 		}
 		buf = body[:0]
-		timeout := c.s.cfg.IdleTimeout
-		if c.client == nil {
-			timeout = c.s.cfg.HelloTimeout
+		if c.client != nil {
+			_ = c.nc.SetReadDeadline(time.Now().Add(c.s.cfg.IdleTimeout))
 		}
-		_ = c.nc.SetReadDeadline(time.Now().Add(timeout))
+		// Every frame costs budget before it is decoded, so malformed frames are not
+		// free either.
+		if !c.bucket.allow(time.Now()) {
+			c.sendError(nil, protocol.CodeRateLimited, "too many requests")
+			continue
+		}
 		req, err := protocol.DecodeRequest(body)
 		if err != nil {
 			c.sendError(nil, protocol.CodeBadRequest, "malformed message")
+			if malformed++; malformed >= maxMalformed {
+				c.disconnectReason = "malformed messages"
+				return
+			}
 			continue
 		}
-		if !c.bucket.allow(time.Now()) {
-			c.sendError(req.Seq, protocol.CodeRateLimited, "too many requests")
-			continue
-		}
+		malformed = 0
 		if !c.dispatch(&req) {
 			return
 		}
+		if c.client != nil {
+			_ = c.nc.SetReadDeadline(time.Now().Add(c.s.cfg.IdleTimeout))
+		}
+	}
+}
+
+func readErrorReason(err error) string {
+	var ne net.Error
+	switch {
+	case errors.Is(err, io.EOF):
+		return "closed by client"
+	case errors.As(err, &ne) && ne.Timeout():
+		return "timeout"
+	case errors.Is(err, protocol.ErrFrameTooLarge), errors.Is(err, protocol.ErrEmptyFrame):
+		return "bad frame"
+	default:
+		return "read error"
 	}
 }
 
@@ -268,11 +369,17 @@ func (c *conn) dispatch(req *protocol.Request) bool {
 		}
 		if req.Version != protocol.ControlVersion {
 			c.sendError(req.Seq, protocol.CodeUnsupportedVersion, "server speaks protocol version 1")
+			c.disconnectReason = "unsupported version"
 			return false
 		}
 		client, err := reg.Hello(req.Name, c)
 		if err != nil {
 			c.replyErr(req.Seq, err)
+			var re *room.Error
+			if errors.As(err, &re) && re.Code == protocol.CodeLimitReached {
+				c.disconnectReason = "server full"
+				return false // the server is full: do not keep the connection open
+			}
 			return true
 		}
 		c.client = client
@@ -294,7 +401,7 @@ func (c *conn) dispatch(req *protocol.Request) bool {
 	var err error
 	switch req.Type {
 	case protocol.TypeListRooms:
-		c.send(protocol.RoomList{Type: protocol.TypeRoomList, Seq: req.Seq, Rooms: reg.ListRooms()})
+		c.reply(req.Seq, c.roomList(req.Seq))
 	case protocol.TypeCreateRoom:
 		err = reg.CreateRoom(c.client, req.Title, req.Seq)
 	case protocol.TypeJoinRoom:
