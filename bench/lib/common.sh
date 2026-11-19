@@ -1,18 +1,29 @@
 # Shared helpers for the benchmark scripts (sourced, not executed).
 #
-# Every benchmark runs inside network namespaces whose names start with "cs305b"; they
-# and their nftables rules disappear with the namespace. cleanup_netns removes all of
-# them and is installed as an EXIT trap by each script.
+# One invocation of a benchmark script is one run: it gets a run ID (UTC time and
+# process ID, CS305_RUN_ID), builds its binaries into bench/tmp/build/<run ID>/ with a
+# build record, writes its raw files into a directory of its own, and its analysis
+# reads only that directory. Its network namespaces are called
+# cs305b-<invocation>-<name> and cleanup_netns removes only those, so two invocations
+# (or an invocation waiting for the lock) never touch each other's namespaces. The
+# namespaces' nftables rules disappear with them. Scripts re-execute themselves for
+# the steps that hold the lock; CS305_RUN_ID and CS305_INVOCATION carry over.
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 BENCH="$ROOT/bench"
 TMPDIR_BENCH="$BENCH/tmp"
 RESULTS="$BENCH/results"
-LOCK=${BENCH_LOCK:-/home/user/work/bench.lock}
+# Timing runs are serialised with flock on this file. Point BENCH_LOCK at a lock that
+# other users of the machine take as well.
+LOCK=${BENCH_LOCK:-${XDG_RUNTIME_DIR:-/tmp}/cs305-bench.lock}
 PY="$ROOT/client/.venv/bin/python"
-CONFSERVER="$TMPDIR_BENCH/confserver"
-LOADGEN="$TMPDIR_BENCH/loadgen"
-NS_PREFIX=cs305b
+CS305_INVOCATION=${CS305_INVOCATION:-$$}
+CS305_RUN_ID=${CS305_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$CS305_INVOCATION}
+export CS305_INVOCATION CS305_RUN_ID
+NS_PREFIX="cs305b-$CS305_INVOCATION-"
+BUILD_DIR="$TMPDIR_BENCH/build/$CS305_RUN_ID"
+CONFSERVER="$BUILD_DIR/confserver"
+LOADGEN="$BUILD_DIR/loadgen"
 
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*" >&2; }
 
@@ -26,24 +37,20 @@ require_root() {
 mono() { "$PY" -c 'import time; print(f"{time.monotonic():.3f}")'; }
 mono_plus() { "$PY" -c "import time; print(f'{time.monotonic() + $1:.3f}')"; }
 
+# prepare: the Python environment, this run's binaries and build record, and the
+# frame corpus. Runs outside the lock; nothing another run uses is touched.
 prepare() {
-  mkdir -p "$TMPDIR_BENCH" "$RESULTS"
+  mkdir -p "$TMPDIR_BENCH" "$RESULTS" "$BUILD_DIR"
   if [ ! -x "$PY" ]; then
     (cd "$ROOT/client" && uv sync --frozen --quiet)
   fi
-  log "building confserver and loadgen"
-  (cd "$ROOT/server" && nice -n 19 go build -o "$CONFSERVER" ./cmd/confserver)
-  if [ -f "$ROOT/server/cmd/loadgen/main.go" ]; then
-    (cd "$ROOT/server" && nice -n 19 go build -o "$LOADGEN" ./cmd/loadgen)
-  fi
-  # What the binaries were built from; the analysis scripts copy it into the results.
-  {
-    printf '{"git_commit": "%s", "utc": "%s", "git_dirty_files": [' \
-      "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    git -C "$ROOT" status --porcelain -- server client bench legacy ':!bench/results' |
-      sed 's/\\/\\\\/g; s/"/\\"/g; s/.*/"&"/' | paste -sd, -
-    printf ']}\n'
-  } >"$TMPDIR_BENCH/build.json"
+  log "building confserver and loadgen into $BUILD_DIR"
+  # Two parallel compile jobs at the lowest priority: the machine may be shared.
+  (cd "$ROOT/server" && export GOFLAGS="${GOFLAGS:--p=2}" &&
+    nice -n 19 go build -o "$CONFSERVER" ./cmd/confserver &&
+    nice -n 19 go build -o "$LOADGEN" ./cmd/loadgen)
+  chmod a-w "$CONFSERVER" "$LOADGEN"
+  write_build_record "$BUILD_DIR/build.json" "$CONFSERVER" "$LOADGEN"
   if [ ! -f "$BENCH/data/frames/frame_00999.jpg" ]; then
     log "generating the frame corpus"
     nice -n 19 "$PY" "$BENCH/gen_frames.py" --count 1000
@@ -52,15 +59,15 @@ prepare() {
 
 # write_build_record OUT [BINARY...]: what the binaries were built from (commit, the
 # uncommitted paths outside bench/results and the SHA-256 of their diff against the
-# commit, null when there is none), when, and each binary's SHA-256. The analysis
-# scripts copy it into the result files.
+# commit, null when there is none), when, the Go version, and each binary's SHA-256.
+# The analysis scripts copy it into the result files.
 write_build_record() {
   local out=$1 first=1 bin diff
   shift
   diff=$(git -C "$ROOT" diff HEAD -- server client bench legacy ':!bench/results')
   {
-    printf '{"git_commit": "%s", "utc": "%s", "git_dirty_files": [' \
-      "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf '{"git_commit": "%s", "utc": "%s", "go": "%s", "git_dirty_files": [' \
+      "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(go version 2>/dev/null)"
     git -C "$ROOT" status --porcelain -- server client bench legacy ':!bench/results' |
       sed 's/\\/\\\\/g; s/"/\\"/g; s/.*/"&"/' | paste -sd, -
     if [ -n "$diff" ]; then
@@ -77,12 +84,32 @@ write_build_record() {
   } >"$out"
 }
 
+# cleanup_netns: kill everything in this invocation's namespaces and delete them.
 cleanup_netns() {
   local ns
-  for ns in $(ip netns list 2>/dev/null | awk '{print $1}' | grep "^${NS_PREFIX}" || true); do
+  for ns in $(ip netns list 2>/dev/null | awk '{print $1}' | grep -F -- "$NS_PREFIX" || true); do
+    case $ns in "$NS_PREFIX"*) ;; *) continue ;; esac
     ip netns pids "$ns" 2>/dev/null | xargs -r kill -9 2>/dev/null || true
     ip netns del "$ns" 2>/dev/null || true
   done
+}
+
+# locked CMD...: run CMD under the bench lock and return its status; 130 when it was
+# interrupted, so that callers can stop.
+locked() {
+  local status=0
+  flock "$LOCK" "$@" || status=$?
+  return "$status"
+}
+
+# wait_all PID...: wait for each process and fail if any of them failed (`wait a b`
+# returns only the last one's status).
+wait_all() {
+  local pid status=0
+  for pid in "$@"; do
+    wait "$pid" || status=$?
+  done
+  return "$status"
 }
 
 # wait_tcp NS HOST PORT: wait until something listens on HOST:PORT inside NS.
@@ -110,4 +137,12 @@ for head, vals in zip(lines[::2], lines[1::2]):
         out[proto] = dict(zip(names.split(), map(int, vals.split(":", 1)[1].split())))
 print(json.dumps(out))
 EOF
+}
+
+# scrape_metrics NS: the v2 server's batching and GSO state, system-call and packet
+# counters and drops, from its /metrics on 127.0.0.1:6101 inside NS.
+scrape_metrics() {
+  ip netns exec "$1" curl -fsS --noproxy '*' --max-time 5 http://127.0.0.1:6101/metrics |
+    grep -E '^confserver_(udp_batching_enabled|udp_gso_enabled|media_read_syscalls_total|video_send_(syscalls|messages)_total|media_packets_(sent|received)_total|media_dropped_packets_total|mixer_overrun_ticks_total)' ||
+    true
 }

@@ -108,6 +108,68 @@ def percentile(values: Sequence[float], q: float) -> float | None:
     return float(np.percentile(np.asarray(values, dtype=np.float64), q))
 
 
+def spread(values: Iterable[float | None]) -> dict[str, Any]:
+    """Median, minimum and maximum of repeated measurements (None values are left out)."""
+    v = [float(x) for x in values if x is not None]
+    if not v:
+        return {"n": 0, "median": None, "min": None, "max": None}
+    return {"n": len(v), "median": float(np.median(v)), "min": min(v), "max": max(v)}
+
+
+def wilson(successes: int, trials: int, z: float = 1.959964) -> dict[str, float | int | None]:
+    """The proportion and its Wilson score interval (95 % for the default z)."""
+    if trials <= 0:
+        return {"k": successes, "n": trials, "p": None, "low": None, "high": None}
+    p = successes / trials
+    denom = 1 + z * z / trials
+    centre = (p + z * z / (2 * trials)) / denom
+    half = z * math.sqrt(p * (1 - p) / trials + z * z / (4 * trials * trials)) / denom
+    low, high = max(0.0, centre - half), min(1.0, centre + half)
+    return {"k": successes, "n": trials, "p": p, "low": low, "high": high}
+
+
+def parse_metrics(text: str) -> dict[str, float]:
+    """Prometheus text exposition lines as {name{labels}: value}."""
+    out: dict[str, float] = {}
+    for line in text.splitlines():
+        if line and not line.startswith("#"):
+            name, _, value = line.rpartition(" ")
+            with contextlib.suppress(ValueError):
+                out[name] = float(value)
+    return out
+
+
+def syscall_summary(m: dict[str, float]) -> dict[str, Any]:
+    """The v2 server's batching and GSO state and datagrams per system call, from a
+    scrape of its /metrics (counters cover the server's whole life)."""
+    received = sum(x for k, x in m.items() if k.startswith("confserver_media_packets_received_total"))
+    video = sum(
+        m.get(f'confserver_media_packets_sent_total{{kind="{kind}"}}', 0.0) for kind in ("video", "video_fec")
+    )
+    reads = m.get("confserver_media_read_syscalls_total", 0.0)
+    calls = m.get("confserver_video_send_syscalls_total", 0.0)
+    msgs = m.get("confserver_video_send_messages_total", 0.0)
+    batching = m.get("confserver_udp_batching_enabled")
+    gso = m.get("confserver_udp_gso_enabled")
+    return {
+        "udp_batching_enabled": None if batching is None else bool(batching),
+        "udp_gso_enabled": None if gso is None else bool(gso),
+        "datagrams_received": received,
+        "read_syscalls": reads,
+        "datagrams_per_read_call": received / reads if reads else None,
+        "video_datagrams_sent": video,
+        "video_send_syscalls": calls,
+        "video_datagrams_per_send_call": video / calls if calls else None,
+        "video_send_messages": msgs,
+        "video_datagrams_per_message": video / msgs if msgs else None,
+        "drops": {
+            k.split('reason="', 1)[1].rstrip('"}'): v
+            for k, v in m.items()
+            if k.startswith("confserver_media_dropped_packets_total{")
+        },
+    }
+
+
 def summary(values: Iterable[float]) -> dict[str, float | int | None]:
     v = list(values)
     return {
@@ -159,7 +221,11 @@ def softirq_jiffies(cpu: int) -> int | None:
     return None
 
 
-def environment() -> dict[str, Any]:
+def environment(build_record: Path | None = None) -> dict[str, Any]:
+    """The machine, the kernel's CPU accounting, the tree's state now, and (from
+    build_record, written by bench/lib/common.sh write_build_record) what the run's
+    binaries were built from."""
+
     def run(cmd: list[str]) -> str:
         try:
             return subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False).stdout.strip()
@@ -191,8 +257,8 @@ def environment() -> dict[str, Any]:
         ]
     )
     build: dict[str, Any] | None = None
-    with contextlib.suppress(OSError, ValueError):
-        build = json.loads((ROOT / "bench" / "tmp" / "build.json").read_text())
+    if build_record is not None:
+        build = json.loads(build_record.read_text())
     loadavg = ""
     with contextlib.suppress(OSError):
         loadavg = Path("/proc/loadavg").read_text().strip()
@@ -211,8 +277,8 @@ def environment() -> dict[str, Any]:
         "git_dirty": bool(dirty),
         # Uncommitted paths when the results were written (right after the runs).
         "git_dirty_files": [line.strip() for line in dirty.splitlines()],
-        # The commit and uncommitted paths when the Go binaries were built (bench/lib/
-        # common.sh prepare), before the runs.
+        # The commit, uncommitted paths and binary hashes when this run's binaries were
+        # built (bench/lib/common.sh write_build_record), before the runs.
         "build": build,
         "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
