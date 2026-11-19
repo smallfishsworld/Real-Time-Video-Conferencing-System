@@ -156,13 +156,21 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
             ][::2],
         }
 
-    # Delivery in 30 s bins of send time, for the dynamics of long runs.
+    # Video delivery and audio loss in 30 s bins of send time, for the dynamics of long runs.
     bins: dict[int, list[int]] = defaultdict(lambda: [0, 0])
     for k in window:
         b = bins[int((k[1] - lo) // 30)]
         b[0] += 1
         b[1] += on_time_in([k])
     by_30s = [{"from_s": 30 * k, "frames": n, "on_time": ok} for k, (n, ok) in sorted(bins.items())]
+    audio_bins: dict[int, list[int]] = defaultdict(lambda: [0, 0])
+    for seq, t in audio_sent.items():
+        b = audio_bins[int((t - lo) // 30)]
+        b[0] += 1
+        b[1] += int(seq not in audio_got)
+    audio["lost_by_30s"] = [
+        {"from_s": 30 * k, "frames": n, "lost": lost} for k, (n, lost) in sorted(audio_bins.items())
+    ]
 
     nft = net["nft"]
     measured = nft["udp_drop"] / nft["udp_in"] if nft.get("udp_in") else None

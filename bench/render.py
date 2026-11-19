@@ -605,8 +605,15 @@ def table_b1_long(b1: dict[str, Any]) -> str | None:
             "| Video frames on time | "
             + " | ".join(pct(b["on_time"] / b["frames"] if b["frames"] else None, 0) for b in bins)
             + " |",
-            "",
         ]
+        audio_bins = r["audio"].get("lost_by_30s")
+        if audio_bins and len(audio_bins) == len(bins):
+            lines.append(
+                "| Audio frames lost | "
+                + " | ".join(pct(b["lost"] / b["frames"] if b["frames"] else None, 0) for b in audio_bins)
+                + " |"
+            )
+        lines.append("")
     return "\n".join(lines).rstrip()
 
 
