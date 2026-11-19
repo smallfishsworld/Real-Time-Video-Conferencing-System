@@ -122,10 +122,10 @@ def system_summary(sweep: list[dict[str, Any]], fixed: list[dict[str, Any]], rep
         capacity.append(max(ok) if ok else 0)
         first_fail.append(next((p["participants"] for p in mine if not p["pass"]), None))
     all_passed = [s["participants"] for s in sizes if s["passes"] == s["runs"] == repeats]
-    gauges = {
-        k: sorted({(p.get("server_counters") or {}).get(k) for p in sweep + fixed} - {None})
-        for k in ("udp_batching_enabled", "udp_gso_enabled")
-    }
+    gauges = {}
+    for k in ("udp_batching_enabled", "udp_gso_enabled"):
+        seen = {(p.get("server_counters") or {}).get(k) for p in sweep + fixed}
+        gauges[k] = sorted(v for v in seen if v is not None)
     return {
         "capacity_by_repeat": capacity,
         "capacity_participants": spread(capacity),

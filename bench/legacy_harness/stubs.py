@@ -151,6 +151,6 @@ def install(
         sys.modules["tkinter"] = types.ModuleType("tkinter")
 
     sys.path.insert(0, str(LEGACY))
-    import config  # the real legacy/config.py
+    import config  # type: ignore[import-not-found]  # the real legacy/config.py
 
     config.SERVER_IP = server_ip

@@ -54,8 +54,9 @@ ignore = [
 
 [tool.mypy]
 strict = true
-python_version = "3.13"
-files = ["src", "tests"]
+# The oldest Python the client supports, so that newer standard-library APIs are flagged.
+python_version = "3.11"
+files = ["src", "tests", "../bench"]
 
 [[tool.mypy.overrides]]
 module = ["cv2", "pyaudio"]

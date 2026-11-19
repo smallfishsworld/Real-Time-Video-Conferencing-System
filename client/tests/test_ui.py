@@ -33,9 +33,9 @@ def test_square_image_keeps_its_aspect_ratio() -> None:
     tile = Tile("p", np.full((480, 480, 3), 200, dtype=np.uint8))
     canvas = GridRenderer(tile_width=320, tile_height=240).compose([tile])
     row = canvas[120]
-    lit = np.flatnonzero(row[:, 0] == 200)
-    assert lit.min() == 40  # 240 px wide image centred in a 320 px cell
-    assert lit.max() == 279
+    lit = np.flatnonzero(row[:, 0] == 200)  # ascending column indices
+    assert int(lit[0]) == 40  # 240 px wide image centred in a 320 px cell
+    assert int(lit[-1]) == 279
 
 
 def test_test_pattern_is_deterministic_and_distinct() -> None:
