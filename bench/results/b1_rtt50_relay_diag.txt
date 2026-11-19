@@ -33,8 +33,9 @@ both-rtt50-v2-fec-nack-50-r1: relay one-way delay 25 ms, drop probability 0.05; 
   frame 585 (27 fragments): lost [1, 17, 18]; repairs [17@+64, 18@+64, 17@+97, 18@+97]; fragments [1] never got through (FEC may have rebuilt them)
   frame 611 (27 fragments): lost [7, 18]; repairs [7@+66]; fragments [18] never got through (FEC may have rebuilt them)
   frame 617 (27 fragments): lost [2, 8]; repairs []; fragments [2, 8] never got through (FEC may have rebuilt them)
-  of the 31 frames never completed (next frame seen), the next frame needed no NACK for 31; of all 618 frames, 535 (86.6 %) needed none
-  in those frames, the first repair of each lost fragment passed the relay 66 ms (median; 64-156) after the frame's first fragment, and the next frame's first fragment 64 ms (63-65) after it
+  over all frames, the first repair of each of the 139 packets repaired passed the relay 63.6 ms (median; 57-156) after its frame's first fragment, 78 (56 %) within 64 ms
+  of the 31 frames never completed over the whole run (29 of them inside the window analyze_b1.py counts; next frame seen), the next frame needed no NACK for 31; of all 618 frames, 535 (86.6 %) needed none
+  in those frames only (lost frames), the first repair of each lost fragment passed the relay 66 ms (median; 64-156) after the frame's first fragment, and the next frame's first fragment 64 ms (63-65) after it
 both-rtt50-v2-nack-50-r1: relay one-way delay 25 ms, drop probability 0.05; downstream 959/19914 dropped, upstream 63/923 dropped
   NACKs 913 (63 dropped); video retransmissions 1569, of which 795 first repairs and 774 repeats of a packet already resent; assembler {'completed': 552, 'expired': 0, 'superseded': 65, 'duplicates': 809, 'malformed': 0}
   frame 8 (27 fragments): lost [3, 11, 22]; repairs [3@+66, 11@+66, 22@+66, 3@+97, 11@+97, 22@+97]; all fragments got through; complete at the relay at +66 ms vs the next frame's first fragment at +64 ms
@@ -103,5 +104,6 @@ both-rtt50-v2-nack-50-r1: relay one-way delay 25 ms, drop probability 0.05; down
   frame 603 (27 fragments): lost [13]; repairs [13@+94]; all fragments got through; complete at the relay at +94 ms vs the next frame's first fragment at +63 ms
   frame 612 (26 fragments): lost [10]; repairs [10@+68, 10@+100]; all fragments got through; complete at the relay at +68 ms vs the next frame's first fragment at +64 ms
   frame 617 (27 fragments): lost [20]; repairs []; fragments [20] never got through (FEC may have rebuilt them)
-  of the 65 frames never completed (next frame seen), the next frame needed no NACK for 61; of all 618 frames, 166 (26.9 %) needed none
-  in those frames, the first repair of each lost fragment passed the relay 66 ms (median; 57-131) after the frame's first fragment, and the next frame's first fragment 64 ms (63-65) after it
+  over all frames, the first repair of each of the 795 packets repaired passed the relay 63.8 ms (median; 57-159) after its frame's first fragment, 409 (51 %) within 64 ms
+  of the 65 frames never completed over the whole run (61 of them inside the window analyze_b1.py counts; next frame seen), the next frame needed no NACK for 61; of all 618 frames, 166 (26.9 %) needed none
+  in those frames only (lost frames), the first repair of each lost fragment passed the relay 66 ms (median; 57-131) after the frame's first fragment, and the next frame's first fragment 64 ms (63-65) after it

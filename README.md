@@ -31,7 +31,7 @@ with random packet loss from the server to the receiver (1500-byte MTU, sub-mill
 round trip, same 480x480 JPEG frames for all systems, 1 740-1 748 frames per cell):
 
 <!-- BEGIN GENERATED summary_b1 -->
-| Random packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+| Random packet loss | 2024 version | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
 |---|---|---|---|---|---|
 | 1 % | 67.1 % [64.8, 69.2] | 75.6 % [73.5, 77.6] | 99.1 % [98.6, 99.5] | 99.1 % [98.5, 99.4] | 100.0 % [99.8, 100.0] |
 | 2 % | 39.0 % [36.8, 41.3] | 59.2 % [56.9, 61.5] | 97.8 % [97.0, 98.4] | 98.9 % [98.3, 99.3] | 100.0 % [99.8, 100.0] |
@@ -68,7 +68,7 @@ why retransmission does much worse there and NACK alone even improves with more 
 **Multi-talker audio (B2).** Everybody talks and sends video:
 
 <!-- BEGIN GENERATED summary_b2 -->
-| | 3 parties, legacy (original) | 3 parties, v2 | 5 parties, legacy (original) | 5 parties, v2 |
+| | 3 parties, 2024 version | 3 parties, v2 | 5 parties, 2024 version | 5 parties, v2 |
 |---|---|---|---|---|
 | Capture-to-playout latency, median | 594 ms (589-614) | 119 ms (117-119) | 978 ms (952-1024) | 119 ms (119-124) |
 | Audio played, worst talker | 41.3 % (41.3-41.7) | 100.0 % | 15.1 % (15.0-15.7) | 100.0 % |
@@ -88,12 +88,12 @@ server (mix-minus) and sends each receiver one stream.
 one CPU, on loopback:
 
 <!-- BEGIN GENERATED summary_b3 -->
-| Loopback | System | Largest size that passed, per repeat | Server CPU at 128 participants | Server CPU-s per participant-minute (16 participants) |
-|---|---|---|---|---|
-| MTU 65536 (Linux default) | legacy (original) | 448/448/448 (the only size run) | not run | 0.158 (0.152-0.163) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 304/304/272 (first failing: 320/288/288) | 0.51 (0.50-0.53) | 0.503 (0.479-0.503) |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 192/192/192 (first failing: 208/208/208) | 0.63 (0.61-0.66) | 0.565 (0.552-0.570) |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 160/176/192 (first failing: 176/192/208) | 0.68 (0.66-0.69) | 0.597 (0.572-0.613) |
+| Loopback | System | Largest size that passed, per repeat | Server CPU at 128 participants | without the core's softirq | Server CPU-s per participant-minute (16 participants) | core-seconds per participant-minute |
+|---|---|---|---|---|---|---|
+| MTU 65536 (Linux default) | 2024 version | 448/448/448 (the only size run) | not run | not run | 0.158 (0.152-0.163) | 0.371 (0.331-0.636) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 304/304/272 (first failing: 320/288/288; last pass before the first failure: 304/272/272) | 0.508 (0.496-0.535) | 0.417 (0.402-0.431) | 0.503 (0.479-0.503) | 0.483 (0.475-1.467) |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 192/192/192 (first failing: 208/208/208) | 0.628 (0.607-0.657) | 0.481 (0.473-0.503) | 0.565 (0.552-0.570) | 0.583 (0.506-0.613) |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 160/176/192 (first failing: 176/192/208) | 0.680 (0.664-0.685) | 0.491 (0.487-0.506) | 0.597 (0.572-0.613) | 0.573 (0.542-0.652) |
 <!-- END GENERATED summary_b3 -->
 
 This comparison does not favour v2: for the same media it sends about 19 times as many

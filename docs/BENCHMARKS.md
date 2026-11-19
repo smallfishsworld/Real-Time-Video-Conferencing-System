@@ -161,7 +161,7 @@ JSON also has its video delivery and audio loss per 30 s of send time
 <!-- BEGIN GENERATED b1 -->
 Video frames on time, pooled over 3 runs per cell (1740-1748 frames), with the Wilson 95 % interval:
 
-| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+| Packet loss | 2024 version | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
 |---|---|---|---|---|---|
 | 0 % | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] |
 | 1 % | 67.1 % [64.8, 69.2] | 75.6 % [73.5, 77.6] | 99.1 % [98.6, 99.5] | 99.1 % [98.5, 99.4] | 100.0 % [99.8, 100.0] |
@@ -171,7 +171,7 @@ Video frames on time, pooled over 3 runs per cell (1740-1748 frames), with the W
 
 The same per run: median (range), and the independent-loss model:
 
-| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+| Packet loss | 2024 version | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
 |---|---|---|---|---|---|
 | 0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % |
 | 1 % | 65.9 % (57.1-78.3); model 80.5 % | 75.4 % (73.8-77.7); model 76.6 % | 99.1 % (98.8-99.5); model 99.4 % | 99.3 % (98.3-99.7); model 100.0 % | 100.0 %; model 100.0 % |
@@ -181,7 +181,7 @@ The same per run: median (range), and the independent-loss model:
 
 Audio frames lost, pooled, with the Wilson 95 % interval:
 
-| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+| Packet loss | 2024 version | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
 |---|---|---|---|---|---|
 | 0 % | 0.00 % [0.00, 0.22] | 0.00 % [0.00, 0.07] | 0.00 % [0.00, 0.07] | 0.00 % [0.00, 0.07] | 0.00 % [0.00, 0.07] |
 | 1 % | 17.41 % [15.70, 19.27] | 0.88 % [0.66, 1.16] | 0.05 % [0.02, 0.16] | 1.04 % [0.80, 1.34] | 0.00 % [0.00, 0.07] |
@@ -191,7 +191,7 @@ Audio frames lost, pooled, with the Wilson 95 % interval:
 
 Measured UDP packet loss (nftables drops / matches), median (range) of the runs:
 
-| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+| Packet loss | 2024 version | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
 |---|---|---|---|---|---|
 | 0 % | 0.00 % | 0.00 % | 0.00 % | 0.00 % | 0.00 % |
 | 1 % | 1.07 % (0.92-1.17) | 1.06 % (0.94-1.12) | 1.03 % (1.01-1.10) | 1.09 % (0.95-1.09) | 1.08 % (0.96-1.11) |
@@ -201,21 +201,21 @@ Measured UDP packet loss (nftables drops / matches), median (range) of the runs:
 
 | System | Packet loss | Run | Video on time, first half | second half | IP reassembly failures | Peak reassembly memory |
 |---|---|---|---|---|---|---|
-| legacy (original) | 0 % | 1 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| legacy (original) | 0 % | 2 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| legacy (original) | 0 % | 3 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| legacy (original) | 1 % | 1 | 79.0 % | 52.8 % | 2266 | 4.00 MiB |
-| legacy (original) | 1 % | 2 | 88.3 % | 68.3 % | 975 | 4.00 MiB |
-| legacy (original) | 1 % | 3 | 75.5 % | 38.6 % | 3396 | 4.00 MiB |
-| legacy (original) | 2 % | 1 | 63.4 % | 13.8 % | 5828 | 4.00 MiB |
-| legacy (original) | 2 % | 2 | 54.1 % | 20.3 % | 5767 | 4.00 MiB |
-| legacy (original) | 2 % | 3 | 68.6 % | 13.8 % | 5465 | 4.00 MiB |
-| legacy (original) | 5 % | 1 | 17.9 % | 11.0 % | 8129 | 4.00 MiB |
-| legacy (original) | 5 % | 2 | 10.3 % | 15.6 % | 8435 | 4.00 MiB |
-| legacy (original) | 5 % | 3 | 17.2 % | 6.9 % | 8394 | 4.00 MiB |
-| legacy (original) | 10 % | 1 | 2.7 % | 1.4 % | 8929 | 4.00 MiB |
-| legacy (original) | 10 % | 2 | 4.8 % | 1.7 % | 8755 | 4.00 MiB |
-| legacy (original) | 10 % | 3 | 3.1 % | 2.4 % | 8958 | 4.00 MiB |
+| 2024 version | 0 % | 1 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
+| 2024 version | 0 % | 2 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
+| 2024 version | 0 % | 3 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
+| 2024 version | 1 % | 1 | 79.0 % | 52.8 % | 2266 | 4.00 MiB |
+| 2024 version | 1 % | 2 | 88.3 % | 68.3 % | 975 | 4.00 MiB |
+| 2024 version | 1 % | 3 | 75.5 % | 38.6 % | 3396 | 4.00 MiB |
+| 2024 version | 2 % | 1 | 63.4 % | 13.8 % | 5828 | 4.00 MiB |
+| 2024 version | 2 % | 2 | 54.1 % | 20.3 % | 5767 | 4.00 MiB |
+| 2024 version | 2 % | 3 | 68.6 % | 13.8 % | 5465 | 4.00 MiB |
+| 2024 version | 5 % | 1 | 17.9 % | 11.0 % | 8129 | 4.00 MiB |
+| 2024 version | 5 % | 2 | 10.3 % | 15.6 % | 8435 | 4.00 MiB |
+| 2024 version | 5 % | 3 | 17.2 % | 6.9 % | 8394 | 4.00 MiB |
+| 2024 version | 10 % | 1 | 2.7 % | 1.4 % | 8929 | 4.00 MiB |
+| 2024 version | 10 % | 2 | 4.8 % | 1.7 % | 8755 | 4.00 MiB |
+| 2024 version | 10 % | 3 | 3.1 % | 2.4 % | 8958 | 4.00 MiB |
 
 | System | Packet loss | NACKs sent | Packets requested (with repeats) | Received or rebuilt after a request | Given up | Frames superseded | Frames expired | p99 frame latency, median (range) |
 |---|---|---|---|---|---|---|---|---|
@@ -235,6 +235,27 @@ Measured UDP packet loss (nftables drops / matches), median (range) of the runs:
 | v2 with FEC and NACK | 2 % | 46 | 99 | 76 | 0 | 0 | 0 | 12.2 ms (8.8-14.1) |
 | v2 with FEC and NACK | 5 % | 245 | 579 | 453 | 0 | 2 | 0 | 16.0 ms (15.5-16.2) |
 | v2 with FEC and NACK | 10 % | 794 | 2318 | 1865 | 0 | 14 | 0 | 39.4 ms (17.0-40.7) |
+
+Latency percentiles cover completed frames only, so systems that complete different shares of their frames are compared over different frames. Split by the time from a frame's first fragment to its completion (1.5 ms: too soon for any retransmission), per run, median (range):
+
+| System | Packet loss | Frames completed | Assembled within 1.5 ms: frames | p99 | Assembled later: frames | p50 | p99 |
+|---|---|---|---|---|---|---|---|
+| v2 without FEC | 1 % | 439 (430-452) | 439 (428-452) | 1.78 ms (1.52-1.91) | 0 (0-2) | 3.5 ms | 4.1 ms |
+| v2 without FEC | 2 % | 347 (331-356) | 345 (330-353) | 1.89 ms (1.77-1.95) | 2 (1-3) | 2.7 ms (2.5-3.4) | 3.2 ms (3.0-3.4) |
+| v2 without FEC | 5 % | 140 (125-156) | 140 (124-156) | 1.44 ms (1.21-2.93) | 0 (0-1) | 2.4 ms | 2.4 ms |
+| v2 without FEC | 10 % | 36 (33-37) | 36 (33-37) | 1.57 ms (1.00-1.62) | 0 | n/a | n/a |
+| v2 with FEC | 1 % | 578 (576-579) | 575 (573-577) | 2.24 ms (1.71-2.41) | 3 (2-3) | 3.1 ms (2.5-4.6) | 3.4 ms (2.5-7.4) |
+| v2 with FEC | 2 % | 569 (565-573) | 566 (558-570) | 2.24 ms (2.00-2.68) | 3 (3-7) | 3.1 ms (2.4-5.4) | 6.7 ms (3.1-7.6) |
+| v2 with FEC | 5 % | 504 (498-506) | 502 (493-504) | 2.23 ms (2.05-2.27) | 2 (2-5) | 3.1 ms (2.8-3.3) | 3.5 ms (3.2-21.1) |
+| v2 with FEC | 10 % | 335 (331-335) | 329 | 2.37 ms (1.95-2.56) | 6 (2-6) | 3.0 ms (2.2-4.0) | 11.2 ms (2.2-24.9) |
+| v2 with NACK | 1 % | 578 (572-580) | 424 (422-453) | 1.77 ms (1.59-1.86) | 154 (119-158) | 11.4 ms (11.2-12.5) | 41.0 ms (17.6-44.2) |
+| v2 with NACK | 2 % | 577 (573-577) | 348 (340-352) | 1.81 ms (1.42-2.93) | 229 (221-237) | 11.6 ms (11.5-11.7) | 67.2 ms (64.0-75.1) |
+| v2 with NACK | 5 % | 574 (573-576) | 151 (145-155) | 2.00 ms (1.24-2.55) | 425 (419-428) | 12.1 ms (11.6-12.1) | 78.6 ms (78.0-78.8) |
+| v2 with NACK | 10 % | 571 (570-571) | 37 (35-43) | 2.87 ms (2.59-2.90) | 534 (528-535) | 14.5 ms (13.1-14.5) | 79.8 ms (79.4-79.8) |
+| v2 with FEC and NACK | 1 % | 582 (581-582) | 574 (572-577) | 2.19 ms (2.11-2.52) | 8 (5-9) | 9.5 ms (5.4-10.8) | 14.9 ms (14.0-15.8) |
+| v2 with FEC and NACK | 2 % | 582 (581-583) | 563 (562-566) | 2.09 ms (1.63-2.27) | 19 (16-20) | 10.4 ms (7.6-12.5) | 16.6 ms (13.9-17.5) |
+| v2 with FEC and NACK | 5 % | 581 | 500 (492-512) | 2.22 ms (1.98-2.86) | 81 (69-89) | 11.2 ms (11.2-11.7) | 17.7 ms (16.2-36.7) |
+| v2 with FEC and NACK | 10 % | 579 (574-580) | 336 (332-345) | 2.29 ms (2.06-2.39) | 242 (235-243) | 11.9 ms (11.7-12.3) | 45.2 ms (44.7-49.5) |
 <!-- END GENERATED b1 -->
 
 **Loss in both directions with a 50 ms round trip** (v2 only):
@@ -277,7 +298,7 @@ Per run, median (range):
 **The original over 300 s at 1 % loss** (downlink condition):
 
 <!-- BEGIN GENERATED b1_long -->
-legacy (original) at 1 % loss, 300 s run (repeat 1): 3147/4627 (68.0 %) of video frames on time and 17.1 % of audio lost over the whole run; reassembly memory first reached 90 % of its 4 MiB limit after 26.7 s.
+2024 version at 1 % loss, 300 s run (repeat 1): 3147/4627 (68.0 %) of video frames on time and 17.1 % of audio lost over the whole run; reassembly memory first reached 90 % of its 4 MiB limit after 26.7 s.
 
 | Send time | 0-30 s | 30-60 s | 60-90 s | 90-120 s | 120-150 s | 150-180 s | 180-210 s | 210-240 s | 240-270 s | 270-300 s |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -443,8 +464,8 @@ covered by gaps longer than 0.5 s (`stalled_fraction`) and the latency series
 <!-- BEGIN GENERATED b2 -->
 | System | Parties | Runs | Capture-to-playout p50 (ms) | p95 (ms) | Rise over the window (ms) | Worst talker's audio played | Video frames processed | Downstream audio per receiver (kbit/s) |
 |---|---|---|---|---|---|---|---|---|
-| legacy (original) | 3 | 3 | 594 (589-614) | 682 (665-684) | 3 (-7 to 5) | 41.3 % (41.3-41.7) | 25.0 % | 525 |
-| legacy (original) | 5 | 3 | 978 (952-1024) | 1199 (1190-1204) | 364 (157-395) | 15.1 % (15.0-15.7) | 8.2 % (7.8-8.8) | 1050 |
+| 2024 version | 3 | 3 | 594 (589-614) | 682 (665-684) | 3 (-7 to 5) | 41.3 % (41.3-41.7) | 25.0 % | 525 |
+| 2024 version | 5 | 3 | 978 (952-1024) | 1199 (1190-1204) | 364 (157-395) | 15.1 % (15.0-15.7) | 8.2 % (7.8-8.8) | 1050 |
 | v2 | 3 | 3 | 119 (117-119) | 128 (126-128) | 0 | 100.0 % | 100.0 % (99.9-100.0) | 415 |
 | v2 | 5 | 3 | 119 (119-124) | 135 (131-135) | 0 | 100.0 % | 100.0 % | 420 |
 <!-- END GENERATED b2 -->
@@ -547,43 +568,43 @@ result is in `bench/results/v1/b3_capacity_mtu1500.json`).
 </picture>
 
 <!-- BEGIN GENERATED b3 -->
-| Loopback | System | Server flags | Largest size that passed, per repeat | Server CPU-s per participant-minute at 16 participants | Server CPU at 16 participants |
-|---|---|---|---|---|---|
-| MTU 65536 (Linux default) | legacy (original) |  | 448/448/448 (the only size run) | 0.158 (0.152-0.163) | 0.042 (0.041-0.044) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | (defaults) | 304/304/272 (first failing: 320/288/288) | 0.503 (0.479-0.503) | 0.134 (0.128-0.134) |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | `-udp-gso=false` | 192/192/192 (first failing: 208/208/208) | 0.565 (0.552-0.570) | 0.151 (0.147-0.152) |
-| MTU 65536 (Linux default) | v2, one system call per datagram | `-udp-batch=1` | 160/176/192 (first failing: 176/192/208) | 0.597 (0.572-0.613) | 0.159 (0.152-0.163) |
+| Loopback | System | Server flags | Largest size that passed, per repeat | Server CPU-s per participant-minute at 16 participants | the same without the core's softirq | core-seconds per participant-minute | Server CPU at 16 participants | Core busy |
+|---|---|---|---|---|---|---|---|---|
+| MTU 65536 (Linux default) | 2024 version |  | 448/448/448 (the only size run) | 0.158 (0.152-0.163) | n/a (core busier than the server) | 0.371 (0.331-0.636) | 0.042 (0.041-0.044) | 0.099 (0.088-0.170) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | (defaults) | 304/304/272 (first failing: 320/288/288; last pass before the first failure: 304/272/272) | 0.503 (0.479-0.503) | 0.423 (0.411-0.429) | 0.483 (0.475-1.467) | 0.134 (0.128-0.134) | 0.129 (0.127-0.391) |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | `-udp-gso=false` | 192/192/192 (first failing: 208/208/208) | 0.565 (0.552-0.570) | 0.458 (0.445-0.461) | 0.583 (0.506-0.613) | 0.151 (0.147-0.152) | 0.155 (0.135-0.164) |
+| MTU 65536 (Linux default) | v2, one system call per datagram | `-udp-batch=1` | 160/176/192 (first failing: 176/192/208) | 0.597 (0.572-0.613) | 0.457 (0.428-0.464) | 0.573 (0.542-0.652) | 0.159 (0.152-0.163) | 0.153 (0.145-0.174) |
 
-| Loopback | System | Participants | Runs passed | Frame delivery, median (lowest) | p99 latency, median (highest) | Server CPU | Softirq share of the server's core | Datagrams per read call | per send call | per GSO message |
-|---|---|---|---|---|---|---|---|---|---|---|
-| MTU 65536 (Linux default) | legacy (original) | 448 | 3/3 | 100.00 % (100.00 %) | 1.7 (7.0) ms | 0.39 (0.38-0.40) | 19 % (16-21) | n/a | n/a | n/a |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 128 | 3/3 | 100.00 % (100.00 %) | 2.2 (3.2) ms | 0.51 (0.50-0.53) | 20 % (20-21) | 19.4 (18.9-20.1) | 83.9 (81.6-89.2) | 10.1 (10.1-10.3) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 144 | 3/3 | 100.00 % (100.00 %) | 2.2 (3.4) ms | 0.54 (0.54-0.55) | 21 % (20-22) | 20.5 (20.5-20.9) | 85.9 (85.7-87.5) | 10.2 (10.1-10.3) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 160 | 3/3 | 100.00 % (100.00 %) | 2.8 (8.6) ms | 0.59 (0.57-0.61) | 20 % (17-21) | 20.7 (16.6-21.4) | 86.3 (71.9-91.1) | 10.1 (9.6-10.3) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 176 | 3/3 | 100.00 % (99.98 %) | 5.8 (6.5) ms | 0.62 | 21 % (20-21) | 21.4 (21.3-21.9) | 88.7 (88.6-92.6) | 10.2 (10.2-10.3) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 192 | 3/3 | 99.98 % (99.90 %) | 6.7 (29.2) ms | 0.67 (0.67-0.69) | 20 % (16-21) | 22.0 (18.3-22.2) | 88.0 (76.4-91.4) | 10.3 (9.8-10.3) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 208 | 3/3 | 100.00 % (99.95 %) | 14.8 (25.1) ms | 0.71 (0.70-0.73) | 20 % (18-20) | 24.0 (19.0-25.0) | 94.7 (79.3-107.2) | 10.4 (10.0-10.6) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 224 | 3/3 | 100.00 % (100.00 %) | 11.4 (17.6) ms | 0.74 (0.73-0.75) | 19 % (19-21) | 26.1 (25.1-26.1) | 107.7 (103.7-109.3) | 10.6 (10.6-10.7) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 240 | 3/3 | 99.81 % (99.73 %) | 17.7 (18.7) ms | 0.79 (0.78-0.80) | 18 % (18-19) | 26.2 (24.3-30.6) | 100.2 (98.3-123.8) | 10.6 (10.5-10.7) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 256 | 3/3 | 99.64 % (99.57 %) | 20.7 (21.8) ms | 0.84 (0.82-0.85) | 19 % (14-19) | 29.6 (28.3-30.1) | 111.2 (106.2-116.5) | 10.7 (10.7-10.9) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 272 | 3/3 | 99.57 % (99.28 %) | 20.7 (22.0) ms | 0.87 (0.86-0.87) | 18 % (15-18) | 38.5 (30.4-43.8) | 130.4 (113.1-152.9) | 10.9 (10.8-10.9) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 288 | 1/3 | 98.83 % (96.89 %) | 24.1 (35.2) ms | 0.90 (0.88-0.90) | 17 % (16-18) | 45.1 (39.5-47.1) | 151.2 (136.7-156.9) | 10.9 (10.8-10.9) |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 304 | 2/3 | 99.07 % (97.70 %) | 35.0 (35.6) ms | 0.92 (0.92-0.94) | 18 % (16-19) | 46.4 (41.9-49.4) | 147.3 (137.6-150.4) | 10.9 |
-| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 320 | 0/2 | 98.84 % (98.69 %) | 48.2 (60.6) ms | 0.96 | 18 % (18-19) | 50.8 (47.5-54.1) | 152.5 (146.1-159.0) | 11.0 (10.9-11.0) |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 128 | 3/3 | 100.00 % (100.00 %) | 6.4 (16.3) ms | 0.63 (0.61-0.66) | 25 % (24-25) | 22.0 (22.0-22.5) | 90.9 (90.3-91.2) | 1.0 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 144 | 3/3 | 100.00 % (100.00 %) | 6.1 (12.9) ms | 0.67 (0.66-0.68) | 25 % | 24.1 (22.4-24.5) | 95.1 (90.1-96.4) | 1.0 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 160 | 3/3 | 100.00 % (99.43 %) | 9.9 (29.9) ms | 0.73 (0.73-0.76) | 26 % (24-26) | 25.2 (25.0-25.8) | 97.9 (97.9-98.6) | 1.0 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 176 | 3/3 | 99.97 % (99.95 %) | 17.1 (17.6) ms | 0.81 (0.79-0.82) | 23 % (23-24) | 27.7 (26.6-32.6) | 101.9 (99.1-118.8) | 1.0 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 192 | 3/3 | 99.49 % (99.39 %) | 28.5 (30.8) ms | 0.86 (0.86-0.92) | 24 % | 33.1 (29.5-49.6) | 113.0 (104.8-160.0) | 1.0 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 208 | 0/3 | 98.93 % (97.67 %) | 32.6 (35.3) ms | 0.95 | 23 % (21-23) | 51.2 (48.7-51.4) | 150.4 (149.9-153.6) | 1.0 |
-| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 224 | 0/3 | 98.08 % (97.91 %) | 36.2 (43.6) ms | 0.98 (0.95-0.98) | 23 % (21-25) | 60.5 (43.3-60.7) | 165.7 (135.6-165.9) | 1.0 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 128 | 3/3 | 100.00 % (99.90 %) | 6.3 (26.6) ms | 0.68 (0.66-0.69) | 27 % (27-28) | 1.0 | 1.0 | 1.0 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 144 | 3/3 | 100.00 % (99.97 %) | 13.3 (15.0) ms | 0.73 (0.72-0.75) | 27 % (26-28) | 1.0 | 1.0 | 1.0 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 160 | 3/3 | 100.00 % (99.93 %) | 8.8 (22.9) ms | 0.78 (0.77-0.79) | 25 % (25-27) | 1.0 | 1.0 | 1.0 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 176 | 2/3 | 99.07 % (98.55 %) | 38.2 (42.3) ms | 0.82 (0.82-0.85) | 25 % | 1.0 | 1.0 | 1.0 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 192 | 1/3 | 98.53 % (97.07 %) | 36.5 (38.3) ms | 0.89 (0.88-0.91) | 24 % (23-24) | 1.0 | 1.0 | 1.0 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 208 | 0/2 | 97.58 % (97.38 %) | 34.0 (34.1) ms | 0.96 | 24 % (22-26) | 1.0 | 1.0 | 1.0 |
-| MTU 65536 (Linux default) | v2, one system call per datagram | 224 | 0/1 | 91.32 % (91.32 %) | 36.1 (36.1) ms | 0.99 | 22 % | 1.0 | 1.0 | 1.0 |
+| Loopback | System | Participants | Runs passed | Frame delivery, median (lowest) | p99 latency, median (highest) | Server CPU | without the core's softirq | Core busy | Softirq share of the server's core | Datagrams per read call | per send call | per GSO message |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| MTU 65536 (Linux default) | 2024 version | 448 | 3/3 | 100.00 % (100.00 %) | 1.7 (7.0) ms | 0.39 (0.38-0.40) | 0.322 (0.298-0.330) | 0.39 (0.39-0.40) | 19 % (16-21) | n/a | n/a | n/a |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 128 | 3/3 | 100.00 % (100.00 %) | 2.2 (3.2) ms | 0.51 (0.50-0.53) | 0.417 (0.402-0.431) | 0.47 (0.46-0.50) | 20 % (20-21) | 19.4 (18.9-20.1) | 83.9 (81.6-89.2) | 10.1 (10.1-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 144 | 3/3 | 100.00 % (100.00 %) | 2.2 (3.4) ms | 0.54 (0.54-0.55) | 0.439 (0.424-0.451) | 0.52 (0.48-0.53) | 21 % (20-22) | 20.5 (20.5-20.9) | 85.9 (85.7-87.5) | 10.2 (10.1-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 160 | 3/3 | 100.00 % (100.00 %) | 2.8 (8.6) ms | 0.59 (0.57-0.61) | 0.504 (0.460-0.504) | 0.52 (0.52-0.54) | 20 % (17-21) | 20.7 (16.6-21.4) | 86.3 (71.9-91.1) | 10.1 (9.6-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 176 | 3/3 | 100.00 % (99.98 %) | 5.8 (6.5) ms | 0.62 | 0.505 (0.504-0.510) | 0.57 | 21 % (20-21) | 21.4 (21.3-21.9) | 88.7 (88.6-92.6) | 10.2 (10.2-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 192 | 3/3 | 99.98 % (99.90 %) | 6.7 (29.2) ms | 0.67 (0.67-0.69) | 0.541 (0.534-0.576) | 0.65 (0.64-0.74) | 20 % (16-21) | 22.0 (18.3-22.2) | 88.0 (76.4-91.4) | 10.3 (9.8-10.3) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 208 | 3/3 | 100.00 % (99.95 %) | 14.8 (25.1) ms | 0.71 (0.70-0.73) | 0.595 (0.574-0.596) | 0.65 (0.63-0.70) | 20 % (18-20) | 24.0 (19.0-25.0) | 94.7 (79.3-107.2) | 10.4 (10.0-10.6) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 224 | 3/3 | 100.00 % (100.00 %) | 11.4 (17.6) ms | 0.74 (0.73-0.75) | 0.609 (0.601-0.615) | 0.69 (0.66-0.69) | 19 % (19-21) | 26.1 (25.1-26.1) | 107.7 (103.7-109.3) | 10.6 (10.6-10.7) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 240 | 3/3 | 99.81 % (99.73 %) | 17.7 (18.7) ms | 0.79 (0.78-0.80) | 0.647 (0.643-0.666) | 0.76 (0.75-0.77) | 18 % (18-19) | 26.2 (24.3-30.6) | 100.2 (98.3-123.8) | 10.6 (10.5-10.7) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 256 | 3/3 | 99.64 % (99.57 %) | 20.7 (21.8) ms | 0.84 (0.82-0.85) | 0.697 (0.670-0.701) | 0.83 (0.79-0.99) | 19 % (14-19) | 29.6 (28.3-30.1) | 111.2 (106.2-116.5) | 10.7 (10.7-10.9) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 272 | 3/3 | 99.57 % (99.28 %) | 20.7 (22.0) ms | 0.87 (0.86-0.87) | 0.718 (0.709-0.720) | 0.85 (0.81-0.99) | 18 % (15-18) | 38.5 (30.4-43.8) | 130.4 (113.1-152.9) | 10.9 (10.8-10.9) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 288 | 1/3 | 98.83 % (96.89 %) | 24.1 (35.2) ms | 0.90 (0.88-0.90) | 0.742 (0.731-0.748) | 0.90 (0.88-0.97) | 17 % (16-18) | 45.1 (39.5-47.1) | 151.2 (136.7-156.9) | 10.9 (10.8-10.9) |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 304 | 2/3 | 99.07 % (97.70 %) | 35.0 (35.6) ms | 0.92 (0.92-0.94) | 0.761 (0.760-0.769) | 0.91 (0.91-0.97) | 18 % (16-19) | 46.4 (41.9-49.4) | 147.3 (137.6-150.4) | 10.9 |
+| MTU 65536 (Linux default) | v2 (batching and GSO, default) | 320 | 0/2 | 98.84 % (98.69 %) | 48.2 (60.6) ms | 0.96 | 0.786 (0.781-0.791) | 0.95 (0.94-0.96) | 18 % (18-19) | 50.8 (47.5-54.1) | 152.5 (146.1-159.0) | 11.0 (10.9-11.0) |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 128 | 3/3 | 100.00 % (100.00 %) | 6.4 (16.3) ms | 0.63 (0.61-0.66) | 0.481 (0.473-0.503) | 0.59 (0.56-0.62) | 25 % (24-25) | 22.0 (22.0-22.5) | 90.9 (90.3-91.2) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 144 | 3/3 | 100.00 % (100.00 %) | 6.1 (12.9) ms | 0.67 (0.66-0.68) | 0.511 (0.505-0.518) | 0.64 (0.62-0.66) | 25 % | 24.1 (22.4-24.5) | 95.1 (90.1-96.4) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 160 | 3/3 | 100.00 % (99.43 %) | 9.9 (29.9) ms | 0.73 (0.73-0.76) | 0.549 (0.547-0.574) | 0.72 (0.71-0.74) | 26 % (24-26) | 25.2 (25.0-25.8) | 97.9 (97.9-98.6) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 176 | 3/3 | 99.97 % (99.95 %) | 17.1 (17.6) ms | 0.81 (0.79-0.82) | 0.627 (0.600-0.640) | 0.79 (0.79-0.81) | 23 % (23-24) | 27.7 (26.6-32.6) | 101.9 (99.1-118.8) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 192 | 3/3 | 99.49 % (99.39 %) | 28.5 (30.8) ms | 0.86 (0.86-0.92) | 0.657 (0.657-0.703) | 0.87 (0.87-0.91) | 24 % | 33.1 (29.5-49.6) | 113.0 (104.8-160.0) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 208 | 0/3 | 98.93 % (97.67 %) | 32.6 (35.3) ms | 0.95 | 0.727 (0.723-0.749) | 0.96 (0.94-0.96) | 23 % (21-23) | 51.2 (48.7-51.4) | 150.4 (149.9-153.6) | 1.0 |
+| MTU 65536 (Linux default) | v2, recvmmsg/sendmmsg without GSO | 224 | 0/3 | 98.08 % (97.91 %) | 36.2 (43.6) ms | 0.98 (0.95-0.98) | 0.751 (0.739-0.754) | 0.99 (0.95-0.99) | 23 % (21-25) | 60.5 (43.3-60.7) | 165.7 (135.6-165.9) | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 128 | 3/3 | 100.00 % (99.90 %) | 6.3 (26.6) ms | 0.68 (0.66-0.69) | 0.491 (0.487-0.506) | 0.67 (0.66-0.68) | 27 % (27-28) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 144 | 3/3 | 100.00 % (99.97 %) | 13.3 (15.0) ms | 0.73 (0.72-0.75) | 0.540 (0.517-0.542) | 0.75 (0.74-0.76) | 27 % (26-28) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 160 | 3/3 | 100.00 % (99.93 %) | 8.8 (22.9) ms | 0.78 (0.77-0.79) | 0.574 (0.570-0.575) | 0.80 (0.78-0.81) | 25 % (25-27) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 176 | 2/3 | 99.07 % (98.55 %) | 38.2 (42.3) ms | 0.82 (0.82-0.85) | 0.619 (0.614-0.636) | 0.82 (0.81-0.85) | 25 % | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 192 | 1/3 | 98.53 % (97.07 %) | 36.5 (38.3) ms | 0.89 (0.88-0.91) | 0.690 (0.663-0.693) | 0.90 (0.89-0.91) | 24 % (23-24) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 208 | 0/2 | 97.58 % (97.38 %) | 34.0 (34.1) ms | 0.96 | 0.732 (0.713-0.751) | 0.97 (0.97-0.98) | 24 % (22-26) | 1.0 | 1.0 | 1.0 |
+| MTU 65536 (Linux default) | v2, one system call per datagram | 224 | 0/1 | 91.32 % (91.32 %) | 36.1 (36.1) ms | 0.99 | 0.765 | 1.00 | 22 % | 1.0 | 1.0 | 1.0 |
 <!-- END GENERATED b3 -->
 
 **Reading the results.** Numbers from `b3_capacity.json` (run 20261119T110241Z-2243,
@@ -653,11 +674,11 @@ is a single 15 s window per variant, so read its CPU column next to the B3 sweep
 same size, which have three repeats.
 
 <!-- BEGIN GENERATED b3_profile -->
-| Server | Server CPU | p99 latency | Forwarding | Reading | Audio mixers | of which mixer sends | All system calls | Datagrams per read call | Copies per send call | Datagrams per message | Built from | Files |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `-udp-batch=1` | 0.698 | 4.9 ms | 75.9 % | 13.4 % | 5.4 % | 3.1 % | 84.6 % | 1.0 | 1.0 | 1.0 | `4fe5eca` | `pprof_v2-unbatched.{json,txt,pb.gz}` |
-| `-udp-gso=false` | 0.645 | 7.2 ms | 70.8 % | 9.1 % | 10.1 % | 5.8 % | 84.7 % | 23.0 | 95.0 | 1.0 | `4fe5eca` | `pprof_v2-sendmmsg.{json,txt,pb.gz}` |
-| defaults (batching + GSO) | 0.522 | 3.0 ms | 58.6 % | 19.9 % | 8.2 % | 4.0 % | 82.1 % | 18.9 | 80.6 | 10.1 | `4fe5eca` | `pprof_v2-gso.{json,txt,pb.gz}` |
+| Server | Server CPU | Core softirq | Core busy | p99 latency | Forwarding | Reading | Audio mixers | of which mixer sends | `syscall.Syscall6` | Datagrams per read call | Copies per send call | Datagrams per message | Built from | Files |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `-udp-batch=1` | 0.698 | 0.175 | 0.689 | 4.9 ms | 75.9 % | 13.4 % | 5.4 % | 3.1 % | 84.6 % | 1.0 | 1.0 | 1.0 | `4fe5eca` | `pprof_v2-unbatched.{json,txt,pb.gz}` |
+| `-udp-gso=false` | 0.645 | 0.165 | 0.605 | 7.2 ms | 70.8 % | 9.1 % | 10.1 % | 5.8 % | 82.7 % | 23.0 | 95.0 | 1.0 | `4fe5eca` | `pprof_v2-sendmmsg.{json,txt,pb.gz}` |
+| defaults (batching + GSO) | 0.522 | 0.081 | 0.839 | 3.0 ms | 58.6 % | 19.9 % | 8.2 % | 4.0 % | 79.4 % | 18.9 | 80.6 | 10.1 | `4fe5eca` | `pprof_v2-gso.{json,txt,pb.gz}` |
 <!-- END GENERATED b3_profile -->
 
 - With one system call per datagram (`-udp-batch=1`), 84.6 % of the profiled time is
@@ -765,7 +786,7 @@ commit d4eacfd, "after" 97479e4 (identical to the first "after" run at 8805d37, 
 <!-- BEGIN GENERATED jitter -->
 **Server mixer**, before -> after:
 
-| Scenario | longest silence, ms | gaps > 60 ms | late frames | median latency in the last 10 s, ms |
+| Scenario | longest gap in played frames (silent or concealed ticks), ms | gaps > 60 ms | late frames | median latency in the last 10 s, ms |
 |---|---|---|---|---|
 | `steady` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 87 -> 87 |
 | `jitter_0_10ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 87 -> 87 |
@@ -783,7 +804,7 @@ commit d4eacfd, "after" 97479e4 (identical to the first "after" run at 8805d37, 
 
 **Client**, before -> after:
 
-| Scenario | longest silence, ms | gaps > 60 ms | late frames | median latency in the last 10 s, ms |
+| Scenario | longest gap in played frames (silent or concealed ticks), ms | gaps > 60 ms | late frames | median latency in the last 10 s, ms |
 |---|---|---|---|---|
 | `steady` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 107 -> 107 |
 | `jitter_0_10ms` | 0 -> 0 | 0 -> 0 | 0 -> 0 | 107 -> 107 |

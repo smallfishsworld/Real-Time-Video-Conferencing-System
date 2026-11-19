@@ -8,7 +8,7 @@
   "conditions": {
     "downlink": "best case for recovery: nftables drops UDP packets at the receiver's prerouting hook, priority -500 (before defragmentation, so single IP fragments), server -> receiver only; NACKs and REGISTERs take an unimpaired path with a sub-millisecond round trip",
     "both-rtt50": "userspace relay (bench/lib/udp_impair.py) between the receiver and the server: independent drops per datagram in both directions and a fixed one-way delay each way (25 ms by default: +50 ms round trip); NACKs, retransmissions, parity and REGISTERs can be lost; v2 only (the relay works on whole datagrams)",
-    "downlink-long": "the downlink condition for the original only, in long runs, for its dynamics as the receiver's IP reassembly queue fills"
+    "downlink-long": "the downlink condition for the 2024 version only, in long runs, for its dynamics as the receiver's IP reassembly queue fills"
   },
   "media": "corpus frames 480x480 JPEG q85 at 15.625 fps (one per 1024-sample audio chunk, the legacy rate); 16 kHz mono PCM audio",
   "groups": [
@@ -33,11 +33,18 @@
           "low": 0.9977971283675292,
           "high": 0.9999999999999999
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 580.0,
+          "min": 580.0,
+          "max": 580.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -51,6 +58,7 @@
           "min": 1.7530621099285784,
           "max": 2.5194273815577795
         },
+        "latency_by_assembly_time_per_run": null,
         "model_ratio_independent_loss": 1.0,
         "nack_totals": null,
         "assembler_totals": null
@@ -64,6 +72,7 @@
           "low": 0.0,
           "high": 0.002202871632470741
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -110,11 +119,18 @@
           "low": 0.6482528518593497,
           "high": 0.6923744436868068
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.6586206896551724,
           "min": 0.5706896551724138,
           "max": 0.7827586206896552
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 382.0,
+          "min": 331.0,
+          "max": 454.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -128,6 +144,7 @@
           "min": 1.049307978755678,
           "max": 1.860763961012707
         },
+        "latency_by_assembly_time_per_run": null,
         "model_ratio_independent_loss": 0.8051610030444905,
         "nack_totals": null,
         "assembler_totals": null
@@ -141,6 +158,7 @@
           "low": 0.15704231700695068,
           "high": 0.19266920967765952
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.17931034482758623,
@@ -187,11 +205,18 @@
           "low": 0.36757556109265954,
           "high": 0.41336782796688276
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.38620689655172413,
           "min": 0.3724137931034483,
           "max": 0.41206896551724137
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 224.0,
+          "min": 216.0,
+          "max": 239.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -205,6 +230,7 @@
           "min": 1.1827224006992765,
           "max": 2.4188052116369505
         },
+        "latency_by_assembly_time_per_run": null,
         "model_ratio_independent_loss": 0.6468758067570228,
         "nack_totals": null,
         "assembler_totals": null
@@ -218,6 +244,7 @@
           "low": 0.426760135859032,
           "high": 0.473460151304215
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.45344827586206893,
@@ -264,11 +291,18 @@
           "low": 0.11653295588694652,
           "high": 0.1483084702238739
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.12953367875647667,
           "min": 0.1206896551724138,
           "max": 0.14457831325301204
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 75.0,
+          "min": 70.0,
+          "max": 84.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -282,6 +316,7 @@
           "min": 1.0476685223693507,
           "max": 1.1608762558171304
         },
+        "latency_by_assembly_time_per_run": null,
         "model_ratio_independent_loss": 0.3309577884267899,
         "nack_totals": null,
         "assembler_totals": null
@@ -295,6 +330,7 @@
           "low": 0.6517528471559504,
           "high": 0.695755807896189
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.6770293609671848,
@@ -341,11 +377,18 @@
           "low": 0.0203735041859897,
           "high": 0.035733350243347554
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.027633851468048358,
           "min": 0.020654044750430294,
           "max": 0.032758620689655175
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 16.0,
+          "min": 12.0,
+          "max": 19.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -359,6 +402,7 @@
           "min": 0.8102449898069608,
           "max": 2.2038986155530442
         },
+        "latency_by_assembly_time_per_run": null,
         "model_ratio_independent_loss": 0.10324775814449512,
         "nack_totals": null,
         "assembler_totals": null
@@ -372,6 +416,7 @@
           "low": 0.7261741670381242,
           "high": 0.7669899308906546
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.7512953367875648,
@@ -418,11 +463,18 @@
           "low": 0.9978059356192364,
           "high": 1.0
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 582.0,
+          "min": 582.0,
+          "max": 583.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -435,6 +487,48 @@
           "median": 1.9991711587499483,
           "min": 1.7600461217807573,
           "max": 2.820732122127072
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 581.0,
+              "min": 581.0,
+              "max": 582.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 0.9424109957762994,
+              "min": 0.8994580020953435,
+              "max": 0.9577119963068981
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.9540987996151675,
+              "min": 1.7310584746155644,
+              "max": 2.729710000130584
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 1.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 3.1441320024896413,
+              "min": 3.0384400015464053,
+              "max": 9.94259199796943
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 3.1441320024896413,
+              "min": 3.0384400015464053,
+              "max": 9.94259199796943
+            }
+          }
         },
         "model_ratio_independent_loss": 1.0,
         "nack_totals": {
@@ -460,6 +554,7 @@
           "low": 0.0,
           "high": 0.0006864845813669591
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -506,11 +601,18 @@
           "low": 0.7354700226842934,
           "high": 0.7757127548653437
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.7542955326460481,
           "min": 0.7375643224699828,
           "max": 0.7766323024054983
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 439.0,
+          "min": 430.0,
+          "max": 452.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -523,6 +625,48 @@
           "median": 1.780257049831562,
           "min": 1.5166296390816576,
           "max": 2.028382149946991
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 439.0,
+              "min": 428.0,
+              "max": 452.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 0.9177920001093298,
+              "min": 0.9141739992628573,
+              "max": 0.968707499851007
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.780257049831562,
+              "min": 1.5166296390816576,
+              "max": 1.9062286606640564
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 0.0,
+              "min": 0.0,
+              "max": 2.0
+            },
+            "p50_ms": {
+              "n": 1,
+              "median": 3.4656595016713254,
+              "min": 3.4656595016713254,
+              "max": 3.4656595016713254
+            },
+            "p99_ms": {
+              "n": 1,
+              "median": 4.1477272543124855,
+              "min": 4.1477272543124855,
+              "max": 4.1477272543124855
+            }
+          }
         },
         "model_ratio_independent_loss": 0.7664494555604591,
         "nack_totals": {
@@ -548,6 +692,7 @@
           "low": 0.006634720301645387,
           "high": 0.01156476937825985
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.010198604401502998,
@@ -594,11 +739,18 @@
           "low": 0.5689821735891023,
           "high": 0.6150344973873987
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.5962199312714777,
           "min": 0.5687285223367697,
           "max": 0.6116838487972509
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 347.0,
+          "min": 331.0,
+          "max": 356.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -611,6 +763,48 @@
           "median": 2.2671267490295555,
           "min": 1.8177870028011962,
           "max": 2.476008080993779
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 345.0,
+              "min": 330.0,
+              "max": 353.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.013682998745935,
+              "min": 0.8947509995778091,
+              "max": 1.0391660034656525
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.8921567604411433,
+              "min": 1.7719983409915574,
+              "max": 1.9492176017956808
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 2.0,
+              "min": 1.0,
+              "max": 3.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 2.7192870002181735,
+              "min": 2.488779999112012,
+              "max": 3.362760995514691
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 3.1557924976368668,
+              "min": 2.953529536825954,
+              "max": 3.362760995514691
+            }
+          }
         },
         "model_ratio_independent_loss": 0.5858792847813558,
         "nack_totals": {
@@ -636,6 +830,7 @@
           "low": 0.01554381952082813,
           "high": 0.02269103130651313
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.017713365539452464,
@@ -682,11 +877,18 @@
           "low": 0.22164025456017,
           "high": 0.26174151387847305
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.24054982817869416,
           "min": 0.21477663230240548,
           "max": 0.26804123711340205
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 140.0,
+          "min": 125.0,
+          "max": 156.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -699,6 +901,48 @@
           "median": 1.4435816918557967,
           "min": 1.2134596989199045,
           "max": 2.99627355881967
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 140.0,
+              "min": 124.0,
+              "max": 156.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 0.91349549984443,
+              "min": 0.8828110003378242,
+              "max": 1.1342544967192225
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.4435816918557967,
+              "min": 1.2134596989199045,
+              "max": 2.932654718097179
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 0.0,
+              "min": 0.0,
+              "max": 1.0
+            },
+            "p50_ms": {
+              "n": 1,
+              "median": 2.4425709998467937,
+              "min": 2.4425709998467937,
+              "max": 2.4425709998467937
+            },
+            "p99_ms": {
+              "n": 1,
+              "median": 2.4425709998467937,
+              "min": 2.4425709998467937,
+              "max": 2.4425709998467937
+            }
+          }
         },
         "model_ratio_independent_loss": 0.2573883979518839,
         "nack_totals": {
@@ -724,6 +968,7 @@
           "low": 0.04620503327050678,
           "high": 0.057828214079522426
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.05152979066022545,
@@ -770,11 +1015,18 @@
           "low": 0.05044439830237852,
           "high": 0.07290475300832774
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.06174957118353345,
           "min": 0.05679862306368331,
           "max": 0.06357388316151202
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 36.0,
+          "min": 33.0,
+          "max": 37.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -787,6 +1039,48 @@
           "median": 1.5652598018641584,
           "min": 0.9980679489672183,
           "max": 1.6164225601824003
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 36.0,
+              "min": 33.0,
+              "max": 37.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.0231600026600063,
+              "min": 0.831709498015698,
+              "max": 1.0457669995957986
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.5652598018641584,
+              "min": 0.9980679489672183,
+              "max": 1.6164225601824003
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "p50_ms": {
+              "n": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "p99_ms": {
+              "n": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            }
+          }
         },
         "model_ratio_independent_loss": 0.06161574848761636,
         "nack_totals": {
@@ -812,6 +1106,7 @@
           "low": 0.08588887984187288,
           "high": 0.10114100406519463
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.09056806002143625,
@@ -858,11 +1153,18 @@
           "low": 0.9978046817545675,
           "high": 0.9999999999999999
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 582.0,
+          "min": 582.0,
+          "max": 582.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -875,6 +1177,48 @@
           "median": 2.190082777306075,
           "min": 2.1708735780703092,
           "max": 2.7890595539065535
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 581.0,
+              "min": 579.0,
+              "max": 581.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.0996019991580397,
+              "min": 1.0784539990709163,
+              "max": 1.1033209957531653
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.1335432014893794,
+              "min": 2.0628095005668006,
+              "max": 2.538604605069864
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 1.0,
+              "min": 1.0,
+              "max": 3.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 2.8001120008411817,
+              "min": 2.1571019969996996,
+              "max": 3.1072309975570533
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.8001120008411817,
+              "min": 2.1571019969996996,
+              "max": 6.713139041676186
+            }
+          }
         },
         "model_ratio_independent_loss": 1.0,
         "nack_totals": {
@@ -900,6 +1244,7 @@
           "low": 0.0,
           "high": 0.0006868528116769441
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -946,11 +1291,18 @@
           "low": 0.9858895733315189,
           "high": 0.99479277739735
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9914236706689536,
           "min": 0.9879931389365352,
           "max": 0.9948453608247423
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 578.0,
+          "min": 576.0,
+          "max": 579.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -963,6 +1315,48 @@
           "median": 2.4654433601972436,
           "min": 1.751358563487885,
           "max": 2.7011329984816257
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 575.0,
+              "min": 573.0,
+              "max": 577.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.1040189929190092,
+              "min": 1.0726489999797195,
+              "max": 1.1420509981689975
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.2423221185454154,
+              "min": 1.7120578823960388,
+              "max": 2.410151118674544
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 3.0,
+              "min": 2.0,
+              "max": 3.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 3.082252002059249,
+              "min": 2.4990599995362572,
+              "max": 4.6053730038693175
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 3.4387514999252744,
+              "min": 2.5141088826057967,
+              "max": 7.446308721264359
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9936977762646543,
         "nack_totals": {
@@ -988,6 +1382,7 @@
           "low": 0.00018237039429295793,
           "high": 0.001575396628326472
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.000535905680600246,
@@ -1034,11 +1429,18 @@
           "low": 0.9696117069631063,
           "high": 0.9836175079089549
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9793459552495697,
           "min": 0.9691252144082333,
           "max": 0.9845360824742269
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 569.0,
+          "min": 565.0,
+          "max": 573.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1051,6 +1453,48 @@
           "median": 2.478499280696272,
           "min": 2.2756178397685547,
           "max": 3.2450662433984507
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 566.0,
+              "min": 558.0,
+              "max": 570.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.2419739978213329,
+              "min": 1.1382169996068114,
+              "max": 1.3046389976807404
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.237777372138223,
+              "min": 2.0025768501000134,
+              "max": 2.6792169583495573
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 3.0,
+              "min": 3.0,
+              "max": 7.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 3.0581500031985343,
+              "min": 2.408615000604186,
+              "max": 5.356392000976484
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 6.708979274844751,
+              "min": 3.0809397574921604,
+              "max": 7.600008899025852
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9754719592633059,
         "nack_totals": {
@@ -1076,6 +1520,7 @@
           "low": 9.813970178046167e-05,
           "high": 0.0013039130720996122
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -1122,11 +1567,18 @@
           "low": 0.8467936257476248,
           "high": 0.878986411954724
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.865979381443299,
           "min": 0.8556701030927835,
           "max": 0.8694158075601375
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 504.0,
+          "min": 498.0,
+          "max": 506.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1139,6 +1591,48 @@
           "median": 2.374393677891928,
           "min": 2.2025353995559254,
           "max": 3.2878242566221147
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 502.0,
+              "min": 493.0,
+              "max": 504.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.2909509969176725,
+              "min": 1.1749794994102558,
+              "max": 1.3496034953277558
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.2272282760241064,
+              "min": 2.0473128001322,
+              "max": 2.2719996708474355
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 2.0,
+              "min": 2.0,
+              "max": 5.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 3.1326579992310144,
+              "min": 2.7505925008881604,
+              "max": 3.2549300012760796
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 3.5120912113416125,
+              "min": 3.2275278768793214,
+              "max": 21.1267289967509
+            }
+          }
         },
         "model_ratio_independent_loss": 0.8627429004119195,
         "nack_totals": {
@@ -1164,6 +1658,7 @@
           "low": 0.0017629542719181613,
           "high": 0.0046454982373838214
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0021470746108427363,
@@ -1210,11 +1705,18 @@
           "low": 0.5496519904861638,
           "high": 0.5959922645698782
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.5756013745704467,
           "min": 0.5677530017152659,
           "max": 0.5756013745704467
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 335.0,
+          "min": 331.0,
+          "max": 335.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1227,6 +1729,48 @@
           "median": 3.00812290137401,
           "min": 2.136958500705077,
           "max": 5.036821382236678
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 329.0,
+              "min": 329.0,
+              "max": 329.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.4742469938937575,
+              "min": 1.2782390003849287,
+              "max": 1.525154002592899
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.374291159794665,
+              "min": 1.9494901591679072,
+              "max": 2.5633504771394535
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 6.0,
+              "min": 2.0,
+              "max": 6.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 2.9912565005361103,
+              "min": 2.181290501539479,
+              "max": 3.971134003222687
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 11.20504475584312,
+              "min": 2.210243131739844,
+              "max": 24.871357046504276
+            }
+          }
         },
         "model_ratio_independent_loss": 0.5768543684752366,
         "nack_totals": {
@@ -1252,6 +1796,7 @@
           "low": 0.014887439535872654,
           "high": 0.021897280044522183
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.018250134192163148,
@@ -1298,11 +1843,18 @@
           "low": 0.9978059356192364,
           "high": 1.0
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 582.0,
+          "min": 582.0,
+          "max": 583.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1315,6 +1867,48 @@
           "median": 2.169795383961164,
           "min": 1.7129172036948141,
           "max": 2.237768099694202
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 580.0,
+              "min": 579.0,
+              "max": 581.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 0.962223501119297,
+              "min": 0.9421040012966841,
+              "max": 0.9881100013444666
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.6735530050937106,
+              "min": 1.633532500927686,
+              "max": 1.9563958798971746
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 3.0,
+              "min": 1.0,
+              "max": 3.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 2.8145350006525405,
+              "min": 2.762739997706376,
+              "max": 3.07966599939391
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 3.07966599939391,
+              "min": 3.0012808196624974,
+              "max": 3.7220395014446694
+            }
+          }
         },
         "model_ratio_independent_loss": 1.0,
         "nack_totals": {
@@ -1340,6 +1934,7 @@
           "low": 0.0,
           "high": 0.0006864845813669591
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -1386,11 +1981,18 @@
           "low": 0.9851658122971497,
           "high": 0.9943514984286973
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.993127147766323,
           "min": 0.9828178694158075,
           "max": 0.9965635738831615
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 578.0,
+          "min": 572.0,
+          "max": 580.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1403,6 +2005,48 @@
           "median": 16.650933089549653,
           "min": 16.46721743145463,
           "max": 16.898223332682413
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 424.0,
+              "min": 422.0,
+              "max": 453.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.0044995033240411,
+              "min": 0.8757160012464738,
+              "max": 1.0199319949606434
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.7654226004378928,
+              "min": 1.5850202296132907,
+              "max": 1.8617227151116822
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 154.0,
+              "min": 119.0,
+              "max": 158.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 11.367446999429376,
+              "min": 11.223360001167748,
+              "max": 12.466845000744797
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 41.03042922135536,
+              "min": 17.571834689442767,
+              "max": 44.2420952614337
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9999997353300324,
         "nack_totals": {
@@ -1428,6 +2072,7 @@
           "low": 0.008036707774035364,
           "high": 0.013390943941532344
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.010198604401502998,
@@ -1474,11 +2119,18 @@
           "low": 0.9830660114620139,
           "high": 0.9930224171959482
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9914089347079038,
           "min": 0.9845360824742269,
           "max": 0.9914089347079038
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 577.0,
+          "min": 573.0,
+          "max": 577.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1491,6 +2143,48 @@
           "median": 45.05843391918461,
           "min": 44.82389600481838,
           "max": 47.62860103946876
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 348.0,
+              "min": 340.0,
+              "max": 352.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.0245679986837786,
+              "min": 0.8891004999895813,
+              "max": 1.0261194984195754
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.8100768304429948,
+              "min": 1.4218842402988248,
+              "max": 2.928809541335796
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 229.0,
+              "min": 221.0,
+              "max": 237.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 11.574889998883009,
+              "min": 11.462786002084613,
+              "max": 11.71667000016896
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 67.15601095929699,
+              "min": 63.9707580048707,
+              "max": 75.09975099965233
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9999957652886309,
         "nack_totals": {
@@ -1516,6 +2210,7 @@
           "low": 0.019463103580004176,
           "high": 0.027362519214687863
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.024691358024691357,
@@ -1562,11 +2257,18 @@
           "low": 0.9803103471930218,
           "high": 0.9912062387077601
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9862542955326461,
           "min": 0.9845360824742269,
           "max": 0.9896907216494846
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 574.0,
+          "min": 573.0,
+          "max": 576.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1579,6 +2281,48 @@
           "median": 77.56328072428003,
           "min": 77.30316520959603,
           "max": 78.55831175038475
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 151.0,
+              "min": 145.0,
+              "max": 155.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.0180919998674653,
+              "min": 0.9065830017789267,
+              "max": 1.0479690026841126
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 1.9987681416387217,
+              "min": 1.240747498741257,
+              "max": 2.5496421617572205
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 425.0,
+              "min": 419.0,
+              "max": 428.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 12.057409003318753,
+              "min": 11.600697001995286,
+              "max": 12.144927499321057
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 78.59852080073324,
+              "min": 78.02727419380972,
+              "max": 78.80970208076178
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9998345944201488,
         "nack_totals": {
@@ -1604,6 +2348,7 @@
           "low": 0.037764918516357056,
           "high": 0.04838832977859391
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.04347826086956519,
@@ -1650,11 +2395,18 @@
           "low": 0.9729122852193731,
           "high": 0.9860317330991631
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9794168096054888,
           "min": 0.979381443298969,
           "max": 0.9827882960413081
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 571.0,
+          "min": 570.0,
+          "max": 571.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1667,6 +2419,48 @@
           "median": 79.714721802884,
           "min": 79.34324239962734,
           "max": 79.76176029915223
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 37.0,
+              "min": 35.0,
+              "max": 43.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.0278440022375435,
+              "min": 0.928999997995561,
+              "max": 1.127204996009823
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.8686970999115107,
+              "min": 2.586569660343227,
+              "max": 2.9003042372642094
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 534.0,
+              "min": 528.0,
+              "max": 535.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 14.503393998893443,
+              "min": 13.11007149706711,
+              "max": 14.547339000273496
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 79.8109656295128,
+              "min": 79.35610140179051,
+              "max": 79.81197852139302
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9973566689790669,
         "nack_totals": {
@@ -1692,6 +2486,7 @@
           "low": 0.0896649334393602,
           "high": 0.10519870911046648
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.09592711682743837,
@@ -1738,11 +2533,18 @@
           "low": 0.9978059356192364,
           "high": 1.0
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 582.0,
+          "min": 582.0,
+          "max": 583.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1755,6 +2557,48 @@
           "median": 2.3693044091851223,
           "min": 2.119598938006642,
           "max": 2.5235359798534702
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 580.0,
+              "min": 580.0,
+              "max": 580.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.1825109977507964,
+              "min": 1.123644500694354,
+              "max": 1.1846859997604042
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.2354379762691696,
+              "min": 1.997062379377894,
+              "max": 2.2662655922249564
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 2.0,
+              "min": 2.0,
+              "max": 3.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 2.7894090017070994,
+              "min": 2.710763998038601,
+              "max": 2.8136904984421562
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 3.0511773275065934,
+              "min": 3.0209330229990883,
+              "max": 3.217291700275382
+            }
+          }
         },
         "model_ratio_independent_loss": 1.0,
         "nack_totals": {
@@ -1780,6 +2624,7 @@
           "low": 0.0,
           "high": 0.0006864845813669591
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -1826,11 +2671,18 @@
           "low": 0.9978034264559618,
           "high": 1.0
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 582.0,
+          "min": 581.0,
+          "max": 582.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1843,6 +2695,48 @@
           "median": 6.883393289099205,
           "min": 2.7067790106957372,
           "max": 7.4884882022162005
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 574.0,
+              "min": 572.0,
+              "max": 577.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.1545000015757978,
+              "min": 1.043840999045642,
+              "max": 1.2054995022481307
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.193946727493312,
+              "min": 2.105875398410717,
+              "max": 2.52446040234644
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 8.0,
+              "min": 5.0,
+              "max": 9.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 9.483075999014545,
+              "min": 5.387774999690009,
+              "max": 10.799161998875206
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 14.919701876060572,
+              "min": 14.037391401507193,
+              "max": 15.849229295999976
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9999997353300324,
         "nack_totals": {
@@ -1868,6 +2762,7 @@
           "low": 0.0,
           "high": 0.0006872214372363966
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -1914,11 +2809,18 @@
           "low": 0.9978046817545675,
           "high": 0.9999999999999999
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 582.0,
+          "min": 581.0,
+          "max": 583.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -1931,6 +2833,48 @@
           "median": 12.209202837766389,
           "min": 8.760520002397245,
           "max": 14.110127061503588
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 563.0,
+              "min": 562.0,
+              "max": 566.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.2236399998073466,
+              "min": 1.103516999137355,
+              "max": 1.2312034996284638
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.0894413028145213,
+              "min": 1.6278535588207887,
+              "max": 2.2664858987991456
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 19.0,
+              "min": 16.0,
+              "max": 20.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 10.433920000650687,
+              "min": 7.616269002028275,
+              "max": 12.487847499869531
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 16.58438194936025,
+              "min": 13.877158237010008,
+              "max": 17.48830323980655
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9999957652886309,
         "nack_totals": {
@@ -1956,6 +2900,7 @@
           "low": 0.0003821844380416411,
           "high": 0.0020926682791431277
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.001071811361200381,
@@ -2002,11 +2947,18 @@
           "low": 0.9958305649386457,
           "high": 0.9996856330326033
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9982817869415808,
           "min": 0.9982817869415808,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 581.0,
+          "min": 581.0,
+          "max": 581.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2019,6 +2971,48 @@
           "median": 15.988073602784429,
           "min": 15.528454600280387,
           "max": 16.18694540375146
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 500.0,
+              "min": 492.0,
+              "max": 512.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.249271495908033,
+              "min": 1.1204249985894421,
+              "max": 1.3456120032060426
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.223543839791091,
+              "min": 1.9819279313378497,
+              "max": 2.861298589850774
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 81.0,
+              "min": 69.0,
+              "max": 89.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 11.223706998862326,
+              "min": 11.204313996131532,
+              "max": 11.668158000247786
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 17.745595397718716,
+              "min": 16.228194999275733,
+              "max": 36.73954095720511
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9998345944201488,
         "nack_totals": {
@@ -2044,6 +3038,7 @@
           "low": 0.0033246849274218403,
           "high": 0.007024769303271972
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.004830917874396157,
@@ -2090,11 +3085,18 @@
           "low": 0.9873026075475961,
           "high": 0.995643585246136
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9948453608247423,
           "min": 0.9879518072289156,
           "max": 0.9948542024013722
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 579.0,
+          "min": 574.0,
+          "max": 580.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2107,6 +3109,48 @@
           "median": 39.37383870113992,
           "min": 16.97134545189328,
           "max": 40.659799450550324
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 336.0,
+              "min": 332.0,
+              "max": 345.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 1.2957794970134273,
+              "min": 1.1772399993787985,
+              "max": 1.3684725017810706
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 2.2933188516617515,
+              "min": 2.0550969704345334,
+              "max": 2.3938941580126993
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 242.0,
+              "min": 235.0,
+              "max": 243.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 11.856452001666185,
+              "min": 11.738722998416051,
+              "max": 12.298626999836415
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 45.216664990148296,
+              "min": 44.746154217282296,
+              "max": 49.4745415597572
+            }
+          }
         },
         "model_ratio_independent_loss": 0.9973566689790669,
         "nack_totals": {
@@ -2132,6 +3176,7 @@
           "low": 0.015381598259938017,
           "high": 0.022495652586301672
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0187566988210075,
@@ -2178,11 +3223,18 @@
           "low": 0.9977857003234331,
           "high": 1.0
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 577.0,
+          "min": 576.0,
+          "max": 578.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2195,6 +3247,48 @@
           "median": 28.781544479061267,
           "min": 28.630806880246382,
           "max": 29.822721999153146
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 573.0,
+              "min": 572.0,
+              "max": 576.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.21817899873713,
+              "min": 27.17095800107927,
+              "max": 27.238268998189596
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.781859999071457,
+              "min": 28.197985242004503,
+              "max": 29.229210479388687
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 4.0,
+              "min": 2.0,
+              "max": 4.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 29.011441001784988,
+              "min": 27.885459498065757,
+              "max": 29.065286496916087
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 30.034108237960027,
+              "min": 28.05494706830359,
+              "max": 33.156597083216184
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2220,6 +3314,7 @@
           "low": 0.0,
           "high": 0.0006929236540741872
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -2266,11 +3361,18 @@
           "low": 0.9707111165164485,
           "high": 0.9844710571452547
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9809688581314879,
           "min": 0.972318339100346,
           "max": 0.9826689774696707
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 567.0,
+          "min": 562.0,
+          "max": 567.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2283,6 +3385,48 @@
           "median": 29.39004786021543,
           "min": 28.669350878772093,
           "max": 29.449023049892276
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 564.0,
+              "min": 546.0,
+              "max": 565.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.27384350146167,
+              "min": 27.09653000056278,
+              "max": 27.55720549612306
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 29.15732764995482,
+              "min": 28.60568167947349,
+              "max": 29.158277307942626
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 3.0,
+              "min": 2.0,
+              "max": 16.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 29.16960999573348,
+              "min": 28.60501449686126,
+              "max": 29.535591500462033
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 30.614937522041146,
+              "min": 29.994064411293948,
+              "max": 31.297641701530665
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2308,6 +3452,7 @@
           "low": 9.888282412560468e-05,
           "high": 0.0013137784704515872
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.000540540540540535,
@@ -2354,11 +3499,18 @@
           "low": 0.8336847622139879,
           "high": 0.8671846949941889
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.8598615916955017,
           "min": 0.8304498269896193,
           "max": 0.8633217993079585
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 497.0,
+          "min": 480.0,
+          "max": 499.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2371,6 +3523,48 @@
           "median": 29.053830568664125,
           "min": 28.970384078711508,
           "max": 29.408834439236667
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 493.0,
+              "min": 470.0,
+              "max": 494.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.300882997224107,
+              "min": 27.1910259998549,
+              "max": 27.474285998323467
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.89702846223372,
+              "min": 28.750526069088664,
+              "max": 29.34522476134589
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 6.0,
+              "min": 3.0,
+              "max": 10.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 28.616441999474773,
+              "min": 28.570430004037917,
+              "max": 29.11067899913178
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 31.064307040069252,
+              "min": 29.590866901780828,
+              "max": 31.133203253193642
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2396,6 +3590,7 @@
           "low": 0.0037890329129030417,
           "high": 0.007705976326009498
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.004864864864864815,
@@ -2442,11 +3637,18 @@
           "low": 0.5507296821748139,
           "high": 0.5972400698631956
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.5761245674740484,
           "min": 0.5449826989619377,
           "max": 0.6013864818024264
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 333.0,
+          "min": 315.0,
+          "max": 347.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2459,6 +3661,48 @@
           "median": 30.27198100287933,
           "min": 29.923263720120314,
           "max": 30.428772500017665
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 327.0,
+              "min": 305.0,
+              "max": 334.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.501943994138855,
+              "min": 27.47133000229951,
+              "max": 27.55823150073411
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 29.984106060001075,
+              "min": 28.459503724006936,
+              "max": 30.2751955029089
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 10.0,
+              "min": 6.0,
+              "max": 13.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 28.84684099990409,
+              "min": 28.284224004892167,
+              "max": 29.29791899805423
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 29.427395949460333,
+              "min": 28.97826476022601,
+              "max": 33.167301936700824
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2484,6 +3728,7 @@
           "low": 0.015171586620420688,
           "high": 0.022271647963184926
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.017297297297297343,
@@ -2530,11 +3775,18 @@
           "low": 0.9977869759581779,
           "high": 1.0
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 577.0,
+          "min": 577.0,
+          "max": 578.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2547,6 +3799,48 @@
           "median": 28.967236878525004,
           "min": 28.525393804593477,
           "max": 29.892572519020185
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 573.0,
+              "min": 572.0,
+              "max": 575.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.079166000476107,
+              "min": 26.99486650089966,
+              "max": 27.113956995890476
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.467118068474498,
+              "min": 28.372343299124623,
+              "max": 29.290027800307133
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 4.0,
+              "min": 3.0,
+              "max": 5.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 28.970752995519433,
+              "min": 28.401364001183538,
+              "max": 29.593269500765018
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 30.515788590928423,
+              "min": 30.08914152000216,
+              "max": 43.08262657999876
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2572,6 +3866,7 @@
           "low": 3.184135771739326e-05,
           "high": 0.0010210832661369284
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -2618,11 +3913,18 @@
           "low": 0.8844845425037504,
           "high": 0.9128232950979345
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.8994800693240901,
           "min": 0.8961937716262975,
           "max": 0.902946273830156
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 519.0,
+          "min": 518.0,
+          "max": 521.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2635,6 +3937,48 @@
           "median": 120.66702299925952,
           "min": 118.39319911210623,
           "max": 123.6916724950425
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 337.0,
+              "min": 334.0,
+              "max": 343.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 26.914808000583434,
+              "min": 26.735070001450367,
+              "max": 26.990540005499497
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.53494276292622,
+              "min": 28.234307830462058,
+              "max": 28.752392138121646
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 182.0,
+              "min": 178.0,
+              "max": 184.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 88.86353449997841,
+              "min": 88.46769199953997,
+              "max": 89.05951999986428
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 152.94347362014378,
+              "min": 152.28970935488178,
+              "max": 153.3061991725117
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2660,6 +4004,7 @@
           "low": 0.01912566445853169,
           "high": 0.026998145060425586
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.02217414818820984,
@@ -2706,11 +4051,18 @@
           "low": 0.8949709468021392,
           "high": 0.9220293572520843
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9116117850953206,
           "min": 0.903114186851211,
           "max": 0.9134948096885813
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 526.0,
+          "min": 522.0,
+          "max": 528.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2723,6 +4075,48 @@
           "median": 155.4442780699901,
           "min": 152.99774294173403,
           "max": 155.60563650069525
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 139.0,
+              "min": 128.0,
+              "max": 155.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 26.924391997454222,
+              "min": 26.798948001669487,
+              "max": 26.98740700361668
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.16637709765928,
+              "min": 28.12676497931534,
+              "max": 28.34057251115155
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 387.0,
+              "min": 367.0,
+              "max": 400.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 89.10750999712036,
+              "min": 88.85979000115185,
+              "max": 90.07837600074708
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 155.63417623270652,
+              "min": 154.63205802159786,
+              "max": 156.18657493861974
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2748,6 +4142,7 @@
           "low": 0.04416918746241871,
           "high": 0.05560693891120608
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.04810810810810806,
@@ -2794,11 +4189,18 @@
           "low": 0.9265943361455816,
           "high": 0.949204772122764
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9463667820069204,
           "min": 0.9152249134948097,
           "max": 0.9550173010380623
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 547.0,
+          "min": 529.0,
+          "max": 552.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2811,6 +4213,48 @@
           "median": 157.8231671193498,
           "min": 157.218487303835,
           "max": 174.42761003971157
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 31.0,
+              "min": 20.0,
+              "max": 35.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.005925003322773,
+              "min": 26.95538350235438,
+              "max": 27.048522999393754
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.233662758721035,
+              "min": 27.427812320602243,
+              "max": 28.326624995679595
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 521.0,
+              "min": 494.0,
+              "max": 527.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 92.09808000014164,
+              "min": 91.86340900487266,
+              "max": 92.32717199847684
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 157.96482272067806,
+              "min": 157.23283100523986,
+              "max": 180.40913880737207
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2836,6 +4280,7 @@
           "low": 0.09411974744705859,
           "high": 0.11003470443563601
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.09945945945945944,
@@ -2882,11 +4327,18 @@
           "low": 0.9977857003234331,
           "high": 1.0
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 1.0,
           "min": 1.0,
           "max": 1.0
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 577.0,
+          "min": 576.0,
+          "max": 578.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2899,6 +4351,48 @@
           "median": 28.81410623929696,
           "min": 28.639939881904866,
           "max": 29.80972800105519
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 573.0,
+              "min": 565.0,
+              "max": 575.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.064365000114776,
+              "min": 27.05915700062178,
+              "max": 27.26828199956799
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.78814827708993,
+              "min": 28.534326821245486,
+              "max": 28.871545360598258
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 4.0,
+              "min": 3.0,
+              "max": 11.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 28.658093000558438,
+              "min": 28.23238899873104,
+              "max": 28.694905999145703
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 29.047823603250436,
+              "min": 28.810470928874565,
+              "max": 66.38854679840735
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -2924,6 +4418,7 @@
           "low": 0.0,
           "high": 0.0006929236540741872
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0,
@@ -2970,11 +4465,18 @@
           "low": 0.9850463340019927,
           "high": 0.9943057786590365
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9913344887348353,
           "min": 0.9878682842287695,
           "max": 0.9930795847750865
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 572.0,
+          "min": 570.0,
+          "max": 574.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -2987,6 +4489,48 @@
           "median": 84.73795948972109,
           "min": 53.792480619956436,
           "max": 86.29085016080353
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 560.0,
+              "min": 559.0,
+              "max": 563.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.18911699957971,
+              "min": 27.00067900150316,
+              "max": 27.249153004959226
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.709352438745555,
+              "min": 28.626778151774488,
+              "max": 29.524381543451447
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 11.0,
+              "min": 9.0,
+              "max": 14.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 85.6515759951435,
+              "min": 85.1534854991769,
+              "max": 86.93386400409508
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 90.49200900190044,
+              "min": 90.01763749693055,
+              "max": 90.53544407855952
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -3012,6 +4556,7 @@
           "low": 0.0004961863148711807,
           "high": 0.0023597559359987324
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0010828370330265846,
@@ -3058,11 +4603,18 @@
           "low": 0.9428813404828579,
           "high": 0.962731318989576
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.9584055459272097,
           "min": 0.9411764705882353,
           "max": 0.9618717504332756
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 553.0,
+          "min": 544.0,
+          "max": 555.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -3075,6 +4627,48 @@
           "median": 91.0378631683125,
           "min": 90.81363490215153,
           "max": 91.87164116185158
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 491.0,
+              "min": 484.0,
+              "max": 493.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.27526800299529,
+              "min": 27.184834001673153,
+              "max": 27.399779995903373
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.754497899062702,
+              "min": 28.742974602500905,
+              "max": 29.10993869591039
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 64.0,
+              "min": 51.0,
+              "max": 69.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 87.85792300477624,
+              "min": 87.76936300273519,
+              "max": 87.93868700377061
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 105.76088050220278,
+              "min": 93.39884509499825,
+              "max": 112.43695592420369
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -3100,6 +4694,7 @@
           "low": 0.0024789133027516936,
           "high": 0.005784022691554779
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.0037899296155928797,
@@ -3146,11 +4741,18 @@
           "low": 0.8710525497484751,
           "high": 0.9009073508196304
         },
+        "delivery_ratio_by_30s_bins": null,
         "delivery_ratio_per_run": {
           "n": 3,
           "median": 0.8838821490467937,
           "min": 0.8838821490467937,
           "max": 0.8927335640138409
+        },
+        "frames_complete_per_run": {
+          "n": 3,
+          "median": 510.0,
+          "min": 510.0,
+          "max": 516.0
         },
         "latency_ms_p50_per_run": {
           "n": 3,
@@ -3163,6 +4765,48 @@
           "median": 122.90735952694374,
           "min": 121.73048889562779,
           "max": 127.75986951761288
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 3,
+              "median": 326.0,
+              "min": 308.0,
+              "max": 340.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 27.133265499287518,
+              "min": 27.064662499469705,
+              "max": 27.22198450283031
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 28.805188696860572,
+              "min": 28.54147525249573,
+              "max": 28.97534605865076
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 3,
+              "median": 184.0,
+              "min": 170.0,
+              "max": 208.0
+            },
+            "p50_ms": {
+              "n": 3,
+              "median": 89.07002550040488,
+              "min": 88.98417700038408,
+              "max": 89.16376449997188
+            },
+            "p99_ms": {
+              "n": 3,
+              "median": 153.35014230404343,
+              "min": 128.40619308190037,
+              "max": 153.88580856873887
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -3188,6 +4832,7 @@
           "low": 0.012740449191299724,
           "high": 0.019315524325498854
         },
+        "residual_loss_by_30s_bins": null,
         "residual_loss_per_run": {
           "n": 3,
           "median": 0.015159718462371408,
@@ -3231,14 +4876,26 @@
           "k": 3147,
           "n": 4627,
           "p": 0.6801383185649449,
-          "low": 0.6665542871667237,
-          "high": 0.6934234868084425
+          "low": null,
+          "high": null
+        },
+        "delivery_ratio_by_30s_bins": {
+          "n": 10,
+          "median": 0.6727078891257996,
+          "min": 0.6140724946695096,
+          "max": 0.7825159914712153
         },
         "delivery_ratio_per_run": {
           "n": 1,
           "median": 0.6801383185649449,
           "min": 0.6801383185649449,
           "max": 0.6801383185649449
+        },
+        "frames_complete_per_run": {
+          "n": 1,
+          "median": 3147.0,
+          "min": 3147.0,
+          "max": 3147.0
         },
         "latency_ms_p50_per_run": {
           "n": 1,
@@ -3252,6 +4909,7 @@
           "min": 1.4893481961917128,
           "max": 1.4893481961917128
         },
+        "latency_by_assembly_time_per_run": null,
         "model_ratio_independent_loss": 0.8051610030444905,
         "nack_totals": null,
         "assembler_totals": null
@@ -3262,8 +4920,14 @@
           "k": 792,
           "n": 4627,
           "p": 0.17116922411929977,
-          "low": 0.1605902172136548,
-          "high": 0.1822937862617917
+          "low": null,
+          "high": null
+        },
+        "residual_loss_by_30s_bins": {
+          "n": 10,
+          "median": 0.17715907641280776,
+          "min": 0.053304904051172705,
+          "max": 0.2515991471215352
         },
         "residual_loss_per_run": {
           "n": 1,
@@ -3329,6 +4993,8 @@
           "p99": 2.5194273815577795,
           "max": 5.003168000257574
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -3569,6 +5235,8 @@
           "p99": 2.0678728890197844,
           "max": 5.621825999696739
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -3809,6 +5477,8 @@
           "p99": 1.7530621099285784,
           "max": 3.4920769976451993
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -4049,6 +5719,8 @@
           "p99": 1.049307978755678,
           "max": 2.109648001351161
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -4289,6 +5961,8 @@
           "p99": 1.860763961012707,
           "max": 2.8791310032829642
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -4529,6 +6203,8 @@
           "p99": 1.327254304487723,
           "max": 2.823397000611294
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -4769,6 +6445,8 @@
           "p99": 2.4188052116369505,
           "max": 4.41742300245096
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -5009,6 +6687,8 @@
           "p99": 1.1827224006992765,
           "max": 1.602624004590325
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -5249,6 +6929,8 @@
           "p99": 1.3155082186858649,
           "max": 2.8279540056246333
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -5489,6 +7171,8 @@
           "p99": 1.0501894404660561,
           "max": 1.0832500011019874
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -5729,6 +7413,8 @@
           "p99": 1.0476685223693507,
           "max": 1.2361110057099722
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -5969,6 +7655,8 @@
           "p99": 1.1608762558171304,
           "max": 1.503030005551409
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -6209,6 +7897,8 @@
           "p99": 0.8102449898069608,
           "max": 0.8152049995260313
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -6449,6 +8139,8 @@
           "p99": 2.2038986155530442,
           "max": 2.4799089951557107
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -6689,6 +8381,8 @@
           "p99": 1.001437754894141,
           "max": 1.0129690053872764
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -6929,6 +8623,25 @@
           "p99": 2.820732122127072,
           "max": 4.643521999241784
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 581,
+            "mean": 0.9488899277239836,
+            "p50": 0.8994580020953435,
+            "p95": 1.181797000754159,
+            "p99": 2.729710000130584,
+            "max": 4.643521999241784
+          },
+          "later": {
+            "n": 1,
+            "mean": 3.1441320024896413,
+            "p50": 3.1441320024896413,
+            "p95": 3.1441320024896413,
+            "p99": 3.1441320024896413,
+            "max": 3.1441320024896413
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -7183,6 +8896,25 @@
           "p99": 1.7600461217807573,
           "max": 3.633280997746624
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 582,
+            "mean": 0.9845832731919619,
+            "p50": 0.9577119963068981,
+            "p95": 1.2701331510470482,
+            "p99": 1.7310584746155644,
+            "max": 3.633280997746624
+          },
+          "later": {
+            "n": 1,
+            "mean": 3.0384400015464053,
+            "p50": 3.0384400015464053,
+            "p95": 3.0384400015464053,
+            "p99": 3.0384400015464053,
+            "max": 3.0384400015464053
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -7437,6 +9169,25 @@
           "p99": 1.9991711587499483,
           "max": 9.94259199796943
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 581,
+            "mean": 0.9659060878206682,
+            "p50": 0.9424109957762994,
+            "p95": 1.2037230044370517,
+            "p99": 1.9540987996151675,
+            "max": 3.0288709967862815
+          },
+          "later": {
+            "n": 1,
+            "mean": 9.94259199796943,
+            "p50": 9.94259199796943,
+            "p95": 9.94259199796943,
+            "p99": 9.94259199796943,
+            "max": 9.94259199796943
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -7691,6 +9442,25 @@
           "p99": 1.780257049831562,
           "max": 2.81581799936248
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 452,
+            "mean": 0.9716320375317452,
+            "p50": 0.9141739992628573,
+            "p95": 1.4160575983623858,
+            "p99": 1.780257049831562,
+            "max": 2.81581799936248
+          },
+          "later": {
+            "n": 0,
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -7945,6 +9715,25 @@
           "p99": 1.5166296390816576,
           "max": 4.544199997326359
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 439,
+            "mean": 0.9349098791456346,
+            "p50": 0.9177920001093298,
+            "p95": 1.1752137026633134,
+            "p99": 1.5166296390816576,
+            "max": 4.544199997326359
+          },
+          "later": {
+            "n": 0,
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -8199,6 +9988,25 @@
           "p99": 2.028382149946991,
           "max": 4.161647004366387
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 428,
+            "mean": 1.0110293949374038,
+            "p50": 0.968707499851007,
+            "p95": 1.374023903917987,
+            "p99": 1.9062286606640564,
+            "max": 3.4992639994015917
+          },
+          "later": {
+            "n": 2,
+            "mean": 3.4656595016713254,
+            "p50": 3.4656595016713254,
+            "p95": 4.0920482540968806,
+            "p99": 4.1477272543124855,
+            "max": 4.161647004366387
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -8453,6 +10261,25 @@
           "p99": 2.2671267490295555,
           "max": 4.838916996959597
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 353,
+            "mean": 0.9358741982543027,
+            "p50": 0.8947509995778091,
+            "p95": 1.2143029976869,
+            "p99": 1.8921567604411433,
+            "max": 4.838916996959597
+          },
+          "later": {
+            "n": 3,
+            "mean": 2.4995143321575597,
+            "p50": 2.488779999112012,
+            "p95": 3.1013424977572868,
+            "p99": 3.1557924976368668,
+            "max": 3.1694049976067618
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -8707,6 +10534,25 @@
           "p99": 2.476008080993779,
           "max": 5.72798299981514
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 345,
+            "mean": 1.0852331650549667,
+            "p50": 1.0391660034656525,
+            "p95": 1.475432598090265,
+            "p99": 1.9492176017956808,
+            "max": 5.72798299981514
+          },
+          "later": {
+            "n": 2,
+            "mean": 2.7192870002181735,
+            "p50": 2.7192870002181735,
+            "p95": 2.93440769710287,
+            "p99": 2.953529536825954,
+            "max": 2.958309996756725
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -8961,6 +10807,25 @@
           "p99": 1.8177870028011962,
           "max": 3.362760995514691
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 330,
+            "mean": 1.05064393951166,
+            "p50": 1.013682998745935,
+            "p95": 1.453503200900741,
+            "p99": 1.7719983409915574,
+            "max": 2.021385000261944
+          },
+          "later": {
+            "n": 1,
+            "mean": 3.362760995514691,
+            "p50": 3.362760995514691,
+            "p95": 3.362760995514691,
+            "p99": 3.362760995514691,
+            "max": 3.362760995514691
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -9215,6 +11080,25 @@
           "p99": 1.2134596989199045,
           "max": 1.8425210000714287
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 156,
+            "mean": 0.8846083655020592,
+            "p50": 0.8828110003378242,
+            "p95": 1.106525000068359,
+            "p99": 1.2134596989199045,
+            "max": 1.8425210000714287
+          },
+          "later": {
+            "n": 0,
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -9469,6 +11353,25 @@
           "p99": 1.4435816918557967,
           "max": 1.7040849998011254
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 140,
+            "mean": 0.946986721464782,
+            "p50": 0.91349549984443,
+            "p95": 1.1900608980795362,
+            "p99": 1.4435816918557967,
+            "max": 1.7040849998011254
+          },
+          "later": {
+            "n": 0,
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -9723,6 +11626,25 @@
           "p99": 2.99627355881967,
           "max": 4.824865005502943
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 124,
+            "mean": 1.180603419162517,
+            "p50": 1.1342544967192225,
+            "p95": 1.764219046526705,
+            "p99": 2.932654718097179,
+            "max": 4.824865005502943
+          },
+          "later": {
+            "n": 1,
+            "mean": 2.4425709998467937,
+            "p50": 2.4425709998467937,
+            "p95": 2.4425709998467937,
+            "p99": 2.4425709998467937,
+            "max": 2.4425709998467937
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -9977,6 +11899,25 @@
           "p99": 0.9980679489672183,
           "max": 1.0264259981340729
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 36,
+            "mean": 0.8266344998951859,
+            "p50": 0.831709498015698,
+            "p95": 0.9432242513867095,
+            "p99": 0.9980679489672183,
+            "max": 1.0264259981340729
+          },
+          "later": {
+            "n": 0,
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -10231,6 +12172,25 @@
           "p99": 1.6164225601824003,
           "max": 1.7051100003300235
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 37,
+            "mean": 1.0616922429747049,
+            "p50": 1.0231600026600063,
+            "p95": 1.3810456002829592,
+            "p99": 1.6164225601824003,
+            "max": 1.7051100003300235
+          },
+          "later": {
+            "n": 0,
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -10485,6 +12445,25 @@
           "p99": 1.5652598018641584,
           "max": 1.6496310054208152
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 33,
+            "mean": 1.0446482421795018,
+            "p50": 1.0457669995957986,
+            "p95": 1.3638111980981193,
+            "p99": 1.5652598018641584,
+            "max": 1.6496310054208152
+          },
+          "later": {
+            "n": 0,
+            "mean": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -10739,6 +12718,25 @@
           "p99": 2.190082777306075,
           "max": 12.865036998846335
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 579,
+            "mean": 1.1511472418277189,
+            "p50": 1.0784539990709163,
+            "p95": 1.584215096954722,
+            "p99": 2.0628095005668006,
+            "max": 12.865036998846335
+          },
+          "later": {
+            "n": 3,
+            "mean": 4.013563998645016,
+            "p50": 3.1072309975570533,
+            "p95": 6.41877920133993,
+            "p99": 6.713139041676186,
+            "max": 6.78672900176025
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -10993,6 +12991,25 @@
           "p99": 2.1708735780703092,
           "max": 3.9782149979146197
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 581,
+            "mean": 1.1449368848311499,
+            "p50": 1.0996019991580397,
+            "p95": 1.4531580018228851,
+            "p99": 2.1335432014893794,
+            "max": 3.9782149979146197
+          },
+          "later": {
+            "n": 1,
+            "mean": 2.1571019969996996,
+            "p50": 2.1571019969996996,
+            "p95": 2.1571019969996996,
+            "p99": 2.1571019969996996,
+            "max": 2.1571019969996996
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -11247,6 +13264,25 @@
           "p99": 2.7890595539065535,
           "max": 3.869109001243487
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 581,
+            "mean": 1.1653577848862562,
+            "p50": 1.1033209957531653,
+            "p95": 1.51940000068862,
+            "p99": 2.538604605069864,
+            "max": 3.869109001243487
+          },
+          "later": {
+            "n": 1,
+            "mean": 2.8001120008411817,
+            "p50": 2.8001120008411817,
+            "p95": 2.8001120008411817,
+            "p99": 2.8001120008411817,
+            "max": 2.8001120008411817
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -11501,6 +13537,25 @@
           "p99": 2.7011329984816257,
           "max": 5.296060000546277
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 573,
+            "mean": 1.1209042216236678,
+            "p50": 1.0726489999797195,
+            "p95": 1.4367579984536858,
+            "p99": 2.410151118674544,
+            "max": 5.296060000546277
+          },
+          "later": {
+            "n": 3,
+            "mean": 3.085853333080498,
+            "p50": 3.082252002059249,
+            "p95": 3.4096495000994764,
+            "p99": 3.4387514999252744,
+            "max": 3.446026999881724
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -11755,6 +13810,25 @@
           "p99": 2.4654433601972436,
           "max": 7.504287001211196
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 575,
+            "mean": 1.1430854467756075,
+            "p50": 1.1040189929190092,
+            "p95": 1.424935099930735,
+            "p99": 2.2423221185454154,
+            "max": 4.095026997674722
+          },
+          "later": {
+            "n": 3,
+            "mean": 5.119631336128805,
+            "p50": 4.6053730038693175,
+            "p95": 7.214395601477008,
+            "p99": 7.446308721264359,
+            "max": 7.504287001211196
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -12009,6 +14083,25 @@
           "p99": 1.751358563487885,
           "max": 2.6346869999542832
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 577,
+            "mean": 1.1715889809183264,
+            "p50": 1.1420509981689975,
+            "p95": 1.5012468022177927,
+            "p99": 1.7120578823960388,
+            "max": 2.6346869999542832
+          },
+          "later": {
+            "n": 2,
+            "mean": 2.4990599995362572,
+            "p50": 2.4990599995362572,
+            "p95": 2.512880402355222,
+            "p99": 2.5141088826057967,
+            "max": 2.5144160026684403
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -12263,6 +14356,25 @@
           "p99": 2.2756178397685547,
           "max": 7.910145999630913
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 566,
+            "mean": 1.1901113498087375,
+            "p50": 1.1382169996068114,
+            "p95": 1.5440219995070947,
+            "p99": 2.0025768501000134,
+            "max": 7.910145999630913
+          },
+          "later": {
+            "n": 3,
+            "mean": 5.2279756661543315,
+            "p50": 5.356392000976484,
+            "p95": 7.416856499185087,
+            "p99": 7.600008899025852,
+            "max": 7.645796998986043
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -12517,6 +14629,25 @@
           "p99": 3.2450662433984507,
           "max": 7.7174269972601905
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 570,
+            "mean": 1.3099191333534883,
+            "p50": 1.2419739978213329,
+            "p95": 1.8068262477754615,
+            "p99": 2.6792169583495573,
+            "max": 7.7174269972601905
+          },
+          "later": {
+            "n": 3,
+            "mean": 4.115828332335998,
+            "p50": 3.0581500031985343,
+            "p95": 6.410952395526692,
+            "p99": 6.708979274844751,
+            "max": 6.783485994674265
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -12771,6 +14902,25 @@
           "p99": 2.478499280696272,
           "max": 4.811653001524974
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 558,
+            "mean": 1.349447808129021,
+            "p50": 1.3046389976807404,
+            "p95": 1.7538038013299229,
+            "p99": 2.237777372138223,
+            "max": 4.811653001524974
+          },
+          "later": {
+            "n": 7,
+            "mean": 2.496121142550172,
+            "p50": 2.408615000604186,
+            "p95": 3.009850798844127,
+            "p99": 3.0809397574921604,
+            "max": 3.098711997154169
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -13025,6 +15175,25 @@
           "p99": 2.2025353995559254,
           "max": 3.5276320013508666
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 504,
+            "mean": 1.2209202698989154,
+            "p50": 1.1749794994102558,
+            "p95": 1.6426317013610965,
+            "p99": 2.0473128001322,
+            "max": 3.221698003471829
+          },
+          "later": {
+            "n": 2,
+            "mean": 2.7505925008881604,
+            "p50": 2.7505925008881604,
+            "p95": 3.449928051304596,
+            "p99": 3.5120912113416125,
+            "max": 3.5276320013508666
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -13279,6 +15448,25 @@
           "p99": 3.2878242566221147,
           "max": 21.807145996717736
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 493,
+            "mean": 1.3638715312477818,
+            "p50": 1.2909509969176725,
+            "p95": 1.7653785980655807,
+            "p99": 2.2272282760241064,
+            "max": 15.808044998266269
+          },
+          "later": {
+            "n": 5,
+            "mean": 7.152692999807186,
+            "p50": 3.2549300012760796,
+            "p95": 18.405060996883545,
+            "p99": 21.1267289967509,
+            "max": 21.807145996717736
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -13533,6 +15721,25 @@
           "p99": 2.374393677891928,
           "max": 5.288931999530178
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 502,
+            "mean": 1.3850373167998438,
+            "p50": 1.3496034953277558,
+            "p95": 1.7842702993220882,
+            "p99": 2.2719996708474355,
+            "max": 5.288931999530178
+          },
+          "later": {
+            "n": 2,
+            "mean": 3.1326579992310144,
+            "p50": 3.1326579992310144,
+            "p95": 3.2197833970712963,
+            "p99": 3.2275278768793214,
+            "max": 3.2294639968313277
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -13787,6 +15994,25 @@
           "p99": 2.136958500705077,
           "max": 4.5004060011706315
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 329,
+            "mean": 1.3278639331601714,
+            "p50": 1.2782390003849287,
+            "p95": 1.7504604002169786,
+            "p99": 1.9494901591679072,
+            "max": 4.5004060011706315
+          },
+          "later": {
+            "n": 2,
+            "mean": 2.181290501539479,
+            "p50": 2.181290501539479,
+            "p95": 2.2078796517234878,
+            "p99": 2.210243131739844,
+            "max": 2.210834001743933
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -14041,6 +16267,25 @@
           "p99": 5.036821382236678,
           "max": 11.522176006110385
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 329,
+            "mean": 1.5367862556959817,
+            "p50": 1.4742469938937575,
+            "p95": 1.9243156013544647,
+            "p99": 2.5633504771394535,
+            "max": 7.096635003108531
+          },
+          "later": {
+            "n": 6,
+            "mean": 4.986534502677387,
+            "p50": 3.971134003222687,
+            "p95": 9.936519754774054,
+            "p99": 11.20504475584312,
+            "max": 11.522176006110385
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -14295,6 +16540,25 @@
           "p99": 3.00812290137401,
           "max": 25.907115996233188
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 329,
+            "mean": 1.557227781264141,
+            "p50": 1.525154002592899,
+            "p95": 1.9762840020121073,
+            "p99": 2.374291159794665,
+            "max": 3.3933330050786026
+          },
+          "later": {
+            "n": 6,
+            "mean": 6.954989666458762,
+            "p50": 2.9912565005361103,
+            "p95": 20.72832124758861,
+            "p99": 24.871357046504276,
+            "max": 25.907115996233188
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -14549,6 +16813,25 @@
           "p99": 2.237768099694202,
           "max": 3.884861998812994
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 579,
+            "mean": 1.0338259585932503,
+            "p50": 0.9881100013444666,
+            "p95": 1.5480362002563197,
+            "p99": 1.9563958798971746,
+            "max": 3.884861998812994
+          },
+          "later": {
+            "n": 3,
+            "mean": 2.647910332598258,
+            "p50": 2.762739997706376,
+            "p95": 2.981808099502814,
+            "p99": 3.0012808196624974,
+            "max": 3.0061489997024182
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -14803,6 +17086,25 @@
           "p99": 1.7129172036948141,
           "max": 3.07966599939391
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 581,
+            "mean": 0.9643085026013923,
+            "p50": 0.9421040012966841,
+            "p95": 1.225126994540915,
+            "p99": 1.6735530050937106,
+            "max": 2.980076002131682
+          },
+          "later": {
+            "n": 1,
+            "mean": 3.07966599939391,
+            "p50": 3.07966599939391,
+            "p95": 3.07966599939391,
+            "p99": 3.07966599939391,
+            "max": 3.07966599939391
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -15057,6 +17359,25 @@
           "p99": 2.169795383961164,
           "max": 3.7405600014608353
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 580,
+            "mean": 0.9890794327381219,
+            "p50": 0.962223501119297,
+            "p95": 1.282653051384841,
+            "p99": 1.633532500927686,
+            "max": 2.603883003757801
+          },
+          "later": {
+            "n": 3,
+            "mean": 3.0176303334883414,
+            "p50": 2.8145350006525405,
+            "p95": 3.647957501380006,
+            "p99": 3.7220395014446694,
+            "max": 3.7405600014608353
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -15311,6 +17632,25 @@
           "p99": 16.46721743145463,
           "max": 69.93549699836876
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 424,
+            "mean": 0.8958043514160996,
+            "p50": 0.8757160012464738,
+            "p95": 1.1237107477427344,
+            "p99": 1.5850202296132907,
+            "max": 2.917035002610646
+          },
+          "later": {
+            "n": 154,
+            "mean": 11.667005682130519,
+            "p50": 11.367446999429376,
+            "p95": 16.304618550384475,
+            "p99": 17.571834689442767,
+            "max": 69.93549699836876
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 165,
@@ -15565,6 +17905,25 @@
           "p99": 16.898223332682413,
           "max": 75.47075200272957
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 422,
+            "mean": 1.0383021158455337,
+            "p50": 1.0044995033240411,
+            "p95": 1.5207326487143291,
+            "p99": 1.8617227151116822,
+            "max": 2.400054996542167
+          },
+          "later": {
+            "n": 158,
+            "mean": 11.856769544810728,
+            "p50": 11.223360001167748,
+            "p95": 16.65592684512376,
+            "p99": 41.03042922135536,
+            "max": 75.47075200272957
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 166,
@@ -15819,6 +18178,25 @@
           "p99": 16.650933089549653,
           "max": 75.1776350007276
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 453,
+            "mean": 1.0950417351420962,
+            "p50": 1.0199319949606434,
+            "p95": 1.3695072047994472,
+            "p99": 1.7654226004378928,
+            "max": 25.444457001867704
+          },
+          "later": {
+            "n": 119,
+            "mean": 12.957289638980917,
+            "p50": 12.466845000744797,
+            "p95": 16.633506999642123,
+            "p99": 44.2420952614337,
+            "max": 75.1776350007276
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 138,
@@ -16073,6 +18451,25 @@
           "p99": 45.05843391918461,
           "max": 79.63612099774764
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 340,
+            "mean": 0.9130257852495347,
+            "p50": 0.8891004999895813,
+            "p95": 1.1336714487697463,
+            "p99": 1.4218842402988248,
+            "max": 3.4177960005763453
+          },
+          "later": {
+            "n": 237,
+            "mean": 12.836140877622983,
+            "p50": 11.462786002084613,
+            "p95": 15.924575599638041,
+            "p99": 67.15601095929699,
+            "max": 79.63612099774764
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 265,
@@ -16327,6 +18724,25 @@
           "p99": 44.82389600481838,
           "max": 76.49773199955234
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 348,
+            "mean": 1.0795063274275598,
+            "p50": 1.0245679986837786,
+            "p95": 1.489276652500848,
+            "p99": 1.8100768304429948,
+            "max": 5.2350609985296614
+          },
+          "later": {
+            "n": 229,
+            "mean": 13.516362061334915,
+            "p50": 11.574889998883009,
+            "p95": 38.723708799807355,
+            "p99": 63.9707580048707,
+            "max": 76.49773199955234
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 258,
@@ -16581,6 +18997,25 @@
           "p99": 47.62860103946876,
           "max": 78.51236699934816
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 352,
+            "mean": 1.0987881166370657,
+            "p50": 1.0261194984195754,
+            "p95": 1.586230447355774,
+            "p99": 2.928809541335796,
+            "max": 3.339362003316637
+          },
+          "later": {
+            "n": 221,
+            "mean": 13.262360149432697,
+            "p50": 11.71667000016896,
+            "p95": 17.157049995148554,
+            "p99": 75.09975099965233,
+            "max": 78.51236699934816
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 250,
@@ -16835,6 +19270,25 @@
           "p99": 78.55831175038475,
           "max": 80.35371599908103
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 151,
+            "mean": 0.9030779404305492,
+            "p50": 0.9065830017789267,
+            "p95": 1.1409225007810164,
+            "p99": 1.240747498741257,
+            "max": 1.2636499996006023
+          },
+          "later": {
+            "n": 425,
+            "mean": 16.972575287072686,
+            "p50": 11.600697001995286,
+            "p95": 49.00219759947497,
+            "p99": 78.80970208076178,
+            "max": 80.35371599908103
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 508,
@@ -17089,6 +19543,25 @@
           "p99": 77.56328072428003,
           "max": 79.86896199872717
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 145,
+            "mean": 1.1217930827867881,
+            "p50": 1.0180919998674653,
+            "p95": 1.7637704033404589,
+            "p99": 2.5496421617572205,
+            "max": 4.585643000609707
+          },
+          "later": {
+            "n": 428,
+            "mean": 16.2706388223044,
+            "p50": 12.144927499321057,
+            "p95": 46.46752610060501,
+            "p99": 78.02727419380972,
+            "max": 79.86896199872717
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 497,
@@ -17343,6 +19816,25 @@
           "p99": 77.30316520959603,
           "max": 81.1919339976157
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 155,
+            "mean": 1.0768805423492356,
+            "p50": 1.0479690026841126,
+            "p95": 1.3851729985617567,
+            "p99": 1.9987681416387217,
+            "max": 2.122277997841593
+          },
+          "later": {
+            "n": 419,
+            "mean": 17.19821772078924,
+            "p50": 12.057409003318753,
+            "p95": 48.53438859863668,
+            "p99": 78.59852080073324,
+            "max": 81.1919339976157
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 501,
@@ -17597,6 +20089,25 @@
           "p99": 79.76176029915223,
           "max": 104.21747999862419
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 43,
+            "mean": 1.0077185582113724,
+            "p50": 0.928999997995561,
+            "p95": 1.2351792011031648,
+            "p99": 2.8686970999115107,
+            "max": 3.8746159989386797
+          },
+          "later": {
+            "n": 528,
+            "mean": 25.163142248161282,
+            "p50": 14.547339000273496,
+            "p95": 76.5209204499115,
+            "p99": 79.8109656295128,
+            "max": 104.21747999862419
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 736,
@@ -17851,6 +20362,25 @@
           "p99": 79.714721802884,
           "max": 112.91821500344668
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 37,
+            "mean": 1.1745493241972793,
+            "p50": 1.127204996009823,
+            "p95": 1.6169092006748522,
+            "p99": 2.9003042372642094,
+            "max": 3.421634995902423
+          },
+          "later": {
+            "n": 534,
+            "mean": 24.57509077333846,
+            "p50": 13.11007149706711,
+            "p95": 75.40534794898122,
+            "p99": 79.81197852139302,
+            "max": 112.91821500344668
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 717,
@@ -18105,6 +20635,25 @@
           "p99": 79.34324239962734,
           "max": 80.00590399751673
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 35,
+            "mean": 1.138427943390395,
+            "p50": 1.0278440022375435,
+            "p95": 1.631516397901576,
+            "p99": 2.586569660343227,
+            "max": 2.847044001100585
+          },
+          "later": {
+            "n": 535,
+            "mean": 26.593314332870666,
+            "p50": 14.503393998893443,
+            "p95": 76.42848109753686,
+            "p99": 79.35610140179051,
+            "max": 80.00590399751673
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 737,
@@ -18359,6 +20908,25 @@
           "p99": 2.3693044091851223,
           "max": 4.957610999554163
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 580,
+            "mean": 1.1817889757241635,
+            "p50": 1.123644500694354,
+            "p95": 1.6315827489961519,
+            "p99": 2.2662655922249564,
+            "max": 4.957610999554163
+          },
+          "later": {
+            "n": 2,
+            "mean": 2.7894090017070994,
+            "p50": 2.7894090017070994,
+            "p95": 3.00203310289362,
+            "p99": 3.0209330229990883,
+            "max": 3.0256580030254554
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -18613,6 +21181,25 @@
           "p99": 2.5235359798534702,
           "max": 7.228706999740098
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 580,
+            "mean": 1.2356053015411879,
+            "p50": 1.1846859997604042,
+            "p95": 1.6741356037528015,
+            "p99": 2.2354379762691696,
+            "max": 7.228706999740098
+          },
+          "later": {
+            "n": 3,
+            "mean": 2.7920773330455027,
+            "p50": 2.710763998038601,
+            "p95": 3.1759425000927877,
+            "p99": 3.217291700275382,
+            "max": 3.2276290003210306
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -18867,6 +21454,25 @@
           "p99": 2.119598938006642,
           "max": 4.415566007082816
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 580,
+            "mean": 1.2215967155247325,
+            "p50": 1.1825109977507964,
+            "p95": 1.5176992954366142,
+            "p99": 1.997062379377894,
+            "max": 4.415566007082816
+          },
+          "later": {
+            "n": 2,
+            "mean": 2.8136904984421562,
+            "p50": 2.8136904984421562,
+            "p95": 3.031790647582966,
+            "p99": 3.0511773275065934,
+            "max": 3.0560239974875003
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -19121,6 +21727,25 @@
           "p99": 2.7067790106957372,
           "max": 14.33020400145324
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 577,
+            "mean": 1.0929876758757453,
+            "p50": 1.043840999045642,
+            "p95": 1.3793377991532905,
+            "p99": 2.105875398410717,
+            "max": 4.643978998501552
+          },
+          "later": {
+            "n": 5,
+            "mean": 6.404790200758725,
+            "p50": 5.387774999690009,
+            "p95": 12.866141001723006,
+            "p99": 14.037391401507193,
+            "max": 14.33020400145324
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 1,
@@ -19375,6 +22000,25 @@
           "p99": 6.883393289099205,
           "max": 15.928340006212238
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 574,
+            "mean": 1.2107543099412204,
+            "p50": 1.1545000015757978,
+            "p95": 1.517241949841264,
+            "p99": 2.193946727493312,
+            "max": 6.4770989993121475
+          },
+          "later": {
+            "n": 8,
+            "mean": 10.361676374486706,
+            "p50": 10.799161998875206,
+            "p95": 15.532786455150926,
+            "p99": 15.849229295999976,
+            "max": 15.928340006212238
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 7,
@@ -19629,6 +22273,25 @@
           "p99": 7.4884882022162005,
           "max": 15.17267099552555
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 572,
+            "mean": 1.2565512377833883,
+            "p50": 1.2054995022481307,
+            "p95": 1.6979086984065352,
+            "p99": 2.52446040234644,
+            "max": 5.347016005543992
+          },
+          "later": {
+            "n": 9,
+            "mean": 9.249941000436795,
+            "p50": 9.483075999014545,
+            "p95": 13.907825398200655,
+            "p99": 14.919701876060572,
+            "max": 15.17267099552555
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 6,
@@ -19883,6 +22546,25 @@
           "p99": 14.110127061503588,
           "max": 17.86991900007706
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 563,
+            "mean": 1.1416520746724104,
+            "p50": 1.103516999137355,
+            "p95": 1.3814863021252677,
+            "p99": 1.6278535588207887,
+            "max": 11.592617000133032
+          },
+          "later": {
+            "n": 20,
+            "mean": 12.111186299807741,
+            "p50": 12.487847499869531,
+            "p95": 15.961840198724532,
+            "p99": 17.48830323980655,
+            "max": 17.86991900007706
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 20,
@@ -20137,6 +22819,25 @@
           "p99": 8.760520002397245,
           "max": 14.277591995778494
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 562,
+            "mean": 1.2813294322062756,
+            "p50": 1.2236399998073466,
+            "p95": 1.7546139970363581,
+            "p99": 2.2664858987991456,
+            "max": 3.482542000710964
+          },
+          "later": {
+            "n": 19,
+            "mean": 6.698121264267492,
+            "p50": 7.616269002028275,
+            "p95": 12.275423201936059,
+            "p99": 13.877158237010008,
+            "max": 14.277591995778494
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 12,
@@ -20391,6 +23092,25 @@
           "p99": 12.209202837766389,
           "max": 16.690892000042368
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 566,
+            "mean": 1.2814189381848087,
+            "p50": 1.2312034996284638,
+            "p95": 1.6239402484643506,
+            "p99": 2.0894413028145213,
+            "max": 8.932216005632654
+          },
+          "later": {
+            "n": 16,
+            "mean": 10.293982937128021,
+            "p50": 10.433920000650687,
+            "p95": 16.158341746631777,
+            "p99": 16.58438194936025,
+            "max": 16.690892000042368
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 14,
@@ -20645,6 +23365,25 @@
           "p99": 15.528454600280387,
           "max": 16.87941700220108
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 492,
+            "mean": 1.1847603170347767,
+            "p50": 1.1204249985894421,
+            "p95": 1.6186022505280562,
+            "p99": 1.9819279313378497,
+            "max": 3.298494000773644
+          },
+          "later": {
+            "n": 89,
+            "mean": 11.37885815736032,
+            "p50": 11.668158000247786,
+            "p95": 15.649097599816741,
+            "p99": 16.228194999275733,
+            "max": 16.87941700220108
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 95,
@@ -20899,6 +23638,25 @@
           "p99": 15.988073602784429,
           "max": 18.066744996758644
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 500,
+            "mean": 1.281322886250564,
+            "p50": 1.249271495908033,
+            "p95": 1.6939190998527913,
+            "p99": 2.223543839791091,
+            "max": 2.5313829974038526
+          },
+          "later": {
+            "n": 81,
+            "mean": 10.925631629364899,
+            "p50": 11.204313996131532,
+            "p95": 16.08348399895476,
+            "p99": 17.745595397718716,
+            "max": 18.066744996758644
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 86,
@@ -21153,6 +23911,25 @@
           "p99": 16.18694540375146,
           "max": 72.23957200039877
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 512,
+            "mean": 1.425524259829558,
+            "p50": 1.3456120032060426,
+            "p95": 1.9932306488044558,
+            "p99": 2.861298589850774,
+            "max": 11.106598998594563
+          },
+          "later": {
+            "n": 69,
+            "mean": 11.40609881142576,
+            "p50": 11.223706998862326,
+            "p95": 16.49489219998941,
+            "p99": 36.73954095720511,
+            "max": 72.23957200039877
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 64,
@@ -21407,6 +24184,25 @@
           "p99": 40.659799450550324,
           "max": 79.75563400032115
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 345,
+            "mean": 1.2967091129647326,
+            "p50": 1.1772399993787985,
+            "p95": 2.0594550005625933,
+            "p99": 2.3938941580126993,
+            "max": 4.2952719995810185
+          },
+          "later": {
+            "n": 235,
+            "mean": 13.06809541280753,
+            "p50": 11.856452001666185,
+            "p95": 17.903988899706746,
+            "p99": 49.4745415597572,
+            "max": 79.75563400032115
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 255,
@@ -21661,6 +24457,25 @@
           "p99": 39.37383870113992,
           "max": 73.85242800228298
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 336,
+            "mean": 1.4309974672176482,
+            "p50": 1.3684725017810706,
+            "p95": 2.0349049955257215,
+            "p99": 2.2933188516617515,
+            "max": 5.227805006143171
+          },
+          "later": {
+            "n": 243,
+            "mean": 13.104992255330403,
+            "p50": 12.298626999836415,
+            "p95": 16.7280505040253,
+            "p99": 44.746154217282296,
+            "max": 73.85242800228298
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 267,
@@ -21915,6 +24730,25 @@
           "p99": 16.97134545189328,
           "max": 79.59858699905453
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 332,
+            "mean": 1.3206174066525194,
+            "p50": 1.2957794970134273,
+            "p95": 1.6551140488445526,
+            "p99": 2.0550969704345334,
+            "max": 2.35688599786954
+          },
+          "later": {
+            "n": 242,
+            "mean": 12.152662355250012,
+            "p50": 11.738722998416051,
+            "p95": 16.43162705040595,
+            "p99": 45.216664990148296,
+            "max": 79.59858699905453
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 272,
@@ -22192,6 +25026,25 @@
           "p99": 28.781544479061267,
           "max": 29.493556001398247
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 576,
+            "mean": 27.28911667705663,
+            "p50": 27.17095800107927,
+            "p95": 28.29738525178982,
+            "p99": 28.781859999071457,
+            "max": 29.493556001398247
+          },
+          "later": {
+            "n": 2,
+            "mean": 27.885459498065757,
+            "p50": 27.885459498065757,
+            "p95": 28.041111348284176,
+            "p99": 28.05494706830359,
+            "max": 28.058405998308444
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -22469,6 +25322,25 @@
           "p99": 28.630806880246382,
           "max": 33.2721950035193
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 573,
+            "mean": 27.19993752183191,
+            "p50": 27.21817899873713,
+            "p95": 27.692642601323314,
+            "p99": 28.197985242004503,
+            "max": 31.765726998855826
+          },
+          "later": {
+            "n": 4,
+            "mean": 29.887900498579256,
+            "p50": 29.065286496916087,
+            "p95": 32.69420540200372,
+            "p99": 33.156597083216184,
+            "max": 33.2721950035193
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -22746,6 +25618,25 @@
           "p99": 29.822721999153146,
           "max": 40.23367699846858
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 572,
+            "mean": 27.329380197525925,
+            "p50": 27.238268998189596,
+            "p95": 28.28870475059375,
+            "p99": 29.229210479388687,
+            "max": 40.23367699846858
+          },
+          "later": {
+            "n": 4,
+            "mean": 29.00218625109119,
+            "p50": 29.011441001784988,
+            "p95": 29.99887719815888,
+            "p99": 30.034108237960027,
+            "max": 30.042915997910313
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -23023,6 +25914,25 @@
           "p99": 28.669350878772093,
           "max": 30.003421001310926
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 565,
+            "mean": 27.098296237329073,
+            "p50": 27.09653000056278,
+            "p95": 28.291064801305765,
+            "p99": 28.60568167947349,
+            "max": 29.03537900056108
+          },
+          "later": {
+            "n": 2,
+            "mean": 29.535591500462033,
+            "p50": 29.535591500462033,
+            "p95": 29.956638051226037,
+            "p99": 29.994064411293948,
+            "max": 30.003421001310926
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -23300,6 +26210,25 @@
           "p99": 29.39004786021543,
           "max": 33.823935002146754
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 564,
+            "mean": 27.292087760755788,
+            "p50": 27.27384350146167,
+            "p95": 28.276511302101426,
+            "p99": 29.158277307942626,
+            "max": 33.823935002146754
+          },
+          "later": {
+            "n": 3,
+            "mean": 29.370956666146714,
+            "p50": 29.16960999573348,
+            "p95": 30.496951601526234,
+            "p99": 30.614937522041146,
+            "max": 30.644434002169874
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -23577,6 +26506,25 @@
           "p99": 29.449023049892276,
           "max": 38.13712100236444
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 546,
+            "mean": 27.67452787355355,
+            "p50": 27.55720549612306,
+            "p95": 28.63241399973049,
+            "p99": 29.15732764995482,
+            "max": 38.13712100236444
+          },
+          "later": {
+            "n": 16,
+            "mean": 28.85886831290918,
+            "p50": 28.60501449686126,
+            "p95": 30.39155650185421,
+            "p99": 31.297641701530665,
+            "max": 31.52416300144978
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -23854,6 +26802,25 @@
           "p99": 28.970384078711508,
           "max": 31.104177000088384
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 494,
+            "mean": 27.19303556673717,
+            "p50": 27.1910259998549,
+            "p95": 28.177826399223704,
+            "p99": 28.750526069088664,
+            "max": 31.037446999107487
+          },
+          "later": {
+            "n": 3,
+            "mean": 29.45016266676248,
+            "p50": 29.11067899913178,
+            "p95": 30.904827199992724,
+            "p99": 31.064307040069252,
+            "max": 31.104177000088384
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -24131,6 +27098,25 @@
           "p99": 29.408834439236667,
           "max": 32.45543999946676
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 493,
+            "mean": 27.32523190497591,
+            "p50": 27.300882997224107,
+            "p95": 28.010727401124313,
+            "p99": 29.34522476134589,
+            "max": 32.45543999946676
+          },
+          "later": {
+            "n": 6,
+            "mean": 29.01393800372413,
+            "p50": 28.570430004037917,
+            "p95": 30.71175625336764,
+            "p99": 31.133203253193642,
+            "max": 31.238565003150143
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -24408,6 +27394,25 @@
           "p99": 29.053830568664125,
           "max": 29.995980999956373
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 470,
+            "mean": 27.50391407244024,
+            "p50": 27.474285998323467,
+            "p95": 28.47849999889149,
+            "p99": 28.89702846223372,
+            "max": 29.995980999956373
+          },
+          "later": {
+            "n": 10,
+            "mean": 28.656306101038354,
+            "p50": 28.616441999474773,
+            "p95": 29.449138503332506,
+            "p99": 29.590866901780828,
+            "max": 29.62629900139291
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -24685,6 +27690,25 @@
           "p99": 30.27198100287933,
           "max": 32.65060499688843
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 327,
+            "mean": 27.542605682375694,
+            "p50": 27.47133000229951,
+            "p95": 28.393082698312355,
+            "p99": 30.2751955029089,
+            "max": 32.65060499688843
+          },
+          "later": {
+            "n": 6,
+            "mean": 28.813647499191575,
+            "p50": 28.84684099990409,
+            "p95": 29.373335750278784,
+            "p99": 29.427395949460333,
+            "max": 29.44091099925572
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -24962,6 +27986,25 @@
           "p99": 30.428772500017665,
           "max": 33.369849996233825
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 305,
+            "mean": 27.499157318021897,
+            "p50": 27.501943994138855,
+            "p95": 28.168749800533988,
+            "p99": 28.459503724006936,
+            "max": 30.00623299885774
+          },
+          "later": {
+            "n": 10,
+            "mean": 29.738399499183288,
+            "p50": 29.29791899805423,
+            "p95": 32.35710969856882,
+            "p99": 33.167301936700824,
+            "max": 33.369849996233825
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -25239,6 +28282,25 @@
           "p99": 29.923263720120314,
           "max": 38.00909299752675
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 334,
+            "mean": 27.595826197491572,
+            "p50": 27.55823150073411,
+            "p95": 28.409528351403424,
+            "p99": 29.984106060001075,
+            "max": 38.00909299752675
+          },
+          "later": {
+            "n": 13,
+            "mean": 28.286917538655242,
+            "p50": 28.284224004892167,
+            "p95": 28.81651580100879,
+            "p99": 28.97826476022601,
+            "max": 29.018702000030316
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -25516,6 +28578,25 @@
           "p99": 28.967236878525004,
           "max": 30.78848700170056
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 572,
+            "mean": 27.086730263878447,
+            "p50": 26.99486650089966,
+            "p95": 28.006980897953326,
+            "p99": 28.467118068474498,
+            "max": 30.78848700170056
+          },
+          "later": {
+            "n": 5,
+            "mean": 28.598690400394844,
+            "p50": 28.401364001183538,
+            "p95": 29.842223600280704,
+            "p99": 30.08914152000216,
+            "max": 30.150870999932522
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -25793,6 +28874,25 @@
           "p99": 28.525393804593477,
           "max": 43.370624000090174
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 575,
+            "mean": 27.235858911096685,
+            "p50": 27.113956995890476,
+            "p95": 28.123197903187247,
+            "p99": 28.372343299124623,
+            "max": 35.34511099860538
+          },
+          "later": {
+            "n": 3,
+            "mean": 33.57684733297598,
+            "p50": 28.970752995519433,
+            "p95": 41.9306368996331,
+            "p99": 43.08262657999876,
+            "max": 43.370624000090174
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -26070,6 +29170,25 @@
           "p99": 29.892572519020185,
           "max": 36.888094000460114
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 573,
+            "mean": 27.097034064798805,
+            "p50": 27.079166000476107,
+            "p95": 27.707310002006125,
+            "p99": 29.290027800307133,
+            "max": 36.888094000460114
+          },
+          "later": {
+            "n": 4,
+            "mean": 29.553661750469473,
+            "p50": 29.593269500765018,
+            "p95": 30.51207495118433,
+            "p99": 30.515788590928423,
+            "max": 30.516717000864446
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -26347,6 +29466,25 @@
           "p99": 118.39319911210623,
           "max": 156.69606099982047
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 334,
+            "mean": 26.943756194614362,
+            "p50": 26.914808000583434,
+            "p95": 28.039656648797973,
+            "p99": 28.234307830462058,
+            "max": 31.933575999573804
+          },
+          "later": {
+            "n": 184,
+            "mean": 90.41081888041015,
+            "p50": 88.86353449997841,
+            "p95": 96.01140885060886,
+            "p99": 152.94347362014378,
+            "max": 156.69606099982047
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 533,
@@ -26624,6 +29762,25 @@
           "p99": 120.66702299925952,
           "max": 153.22072399430908
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 343,
+            "mean": 27.001035055304293,
+            "p50": 26.990540005499497,
+            "p95": 27.662065904587507,
+            "p99": 28.752392138121646,
+            "max": 32.1981289962423
+          },
+          "later": {
+            "n": 178,
+            "mean": 89.49561349403707,
+            "p50": 88.46769199953997,
+            "p95": 98.84562295046648,
+            "p99": 152.28970935488178,
+            "max": 153.22072399430908
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 513,
@@ -26901,6 +30058,25 @@
           "p99": 123.6916724950425,
           "max": 156.3726179956575
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 337,
+            "mean": 26.885206186693114,
+            "p50": 26.735070001450367,
+            "p95": 27.71961319813272,
+            "p99": 28.53494276292622,
+            "max": 33.696692997182254
+          },
+          "later": {
+            "n": 182,
+            "mean": 90.90250545605258,
+            "p50": 89.05951999986428,
+            "p95": 116.58100254826422,
+            "p99": 153.3061991725117,
+            "max": 156.3726179956575
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 508,
@@ -27178,6 +30354,25 @@
           "p99": 152.99774294173403,
           "max": 187.4718919971201
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 155,
+            "mean": 26.822764909781156,
+            "p50": 26.798948001669487,
+            "p95": 27.62153460134868,
+            "p99": 28.12676497931534,
+            "max": 28.202361998410197
+          },
+          "later": {
+            "n": 367,
+            "mean": 95.02689114440341,
+            "p50": 88.85979000115185,
+            "p95": 126.56950520067765,
+            "p99": 154.63205802159786,
+            "max": 187.4718919971201
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 912,
@@ -27455,6 +30650,25 @@
           "p99": 155.60563650069525,
           "max": 187.21283200284233
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 139,
+            "mean": 26.905538244417905,
+            "p50": 26.924391997454222,
+            "p95": 27.695390998997027,
+            "p99": 28.16637709765928,
+            "max": 29.331643003388308
+          },
+          "later": {
+            "n": 387,
+            "mean": 96.15960424813022,
+            "p50": 90.07837600074708,
+            "p95": 149.9158594997425,
+            "p99": 156.18657493861974,
+            "max": 187.21283200284233
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 959,
@@ -27732,6 +30946,25 @@
           "p99": 155.4442780699901,
           "max": 178.63724299968453
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 128,
+            "mean": 27.017264719063405,
+            "p50": 26.98740700361668,
+            "p95": 28.028274448297452,
+            "p99": 28.34057251115155,
+            "max": 29.30785400531022
+          },
+          "later": {
+            "n": 400,
+            "mean": 95.09972140263926,
+            "p50": 89.10750999712036,
+            "p95": 148.06966025353168,
+            "p99": 155.63417623270652,
+            "max": 178.63724299968453
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 967,
@@ -28009,6 +31242,25 @@
           "p99": 174.42761003971157,
           "max": 188.27717899694107
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 35,
+            "mean": 26.999799314320885,
+            "p50": 27.005925003322773,
+            "p95": 27.789045896497555,
+            "p99": 28.233662758721035,
+            "max": 28.442162998544518
+          },
+          "later": {
+            "n": 494,
+            "mean": 106.80043497773536,
+            "p50": 92.32717199847684,
+            "p95": 155.04321810149122,
+            "p99": 180.40913880737207,
+            "max": 188.27717899694107
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 1189,
@@ -28286,6 +31538,25 @@
           "p99": 157.8231671193498,
           "max": 189.76814999768976
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 20,
+            "mean": 26.867365950965905,
+            "p50": 26.95538350235438,
+            "p95": 27.359053600594052,
+            "p99": 27.427812320602243,
+            "max": 27.44500200060429
+          },
+          "later": {
+            "n": 527,
+            "mean": 106.42745384996832,
+            "p50": 92.09808000014164,
+            "p95": 155.0890619015263,
+            "p99": 157.96482272067806,
+            "max": 189.76814999768976
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 1209,
@@ -28563,6 +31834,25 @@
           "p99": 157.218487303835,
           "max": 187.04783599969232
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 31,
+            "mean": 27.151136709548037,
+            "p50": 27.048522999393754,
+            "p95": 27.999827500025276,
+            "p99": 28.326624995679595,
+            "max": 28.45017399522476
+          },
+          "later": {
+            "n": 521,
+            "mean": 104.28488070265686,
+            "p50": 91.86340900487266,
+            "p95": 153.7108789998456,
+            "p99": 157.23283100523986,
+            "max": 187.04783599969232
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 1198,
@@ -28840,6 +32130,25 @@
           "p99": 28.639939881904866,
           "max": 31.50747900144779
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 575,
+            "mean": 27.093991459051207,
+            "p50": 27.064365000114776,
+            "p95": 28.224506600236055,
+            "p99": 28.534326821245486,
+            "max": 31.50747900144779
+          },
+          "later": {
+            "n": 3,
+            "mean": 28.44626266839138,
+            "p50": 28.694905999145703,
+            "p95": 29.019014002915355,
+            "p99": 29.047823603250436,
+            "max": 29.055026003334206
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -29117,6 +32426,25 @@
           "p99": 29.80972800105519,
           "max": 70.43844999861903
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 565,
+            "mean": 27.119831108028148,
+            "p50": 27.05915700062178,
+            "p95": 27.783006003301125,
+            "p99": 28.871545360598258,
+            "max": 31.939916996634565
+          },
+          "later": {
+            "n": 11,
+            "mean": 32.31124699893619,
+            "p50": 28.23238899873104,
+            "p95": 50.188933997560525,
+            "p99": 66.38854679840735,
+            "max": 70.43844999861903
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -29394,6 +32722,25 @@
           "p99": 28.81410623929696,
           "max": 32.97098099574214
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 573,
+            "mean": 27.26493183411471,
+            "p50": 27.26828199956799,
+            "p95": 27.84113419620553,
+            "p99": 28.78814827708993,
+            "max": 32.97098099574214
+          },
+          "later": {
+            "n": 4,
+            "mean": 28.456638001443935,
+            "p50": 28.658093000558438,
+            "p95": 28.80754664874985,
+            "p99": 28.810470928874565,
+            "max": 28.811201998905744
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 0,
@@ -29671,6 +33018,25 @@
           "p99": 86.29085016080353,
           "max": 90.52461300234427
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 560,
+            "mean": 27.22820819289414,
+            "p50": 27.18911699957971,
+            "p95": 28.037450301053468,
+            "p99": 28.626778151774488,
+            "max": 32.388405001256615
+          },
+          "later": {
+            "n": 14,
+            "mean": 62.7956204997255,
+            "p50": 85.1534854991769,
+            "p95": 90.36159300012514,
+            "p99": 90.49200900190044,
+            "max": 90.52461300234427
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 30,
@@ -29948,6 +33314,25 @@
           "p99": 53.792480619956436,
           "max": 90.1562329963781
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 559,
+            "mean": 27.288580520487972,
+            "p50": 27.249153004959226,
+            "p95": 28.18728980200831,
+            "p99": 29.524381543451447,
+            "max": 39.47897400212241
+          },
+          "later": {
+            "n": 11,
+            "mean": 61.24049000010762,
+            "p50": 85.6515759951435,
+            "p95": 89.46325549914036,
+            "p99": 90.01763749693055,
+            "max": 90.1562329963781
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 30,
@@ -30225,6 +33610,25 @@
           "p99": 84.73795948972109,
           "max": 90.58567199826939
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 563,
+            "mean": 27.103479099402566,
+            "p50": 27.00067900150316,
+            "p95": 27.839785703690723,
+            "p99": 28.709352438745555,
+            "max": 30.716342997038737
+          },
+          "later": {
+            "n": 9,
+            "mean": 80.77080011086461,
+            "p50": 86.93386400409508,
+            "p95": 90.33453239972005,
+            "p99": 90.53544407855952,
+            "max": 90.58567199826939
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 30,
@@ -30502,6 +33906,25 @@
           "p99": 90.81363490215153,
           "max": 94.35635500267381
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 491,
+            "mean": 27.4252178452077,
+            "p50": 27.399779995903373,
+            "p95": 28.478968000854366,
+            "p99": 29.10993869591039,
+            "max": 32.78887100168504
+          },
+          "later": {
+            "n": 64,
+            "mean": 84.36164915644895,
+            "p50": 87.93868700377061,
+            "p95": 91.22267869934149,
+            "p99": 93.39884509499825,
+            "max": 94.35635500267381
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 188,
@@ -30779,6 +34202,25 @@
           "p99": 91.0378631683125,
           "max": 118.32148500252515
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 493,
+            "mean": 27.329322904754292,
+            "p50": 27.27526800299529,
+            "p95": 28.406871200422756,
+            "p99": 28.742974602500905,
+            "max": 35.36366500338772
+          },
+          "later": {
+            "n": 51,
+            "mean": 86.34075609876948,
+            "p50": 87.85792300477624,
+            "p95": 91.96805749888881,
+            "p99": 105.76088050220278,
+            "max": 118.32148500252515
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 193,
@@ -31056,6 +34498,25 @@
           "p99": 91.87164116185158,
           "max": 151.43791800073814
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 484,
+            "mean": 27.26948681185965,
+            "p50": 27.184834001673153,
+            "p95": 28.024524997454137,
+            "p99": 28.754497899062702,
+            "max": 34.73064999707276
+          },
+          "later": {
+            "n": 69,
+            "mean": 82.48937949321007,
+            "p50": 87.76936300273519,
+            "p95": 92.62709300237475,
+            "p99": 112.43695592420369,
+            "max": 151.43791800073814
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 190,
@@ -31333,6 +34794,25 @@
           "p99": 121.73048889562779,
           "max": 183.75494200154208
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 308,
+            "mean": 27.174378678687567,
+            "p50": 27.064662499469705,
+            "p95": 27.881871698627947,
+            "p99": 28.97534605865076,
+            "max": 40.57349700451596
+          },
+          "later": {
+            "n": 208,
+            "mean": 91.48692102413546,
+            "p50": 89.07002550040488,
+            "p95": 119.64482065232004,
+            "p99": 153.35014230404343,
+            "max": 183.75494200154208
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 607,
@@ -31610,6 +35090,25 @@
           "p99": 122.90735952694374,
           "max": 153.81012499710778
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 326,
+            "mean": 27.267966325406594,
+            "p50": 27.22198450283031,
+            "p95": 28.156072750789463,
+            "p99": 28.54147525249573,
+            "max": 31.224233003740665
+          },
+          "later": {
+            "n": 184,
+            "mean": 91.69149366832995,
+            "p50": 88.98417700038408,
+            "p95": 119.54208094757632,
+            "p99": 128.40619308190037,
+            "max": 153.81012499710778
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 566,
@@ -31887,6 +35386,25 @@
           "p99": 127.75986951761288,
           "max": 154.7918069991283
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 340,
+            "mean": 27.221487423444426,
+            "p50": 27.133265499287518,
+            "p95": 27.87372269995103,
+            "p99": 28.805188696860572,
+            "max": 34.64153599634301
+          },
+          "later": {
+            "n": 170,
+            "mean": 90.9557138591909,
+            "p50": 89.16376449997188,
+            "p95": 122.38995989864634,
+            "p99": 153.88580856873887,
+            "max": 154.7918069991283
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 556,
@@ -32181,6 +35699,8 @@
           "p99": 1.4893481961917128,
           "max": 47.126787998422515
         },
+        "latency_ms_by_assembly_time": null,
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": null,
         "assembler": null
@@ -33468,12 +36988,12 @@
       "CONFIG_TICK_CPU_ACCOUNTING": "y",
       "CONFIG_HZ": "250"
     },
-    "loadavg": "1.21 0.73 0.64 5/213 14713",
+    "loadavg": "0.24 0.10 0.03 1/161 27064",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "cpus": 4,
     "python": "3.13.18",
     "go": "go version go1.24.7 linux/amd64",
-    "git_commit": "3b921d8",
+    "git_commit": "3d88ede",
     "git_dirty": false,
     "git_dirty_files": [],
     "build": {
@@ -33490,6 +37010,6 @@
         "loadgen": "52495e4133d18544358c207f44dc37b75b415923fd339ac2ce62a3307a729eb1"
       }
     },
-    "utc": "2026-11-19T14:04:50Z"
+    "utc": "2026-11-19T17:25:14Z"
   }
 }

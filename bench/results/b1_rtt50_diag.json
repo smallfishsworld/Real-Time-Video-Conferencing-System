@@ -28,14 +28,26 @@
           "k": 517,
           "n": 578,
           "p": 0.8944636678200693,
-          "low": 0.866759045493876,
-          "high": 0.916959599919858
+          "low": null,
+          "high": null
+        },
+        "delivery_ratio_by_30s_bins": {
+          "n": 2,
+          "median": 0.8891942645879385,
+          "min": 0.8807339449541285,
+          "max": 0.8976545842217484
         },
         "delivery_ratio_per_run": {
           "n": 1,
           "median": 0.8944636678200693,
           "min": 0.8944636678200693,
           "max": 0.8944636678200693
+        },
+        "frames_complete_per_run": {
+          "n": 1,
+          "median": 517.0,
+          "min": 517.0,
+          "max": 517.0
         },
         "latency_ms_p50_per_run": {
           "n": 1,
@@ -48,6 +60,48 @@
           "median": 157.27631223911882,
           "min": 157.27631223911882,
           "max": 157.27631223911882
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 1,
+              "median": 154.0,
+              "min": 154.0,
+              "max": 154.0
+            },
+            "p50_ms": {
+              "n": 1,
+              "median": 26.93331800037413,
+              "min": 26.93331800037413,
+              "max": 26.93331800037413
+            },
+            "p99_ms": {
+              "n": 1,
+              "median": 28.391170053146197,
+              "min": 28.391170053146197,
+              "max": 28.391170053146197
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 1,
+              "median": 363.0,
+              "min": 363.0,
+              "max": 363.0
+            },
+            "p50_ms": {
+              "n": 1,
+              "median": 90.22949000063818,
+              "min": 90.22949000063818,
+              "max": 90.22949000063818
+            },
+            "p99_ms": {
+              "n": 1,
+              "median": 162.45617132284676,
+              "min": 162.45617132284676,
+              "max": 162.45617132284676
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -70,8 +124,14 @@
           "k": 85,
           "n": 1850,
           "p": 0.04594594594594595,
-          "low": 0.037309853807463426,
-          "high": 0.05646378473560861
+          "low": null,
+          "high": null
+        },
+        "residual_loss_by_30s_bins": {
+          "n": 2,
+          "median": 0.04147619047619047,
+          "min": 0.03428571428571429,
+          "max": 0.048666666666666664
         },
         "residual_loss_per_run": {
           "n": 1,
@@ -114,14 +174,26 @@
           "k": 549,
           "n": 578,
           "p": 0.9498269896193772,
-          "low": 0.9288722814873506,
-          "high": 0.9648419632826967
+          "low": null,
+          "high": null
+        },
+        "delivery_ratio_by_30s_bins": {
+          "n": 2,
+          "median": 0.9479568083566441,
+          "min": 0.944954128440367,
+          "max": 0.9509594882729211
         },
         "delivery_ratio_per_run": {
           "n": 1,
           "median": 0.9498269896193772,
           "min": 0.9498269896193772,
           "max": 0.9498269896193772
+        },
+        "frames_complete_per_run": {
+          "n": 1,
+          "median": 549.0,
+          "min": 549.0,
+          "max": 549.0
         },
         "latency_ms_p50_per_run": {
           "n": 1,
@@ -134,6 +206,48 @@
           "median": 90.91977595875504,
           "min": 90.91977595875504,
           "max": 90.91977595875504
+        },
+        "latency_by_assembly_time_per_run": {
+          "within_quick_assembly": {
+            "frames": {
+              "n": 1,
+              "median": 498.0,
+              "min": 498.0,
+              "max": 498.0
+            },
+            "p50_ms": {
+              "n": 1,
+              "median": 27.434359999460867,
+              "min": 27.434359999460867,
+              "max": 27.434359999460867
+            },
+            "p99_ms": {
+              "n": 1,
+              "median": 28.864654491408146,
+              "min": 28.864654491408146,
+              "max": 28.864654491408146
+            }
+          },
+          "later": {
+            "frames": {
+              "n": 1,
+              "median": 51.0,
+              "min": 51.0,
+              "max": 51.0
+            },
+            "p50_ms": {
+              "n": 1,
+              "median": 87.78032700502081,
+              "min": 87.78032700502081,
+              "max": 87.78032700502081
+            },
+            "p99_ms": {
+              "n": 1,
+              "median": 92.78837400051998,
+              "min": 92.78837400051998,
+              "max": 92.78837400051998
+            }
+          }
         },
         "model_ratio_independent_loss": null,
         "nack_totals": {
@@ -156,8 +270,14 @@
           "k": 15,
           "n": 1850,
           "p": 0.008108108108108109,
-          "low": 0.0049197738354868825,
-          "high": 0.01333500125284116
+          "low": null,
+          "high": null
+        },
+        "residual_loss_by_30s_bins": {
+          "n": 2,
+          "median": 0.00938095238095238,
+          "min": 0.007333333333333333,
+          "max": 0.011428571428571429
         },
         "residual_loss_per_run": {
           "n": 1,
@@ -246,6 +366,25 @@
           "p99": 157.27631223911882,
           "max": 185.41080500290263
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 154,
+            "mean": 26.91912910393205,
+            "p50": 26.93331800037413,
+            "p95": 27.936549050355097,
+            "p99": 28.391170053146197,
+            "max": 29.380070998740848
+          },
+          "later": {
+            "n": 363,
+            "mean": 96.49791279353491,
+            "p50": 90.22949000063818,
+            "p95": 150.99708470224863,
+            "p99": 162.45617132284676,
+            "max": 185.41080500290263
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 913,
@@ -269,7 +408,19 @@
         "ticks": 1839,
         "concealed_fraction": 0.046220772158781946,
         "gap_fraction_after_concealment": 0.0,
-        "fec_recovered_packets": 0
+        "fec_recovered_packets": 0,
+        "lost_by_30s": [
+          {
+            "from_s": 0,
+            "frames": 1500,
+            "lost": 73
+          },
+          {
+            "from_s": 30,
+            "frames": 350,
+            "lost": 12
+          }
+        ]
       },
       "receiver_kernel": {
         "ip_reasm_reqds": 0,
@@ -511,6 +662,25 @@
           "p99": 90.91977595875504,
           "max": 93.05950099951588
         },
+        "latency_ms_by_assembly_time": {
+          "within_quick_assembly": {
+            "n": 498,
+            "mean": 27.523549915662237,
+            "p50": 27.434359999460867,
+            "p95": 28.52192244899925,
+            "p99": 28.864654491408146,
+            "max": 30.527656999765895
+          },
+          "later": {
+            "n": 51,
+            "mean": 84.31638456899879,
+            "p50": 87.78032700502081,
+            "p95": 91.71812050044537,
+            "p99": 92.78837400051998,
+            "max": 93.05950099951588
+          }
+        },
+        "quick_assembly_ms": 1.5,
         "sender_frames_rate_limited": 0,
         "nack": {
           "nacks_sent": 176,
@@ -534,7 +704,19 @@
         "ticks": 1840,
         "concealed_fraction": 0.008152173913043478,
         "gap_fraction_after_concealment": 0.0,
-        "fec_recovered_packets": 779
+        "fec_recovered_packets": 779,
+        "lost_by_30s": [
+          {
+            "from_s": 0,
+            "frames": 1500,
+            "lost": 11
+          },
+          {
+            "from_s": 30,
+            "frames": 350,
+            "lost": 4
+          }
+        ]
       },
       "receiver_kernel": {
         "ip_reasm_reqds": 0,
@@ -724,12 +906,12 @@
       "CONFIG_TICK_CPU_ACCOUNTING": "y",
       "CONFIG_HZ": "250"
     },
-    "loadavg": "0.54 0.36 0.43 2/175 11534",
+    "loadavg": "0.24 0.10 0.03 1/158 27074",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "cpus": 4,
     "python": "3.13.18",
     "go": "go version go1.24.7 linux/amd64",
-    "git_commit": "3855bcb",
+    "git_commit": "3d88ede",
     "git_dirty": false,
     "git_dirty_files": [],
     "build": {
@@ -745,6 +927,6 @@
         "loadgen": "d524e363e7f785b73d6799d50b9bdeba802a7e23c4c5e797a7e34e421635083e"
       }
     },
-    "utc": "2026-11-19T13:52:22Z"
+    "utc": "2026-11-19T17:25:14Z"
   }
 }
