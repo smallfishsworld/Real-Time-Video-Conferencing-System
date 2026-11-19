@@ -50,6 +50,27 @@ prepare() {
   fi
 }
 
+# write_build_record OUT [BINARY...]: what the binaries were built from (commit and the
+# uncommitted paths outside bench/results), when, and each binary's SHA-256. The
+# analysis scripts copy it into the result files.
+write_build_record() {
+  local out=$1 first=1 bin
+  shift
+  {
+    printf '{"git_commit": "%s", "utc": "%s", "git_dirty_files": [' \
+      "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    git -C "$ROOT" status --porcelain -- server client bench legacy ':!bench/results' |
+      sed 's/\\/\\\\/g; s/"/\\"/g; s/.*/"&"/' | paste -sd, -
+    printf '], "binaries": {'
+    for bin in "$@"; do
+      [ $first -eq 1 ] || printf ', '
+      first=0
+      printf '"%s": "%s"' "$(basename "$bin")" "$(sha256sum "$bin" | cut -c1-64)"
+    done
+    printf '}}\n'
+  } >"$out"
+}
+
 cleanup_netns() {
   local ns
   for ns in $(ip netns list 2>/dev/null | awk '{print $1}' | grep "^${NS_PREFIX}" || true); do
