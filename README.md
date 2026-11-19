@@ -280,12 +280,14 @@ so that it cannot flood a shared network by accident:
 | Component | Default limit | Flag |
 |---|---|---|
 | Server sockets | bind to 127.0.0.1 only | `-control-addr`, `-media-addr` |
-| Server, per sender | 8 Mbit/s media ingress (token bucket, 256 KiB burst); excess is dropped and counted | `-max-ingress-kbps`, `-ingress-burst-kib` |
-| Server, per receiver | retransmissions on NACK capped by a second token bucket of the same size; NACKs count against the requester's ingress limit, must come from its registered address and may only name other members' streams in its room | `-max-ingress-kbps`, `-ingress-burst-kib`, `-nack-buffer` |
-| Server | 16 members per room, 256 rooms, 1024 clients; 50 control requests/s per connection; 2000 REGISTERs/s in total | `-max-room-size`, `-max-rooms`, `-max-clients` |
+| Server, media per client | 8 Mbit/s of media and NACKs in, IP/UDP headers included (token bucket, 256 KiB burst); excess is dropped and counted; 0 = unlimited | `-max-ingress-kbps`, `-ingress-burst-kib` |
+| Server, retransmissions | 8 Mbit/s of retransmitted video per requesting client, from its own bucket (finite even when the ingress limit is 0); a NACK must come from the requester's registered address and may only name other members' video in its room; 256 packets kept per sender | `-max-rtx-kbps`, `-nack-buffer` |
+| Server, media bindings | an address is bound only after it echoes a server nonce; `REGISTER`s limited per member (10/s), per source IP and port (20/s) and in total (2000/s); a binding without keepalive for 15 s is dropped | `-max-registers-per-sec`, `-binding-timeout` |
+| Server, control plane | 16 members per room, 256 rooms, 1024 clients, 1088 open connections; 50 frames/s per connection (burst 100), charged before decoding; 10 s from connect to `hello`, 60 s idle; a connection closes when `hello` is refused because the server is full, or after 3 malformed frames in a row | `-max-room-size`, `-max-rooms`, `-max-clients`, `-max-conns`, `-control-rate`, `-control-burst`, `-hello-timeout`, `-idle-timeout` |
 | Metrics and pprof | 127.0.0.1:6101; pprof off | `-metrics-addr`, `-pprof` |
-| Client | 6000 kbit/s total upload (token bucket); whole video frames are skipped when over budget | `--max-send-kbps` |
-| Load generator (`server/cmd/loadgen`) | refuses non-loopback targets; at most 512 participants, 4000 Mbit/s offered and 10 min per run (1500 Mbit/s unless raised) | `-allow-remote`, `-participants`, `-max-mbps`, `-duration` |
+| Client, media | 6000 kbit/s upload of video and audio with their parity (token bucket); a frame that does not fit is skipped whole; 1 to 10^6 kbit/s, no cap only with `--no-send-cap` (which warns) | `--max-send-kbps`, `--no-send-cap` |
+| Client, feedback | NACKs and `REGISTER`s share their own budget of 128 kbit/s and 200 packets/s; NACKs over it are not sent, while `REGISTER`s (one per 200 ms until acknowledged, then one per 5 s, and challenge answers) are always sent and charged | `MediaConfig.feedback_kbps`, `feedback_pps` (no CLI flag) |
+| Load generator (`server/cmd/loadgen`) | refuses non-loopback targets unless `-allow-remote`; caps its estimated total wire traffic, both directions with all headers, parity and the fan-out to each room: on loopback 2000 Mbit/s and 400 000 packets/s by default (at most 16 000 Mbit/s and 2 000 000 packets/s), otherwise 25 Mbit/s and 2500 packets/s (at most 100 Mbit/s and 5000 packets/s), with rooms of at most 16 and at most 64 participants; at most 512 participants and 10 min per run (warm-up, window and grace together) | `-allow-remote`, `-max-mbps`, `-max-pps`, `-participants`, `-room-size`, `-duration` |
 
 The benchmarks run entirely inside network namespaces on one machine.
 
