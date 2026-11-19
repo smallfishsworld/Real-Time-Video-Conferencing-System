@@ -1,0 +1,19 @@
+{
+  "description": "Audio streams for the jitter-buffer simulations (bench/jitter_sim.py for the client, server/internal/media/jitter_sim_test.go for the server mixer). Frame k is sent at k * period_us of the receiver's clock and carries RTP timestamp k * 320. It arrives delay_us later, plus step_us for frames step_from..step_to-1, plus a uniform random jitter in [0, jitter_us) drawn from SplitMix64(seed + k). The first burst_frames frames all arrive when frame burst_frames-1 does. The receiver pops one frame every 20 ms, 7 ms after the send grid.",
+  "seed": 1,
+  "scenarios": [
+    {"name": "steady", "period_us": 20000, "frames": 3000, "delay_us": 30000},
+    {"name": "jitter_0_10ms", "period_us": 20000, "frames": 6000, "delay_us": 30000, "jitter_us": 10000},
+    {"name": "jitter_0_40ms", "period_us": 20000, "frames": 6000, "delay_us": 30000, "jitter_us": 40000},
+    {"name": "slow_sender_1000ppm", "period_us": 20020, "frames": 15000, "delay_us": 30000},
+    {"name": "fast_sender_1000ppm", "period_us": 19980, "frames": 15000, "delay_us": 30000},
+    {"name": "slow_sender_1000ppm_jitter_0_10ms", "period_us": 20020, "frames": 15000, "delay_us": 30000, "jitter_us": 10000},
+    {"name": "fast_sender_1000ppm_jitter_0_10ms", "period_us": 19980, "frames": 15000, "delay_us": 30000, "jitter_us": 10000},
+    {"name": "slow_sender_100ppm", "period_us": 20002, "frames": 45000, "delay_us": 30000},
+    {"name": "startup_burst_50", "period_us": 20000, "frames": 3000, "delay_us": 30000, "burst_frames": 50},
+    {"name": "delay_step_up_60ms", "period_us": 20000, "frames": 3000, "delay_us": 30000, "step_from": 1000, "step_to": 3000, "step_us": 60000},
+    {"name": "delay_step_up_100ms", "period_us": 20000, "frames": 3000, "delay_us": 30000, "step_from": 1000, "step_to": 3000, "step_us": 100000},
+    {"name": "delay_step_down_100ms", "period_us": 20000, "frames": 3000, "delay_us": 30000, "step_from": 0, "step_to": 1000, "step_us": 100000},
+    {"name": "delay_spike_100ms_for_300ms", "period_us": 20000, "frames": 3000, "delay_us": 30000, "step_from": 1000, "step_to": 1015, "step_us": 100000}
+  ]
+}
