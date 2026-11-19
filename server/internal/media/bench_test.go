@@ -118,24 +118,29 @@ func BenchmarkMixMinus(b *testing.B) {
 // "unbatched" sends each copy with its own sendto, as the server did before batching;
 // "sendmmsg/batch=N" collects N received packets and sends their copies with one
 // sendmmsg, as Serve does when a read returns N datagrams; "gso/batch=N" also merges
-// each receiver's copies into UDP GSO messages. The receiving sockets are not read,
+// each receiver's copies into UDP GSO messages; "+nack-buffer" also copies every
+// packet into the sender's retransmission buffer. The receiving sockets are not read,
 // so the kernel drops the copies once their buffers fill; the send side's cost is
 // unaffected.
 func BenchmarkForwardVideo(b *testing.B) {
 	for _, bc := range []struct {
 		name         string
 		batch, flush int
-		gso          bool
+		gso, nack    bool
 	}{
-		{"unbatched", 1, 1, false},
-		{"sendmmsg/batch=1", 64, 1, false}, {"sendmmsg/batch=16", 64, 16, false}, {"sendmmsg/batch=64", 64, 64, false},
-		{"gso/batch=16", 64, 16, true}, {"gso/batch=64", 64, 64, true},
+		{"unbatched", 1, 1, false, false},
+		{"sendmmsg/batch=1", 64, 1, false, false},
+		{"sendmmsg/batch=16", 64, 16, false, false},
+		{"sendmmsg/batch=64", 64, 64, false, false},
+		{"gso/batch=16", 64, 16, true, false},
+		{"gso/batch=64", 64, 64, true, false},
+		{"gso+nack-buffer/batch=64", 64, 64, true, true},
 	} {
-		b.Run(bc.name, func(b *testing.B) { benchmarkForwardVideo(b, bc.batch, bc.flush, bc.gso) })
+		b.Run(bc.name, func(b *testing.B) { benchmarkForwardVideo(b, bc.batch, bc.flush, bc.gso, bc.nack) })
 	}
 }
 
-func benchmarkForwardVideo(b *testing.B, batch, flushEvery int, gso bool) {
+func benchmarkForwardVideo(b *testing.B, batch, flushEvery int, gso, nack bool) {
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		b.Fatal(err)
@@ -154,6 +159,9 @@ func benchmarkForwardVideo(b *testing.B, batch, flushEvery int, gso bool) {
 	src := netip.MustParseAddrPort("127.0.0.1:40000")
 	rv := &room.RoomView{ID: 1, Mode: room.ModeRelay}
 	p := &participant{id: 1, audioSSRC: 10, bucket: newTokenBucket(0, 0)}
+	if nack {
+		p.rtx = newRTXRing(DefaultConfig().NACKBufferPackets)
+	}
 	r.table.Store(&routeTable{bySSRC: map[uint32]*route{
 		11: {p: p, kind: kindVideo, addr: src, room: rv, targets: targets},
 	}})
@@ -165,8 +173,10 @@ func benchmarkForwardVideo(b *testing.B, batch, flushEvery int, gso bool) {
 	b.SetBytes(int64(len(pkt) * len(targets)))
 	b.ReportAllocs()
 	now := time.Now()
-	i := 0
+	i, seq := 0, uint16(0)
 	for b.Loop() {
+		seq++
+		binary.BigEndian.PutUint16(pkt[2:4], seq) // fill the retransmission buffer's slots in turn
 		r.handle(pkt, src, now)
 		if i++; i == flushEvery {
 			r.flush(now)

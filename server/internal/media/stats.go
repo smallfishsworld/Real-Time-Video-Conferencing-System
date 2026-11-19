@@ -18,10 +18,11 @@ const (
 	InVideoFEC
 	InAudio
 	InAudioFEC
+	InNACK // retransmission requests (RTCP generic NACK)
 	inKindCount
 )
 
-var inKindNames = [inKindCount]string{"register", "video", "video_fec", "audio", "audio_fec"}
+var inKindNames = [inKindCount]string{"register", "video", "video_fec", "audio", "audio_fec", "nack"}
 
 func (k InKind) String() string { return inKindNames[k] }
 
@@ -34,10 +35,11 @@ const (
 	OutVideo               // forwarded video fragments and their parity packets
 	OutAudio               // mixed audio frames
 	OutAudioFEC            // parity packets of mixed audio streams
+	OutVideoRTX            // video packets sent again in answer to a NACK
 	outKindCount
 )
 
-var outKindNames = [outKindCount]string{"register_ack", "video", "audio", "audio_fec"}
+var outKindNames = [outKindCount]string{"register_ack", "video", "audio", "audio_fec", "video_rtx"}
 
 func (k OutKind) String() string { return outKindNames[k] }
 
@@ -81,6 +83,8 @@ type Stats struct {
 	ReadCalls         atomic.Uint64
 	VideoSendCalls    atomic.Uint64
 	VideoSendMessages atomic.Uint64
+
+	RTXMisses atomic.Uint64 // NACKed packets no longer (or never) in the sender's buffer
 
 	MixerTicks     atomic.Uint64
 	FECRecovered   atomic.Uint64 // upstream audio packets rebuilt from parity

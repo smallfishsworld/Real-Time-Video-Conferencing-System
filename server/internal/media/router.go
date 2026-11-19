@@ -39,6 +39,10 @@ type Config struct {
 	// UDPGSO sends each sender's video packets of one read to each receiver as UDP
 	// GSO messages (needs UDPBatch > 1 and Linux 4.18 or later).
 	UDPGSO bool
+	// NACKBufferPackets is how many recent video packets the server keeps per sender
+	// to retransmit when a receiver sends a NACK (rounded up to a power of two);
+	// 0 turns retransmission off.
+	NACKBufferPackets int
 }
 
 // DefaultConfig returns the server defaults (8 Mbit/s per sender, 256 KiB burst).
@@ -51,6 +55,7 @@ func DefaultConfig() Config {
 		RegistersPerSec:    2000,
 		UDPBatch:           64,
 		UDPGSO:             true,
+		NACKBufferPackets:  256,
 	}
 }
 
@@ -74,6 +79,8 @@ type participant struct {
 	bucket    *tokenBucket
 	jb        *jitterBuffer
 	down      downstream
+	rtx       *rtxRing     // the participant's recent video packets; nil without NACK
+	rtxBucket *tokenBucket // retransmissions the participant may request
 }
 
 type route struct {
@@ -82,6 +89,7 @@ type route struct {
 	addr    netip.AddrPort
 	room    *room.RoomView
 	targets []udpio.Dest // video: the other registered members
+	self    udpio.Dest   // the participant's own address, for retransmissions
 }
 
 type routeTable struct {
@@ -95,6 +103,7 @@ type Router struct {
 	conn  *net.UDPConn
 	io    *udpio.Conn
 	batch int // datagrams per read
+	nack  int // retransmission buffer per sender, in packets (0 = no NACK)
 	reg   Registrar
 	cfg   Config
 	hooks Hooks
@@ -109,6 +118,7 @@ type Router struct {
 	nruns     int
 	forwarded int // packets in runs that have receivers, for the ForwardLatency hook
 	out       *udpio.Writer
+	lost      []uint16 // scratch for NACK handling
 
 	mu     sync.Mutex // guards parts, rooms and closed
 	parts  map[uint32]*participant
@@ -131,6 +141,10 @@ func NewRouter(conn *net.UDPConn, reg Registrar, cfg Config, hooks Hooks) *Route
 		regBucket: newTokenBucket(float64(cfg.RegistersPerSec), max(1, cfg.RegistersPerSec)),
 		parts:     make(map[uint32]*participant),
 		rooms:     make(map[uint32]*mixRoom),
+	}
+	if cfg.NACKBufferPackets > 0 {
+		// A buffer no larger than one read could never answer (see rtxRing.get).
+		r.nack = max(cfg.NACKBufferPackets, 2*batch)
 	}
 	r.out = r.io.NewWriter()
 	r.table.Store(&routeTable{bySSRC: map[uint32]*route{}})
@@ -259,6 +273,8 @@ func (r *Router) handle(pkt []byte, src netip.AddrPort, now time.Time) {
 		r.stats.drop(DropMalformed)
 	case pkt[0] == protocol.TypeRegister:
 		r.handleRegister(pkt, src, now)
+	case protocol.IsNACK(pkt):
+		r.handleNACK(pkt, src, now)
 	case protocol.IsRTP(pkt) && len(pkt) >= protocol.RTPHeaderSize:
 		r.handleRTP(pkt, src, now)
 	default:
@@ -318,7 +334,7 @@ func (r *Router) handleRTP(pkt []byte, src netip.AddrPort, now time.Time) {
 		return
 	}
 	if rt.kind == kindVideo {
-		r.forwardVideo(rt, pkt, payload, pt)
+		r.forwardVideo(rt, pkt, payload, pt, h.SequenceNumber)
 		return
 	}
 	switch pt {
@@ -346,7 +362,7 @@ func (r *Router) handleRTP(pkt []byte, src netip.AddrPort, now time.Time) {
 // forwardVideo collects a video fragment or its parity packet for forwarding,
 // unchanged, to every other registered member of the sender's room (SFU forwarding,
 // no re-encoding) at the next flush. pkt must stay untouched until then.
-func (r *Router) forwardVideo(rt *route, pkt, payload []byte, pt uint8) {
+func (r *Router) forwardVideo(rt *route, pkt, payload []byte, pt uint8, seq uint16) {
 	switch pt {
 	case protocol.PTVideo:
 		var v protocol.VideoHeader
@@ -369,6 +385,9 @@ func (r *Router) forwardVideo(rt *route, pkt, payload []byte, pt uint8) {
 	if len(rt.targets) == 0 {
 		return
 	}
+	if rt.p.rtx != nil {
+		rt.p.rtx.store(pkt, seq)
+	}
 	vr := r.run(rt)
 	if pt == protocol.PTVideo {
 		vr.frags = append(vr.frags, pkt)
@@ -376,6 +395,56 @@ func (r *Router) forwardVideo(rt *route, pkt, payload []byte, pt uint8) {
 		vr.parity = append(vr.parity, pkt)
 	}
 	r.forwarded++
+}
+
+// handleNACK answers a receiver's generic NACK by sending it the listed packets of
+// another member's video stream again, from that sender's retransmission buffer.
+// The NACK must come from a registered participant's address, as media does, and
+// name a video stream in the same room; the retransmitted bytes count against the
+// requester's own retransmission budget, so a receiver cannot make the server send
+// more than that.
+func (r *Router) handleNACK(pkt []byte, src netip.AddrPort, now time.Time) {
+	var n protocol.NACK
+	if err := protocol.ParseNACK(pkt, &n); err != nil {
+		r.stats.drop(DropMalformed)
+		return
+	}
+	table := r.table.Load()
+	req := table.bySSRC[n.SenderSSRC]
+	switch {
+	case req == nil:
+		r.stats.drop(DropUnknownSSRC)
+		return
+	case req.addr != src:
+		r.stats.drop(DropAddrMismatch)
+		return
+	case !req.room.Relaying(now):
+		r.stats.drop(DropP2PMode)
+		return
+	case !req.p.bucket.allow(len(pkt)+wireOverhead, now):
+		r.stats.drop(DropRateLimited)
+		return
+	}
+	media := table.bySSRC[n.MediaSSRC]
+	if media == nil || media.kind != kindVideo || media.room != req.room || media.p == req.p ||
+		media.p.rtx == nil || !req.self.AddrPort().IsValid() {
+		r.stats.drop(DropBadPayload)
+		return
+	}
+	r.stats.in(InNACK, len(pkt))
+	r.lost = n.AppendLost(r.lost[:0])
+	for _, seq := range r.lost {
+		b := media.p.rtx.get(seq, r.batch)
+		if b == nil {
+			r.stats.RTXMisses.Add(1)
+			continue
+		}
+		if !req.p.rtxBucket.allow(len(b)+wireOverhead, now) {
+			r.stats.drop(DropRateLimited)
+			return
+		}
+		r.out.Add(b, &req.self, uint8(OutVideoRTX))
+	}
 }
 
 // OnView rebuilds the routing table and the mixers from a registry view. The registry
@@ -412,6 +481,8 @@ func (r *Router) OnView(v *room.View) {
 					bucket:    newTokenBucket(float64(r.cfg.IngressBytesPerSec), r.cfg.IngressBurstBytes),
 					jb:        newJitterBuffer(r.cfg.MixerDelayFrames, &r.stats),
 					down:      downstream{silent: true},
+					rtx:       newRTXRing(r.nack),
+					rtxBucket: newTokenBucket(float64(r.cfg.IngressBytesPerSec), r.cfg.IngressBurstBytes),
 				}
 				r.parts[mv.AudioSSRC] = p
 			}
@@ -423,8 +494,14 @@ func (r *Router) OnView(v *room.View) {
 					targets = append(targets, r.io.Dest(other.Addr))
 				}
 			}
-			table.bySSRC[mv.AudioSSRC] = &route{p: p, kind: kindAudio, addr: mv.Addr, room: rv}
-			table.bySSRC[mv.VideoSSRC] = &route{p: p, kind: kindVideo, addr: mv.Addr, room: rv, targets: targets}
+			var self udpio.Dest
+			if mv.Addr.IsValid() {
+				self = r.io.Dest(mv.Addr)
+			}
+			table.bySSRC[mv.AudioSSRC] = &route{p: p, kind: kindAudio, addr: mv.Addr, room: rv, self: self}
+			table.bySSRC[mv.VideoSSRC] = &route{
+				p: p, kind: kindVideo, addr: mv.Addr, room: rv, targets: targets, self: self,
+			}
 		}
 		mr.snap.Store(snap)
 	}

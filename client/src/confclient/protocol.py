@@ -11,6 +11,7 @@ import asyncio
 import ipaddress
 import json
 import struct
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -45,6 +46,12 @@ REGISTER_VERSION = 1
 REGISTER_SIZE = 28
 TOKEN_SIZE = 16
 
+# RTCP generic NACK (RFC 4585): a receiver asks the server to resend video packets.
+RTCP_RTPFB = 205
+NACK_FORMAT = 1
+NACK_HEADER_SIZE = 12
+MAX_NACK_ITEMS = 16  # (PID, BLP) pairs per NACK: up to 272 sequence numbers
+
 MAX_CONTROL_MESSAGE = 64 * 1024
 CONTROL_VERSION = 1
 
@@ -54,6 +61,8 @@ _FEC = struct.Struct("!HBBBBHI")
 _REGISTER = struct.Struct("!BBHQ")
 _ACK = struct.Struct("!BBBBQH")
 _LEN = struct.Struct("!I")
+_NACK = struct.Struct("!BBHII")
+_NACK_ITEM = struct.Struct("!HH")
 
 Buffer = bytes | bytearray | memoryview
 
@@ -197,6 +206,71 @@ def parse_fec(payload: Buffer) -> tuple[FecHeader, memoryview]:
     if len(parity) > MAX_PROTECTED_BODY:
         raise ProtocolError("FEC parity too long")
     return FecHeader(sn_base, count, b0, b1, length, ts), parity
+
+
+def nack_items(lost: Iterable[int]) -> list[tuple[int, int]]:
+    """Pack lost sequence numbers, in increasing order modulo 2**16, into (PID, BLP)
+    pairs: bit i of BLP set means PID + i + 1 is lost too."""
+    items: list[list[int]] = []
+    for seq in lost:
+        if items:
+            d = (seq - items[-1][0]) & 0xFFFF
+            if 1 <= d <= 16:
+                items[-1][1] |= 1 << (d - 1)
+                continue
+        items.append([seq & 0xFFFF, 0])
+    return [(pid, blp) for pid, blp in items]
+
+
+def _nack(sender_ssrc: int, media_ssrc: int, items: list[tuple[int, int]]) -> bytes:
+    head = _NACK.pack(0x80 | NACK_FORMAT, RTCP_RTPFB, 2 + len(items), sender_ssrc, media_ssrc)
+    return head + b"".join(_NACK_ITEM.pack(pid, blp) for pid, blp in items)
+
+
+def build_nack(sender_ssrc: int, media_ssrc: int, lost: Iterable[int]) -> bytes:
+    """One generic NACK asking for `lost` packets of `media_ssrc`."""
+    items = nack_items(lost)
+    if not 1 <= len(items) <= MAX_NACK_ITEMS:
+        raise ProtocolError(f"a NACK carries 1 to {MAX_NACK_ITEMS} items, not {len(items)}")
+    return _nack(sender_ssrc, media_ssrc, items)
+
+
+def build_nacks(sender_ssrc: int, media_ssrc: int, lost: Iterable[int]) -> list[bytes]:
+    """As many NACKs as it takes to ask for every sequence number in `lost`."""
+    items = nack_items(lost)
+    return [
+        _nack(sender_ssrc, media_ssrc, items[i : i + MAX_NACK_ITEMS])
+        for i in range(0, len(items), MAX_NACK_ITEMS)
+    ]
+
+
+def is_nack(pkt: Buffer) -> bool:
+    b = memoryview(pkt)
+    return len(b) >= 2 and b[0] >> 6 == RTP_VERSION and b[0] & 0x1F == NACK_FORMAT and b[1] == RTCP_RTPFB
+
+
+def parse_nack(pkt: Buffer) -> tuple[int, int, list[int]]:
+    """Decode a generic NACK into (sender SSRC, media SSRC, lost sequence numbers)."""
+    b = memoryview(pkt)
+    if len(b) < NACK_HEADER_SIZE + 4:
+        raise ProtocolError("NACK too short")
+    if not is_nack(b):
+        raise ProtocolError("not a generic NACK")
+    b0, _pt, length, sender, media = _NACK.unpack_from(b, 0)
+    if b0 & 0x20:
+        raise ProtocolError("NACK with padding")
+    size = (length + 1) * 4
+    if size > len(b):
+        raise ProtocolError("NACK length beyond the packet")
+    count = (size - NACK_HEADER_SIZE) // 4
+    if size != len(b) or not 1 <= count <= MAX_NACK_ITEMS:
+        raise ProtocolError("invalid NACK length")
+    lost: list[int] = []
+    for i in range(count):
+        pid, blp = _NACK_ITEM.unpack_from(b, NACK_HEADER_SIZE + 4 * i)
+        lost.append(pid)
+        lost.extend((pid + bit + 1) & 0xFFFF for bit in range(16) if blp >> bit & 1)
+    return sender, media, lost
 
 
 def build_register(txid: int, token: bytes) -> bytes:

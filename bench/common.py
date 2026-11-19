@@ -10,6 +10,7 @@ writes its tag into samples [4i, 4i+4) and zeros into every other reserved slot.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
@@ -136,9 +137,25 @@ def environment() -> dict[str, Any]:
                 break
     except OSError:
         pass
+    # Results under bench/results are outputs, not inputs, so they do not count.
     dirty = run(
-        ["git", "-C", str(ROOT), "status", "--porcelain", "--", "server", "client", "bench", "legacy"]
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            "status",
+            "--porcelain",
+            "--",
+            "server",
+            "client",
+            "bench",
+            "legacy",
+            ":!bench/results",
+        ]
     )
+    build: dict[str, Any] | None = None
+    with contextlib.suppress(OSError, ValueError):
+        build = json.loads((ROOT / "bench" / "tmp" / "build.json").read_text())
     return {
         "kernel": platform.release(),
         "cpu": cpu,
@@ -149,6 +166,9 @@ def environment() -> dict[str, Any]:
         "git_dirty": bool(dirty),
         # Uncommitted paths when the results were written (right after the runs).
         "git_dirty_files": [line.strip() for line in dirty.splitlines()],
+        # The commit and uncommitted paths when the Go binaries were built (bench/lib/
+        # common.sh prepare), before the runs.
+        "build": build,
         "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 

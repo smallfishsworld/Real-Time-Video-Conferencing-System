@@ -291,6 +291,151 @@ func TestRouterForwardsBurstsInOrder(t *testing.T) {
 	})
 }
 
+func nackPacket(t *testing.T, sender, media uint32, lost ...uint16) []byte {
+	t.Helper()
+	n := protocol.NACK{SenderSSRC: sender, MediaSSRC: media}
+	n.SetLost(lost)
+	buf := make([]byte, 128)
+	size, err := n.MarshalTo(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return buf[:size]
+}
+
+// A receiver's NACK brings back exactly the packets it names, to it alone.
+func TestRouterRetransmitsOnNACK(t *testing.T) {
+	batchModes(t, func(t *testing.T, mediaCfg func(*Config)) {
+		s := newTestServer(t, nil, mediaCfg)
+		a1 := s.peer("a1", 0)
+		a2, a3 := s.peer("a2", a1.client.InRoom()), s.peer("a3", a1.client.InRoom())
+		for _, p := range []*peer{a1, a2, a3} {
+			p.register(s.addr)
+		}
+		var sent [][]byte
+		for i := range 10 {
+			sent = append(sent, a1.videoPacket(uint32(i+1)))
+			a1.send(s.addr, sent[i])
+		}
+		for _, p := range []*peer{a2, a3} {
+			if got := p.recv(300 * time.Millisecond); len(got) != len(sent) {
+				t.Fatalf("%s got %d packets", p.client.Name, len(got))
+			}
+		}
+		seqOf := func(pkt []byte) uint16 { return uint16(pkt[2])<<8 | uint16(pkt[3]) }
+		want := [][]byte{sent[2], sent[3], sent[7]}
+		a2.send(s.addr, nackPacket(t, a2.joined.VideoSSRC, a1.joined.VideoSSRC,
+			seqOf(sent[2]), seqOf(sent[3]), seqOf(sent[7]), seqOf(sent[9])+5))
+		got := a2.recv(300 * time.Millisecond)
+		if len(got) != len(want) {
+			t.Fatalf("a2 got %d retransmissions, want %d", len(got), len(want))
+		}
+		for i := range got {
+			if !bytes.Equal(got[i], want[i]) {
+				t.Fatalf("retransmission %d differs from the original", i)
+			}
+		}
+		if extra := a3.recv(100 * time.Millisecond); len(extra) != 0 {
+			t.Fatalf("a3 received %d retransmissions meant for a2", len(extra))
+		}
+		st := s.router.Stats()
+		if st.PacketsIn[InNACK].Load() != 1 || st.PacketsOut[OutVideoRTX].Load() != 3 || st.RTXMisses.Load() != 1 {
+			t.Fatalf("nack in %d, rtx out %d, misses %d", st.PacketsIn[InNACK].Load(),
+				st.PacketsOut[OutVideoRTX].Load(), st.RTXMisses.Load())
+		}
+	})
+}
+
+func TestRouterRejectsBadNACKs(t *testing.T) {
+	s := newTestServer(t, func(c *room.Config) { c.P2PEnabled = false }, nil)
+	a1 := s.peer("a1", 0)
+	a2 := s.peer("a2", a1.client.InRoom())
+	b1 := s.peer("b1", 0)
+	b2 := s.peer("b2", b1.client.InRoom())
+	for _, p := range []*peer{a1, a2, b1, b2} {
+		p.register(s.addr)
+	}
+	pkt := a1.videoPacket(1)
+	a1.send(s.addr, pkt)
+	seq := uint16(pkt[2])<<8 | uint16(pkt[3])
+	if got := a2.recv(300 * time.Millisecond); len(got) != 1 {
+		t.Fatalf("a2 got %d packets", len(got))
+	}
+	st := s.router.Stats()
+	for _, c := range []struct {
+		name string
+		from *peer
+		nack []byte
+		drop DropReason
+	}{
+		{"spoofed sender", b1, nackPacket(t, a2.joined.VideoSSRC, a1.joined.VideoSSRC, seq), DropAddrMismatch},
+		{"unknown sender", a2, nackPacket(t, 0xDEAD, a1.joined.VideoSSRC, seq), DropUnknownSSRC},
+		{"other room", b1, nackPacket(t, b1.joined.VideoSSRC, a1.joined.VideoSSRC, seq), DropBadPayload},
+		{"own stream", a1, nackPacket(t, a1.joined.VideoSSRC, a1.joined.VideoSSRC, seq), DropBadPayload},
+		{"audio stream", a2, nackPacket(t, a2.joined.VideoSSRC, a1.joined.AudioSSRC, seq), DropBadPayload},
+		{"truncated", a2, nackPacket(t, a2.joined.VideoSSRC, a1.joined.VideoSSRC, seq)[:14], DropMalformed},
+	} {
+		before := st.Drops[c.drop].Load()
+		c.from.send(s.addr, c.nack)
+		waitFor(t, c.name, func() bool { return st.Drops[c.drop].Load() == before+1 })
+	}
+	for _, p := range []*peer{a1, a2, b1, b2} {
+		if got := p.recv(100 * time.Millisecond); len(got) != 0 {
+			t.Fatalf("%s received %d packets after bad NACKs", p.client.Name, len(got))
+		}
+	}
+	if n := st.PacketsOut[OutVideoRTX].Load(); n != 0 {
+		t.Fatalf("%d retransmissions", n)
+	}
+}
+
+func TestRouterNACKDisabled(t *testing.T) {
+	s := newTestServer(t, func(c *room.Config) { c.P2PEnabled = false }, func(c *Config) { c.NACKBufferPackets = 0 })
+	a1 := s.peer("a1", 0)
+	a2 := s.peer("a2", a1.client.InRoom())
+	a1.register(s.addr)
+	a2.register(s.addr)
+	pkt := a1.videoPacket(1)
+	a1.send(s.addr, pkt)
+	if got := a2.recv(300 * time.Millisecond); len(got) != 1 {
+		t.Fatalf("a2 got %d packets", len(got))
+	}
+	st := s.router.Stats()
+	a2.send(s.addr, nackPacket(t, a2.joined.VideoSSRC, a1.joined.VideoSSRC, uint16(pkt[2])<<8|uint16(pkt[3])))
+	waitFor(t, "the NACK to be dropped", func() bool { return st.Drops[DropBadPayload].Load() == 1 })
+	if got := a2.recv(100 * time.Millisecond); len(got) != 0 {
+		t.Fatalf("a2 got %d retransmissions with NACK off", len(got))
+	}
+}
+
+func TestRTXRingWrapsAndGuards(t *testing.T) {
+	q := newRTXRing(100) // rounded up to 128
+	if q.size != 128 {
+		t.Fatalf("size %d", q.size)
+	}
+	pkt := func(seq uint16) []byte { return []byte{byte(seq >> 8), byte(seq), 0xAB} }
+	for i := range 300 {
+		seq := uint16(65400 + i) // wraps at 65536
+		q.store(pkt(seq), seq)
+	}
+	base := uint16(65400)
+	top := base + 299
+	if b := q.get(top, 8); !bytes.Equal(b, pkt(top)) {
+		t.Fatalf("newest packet: %x", b)
+	}
+	if b := q.get(top-119, 8); !bytes.Equal(b, pkt(top-119)) {
+		t.Fatalf("oldest packet outside the guard: %x", b)
+	}
+	for _, seq := range []uint16{top - 120, top - 127, top - 200, top + 1} {
+		if b := q.get(seq, 8); b != nil {
+			t.Fatalf("seq %d (top %d) returned %x", seq, top, b)
+		}
+	}
+	if b := q.get(top, 200); b != nil {
+		t.Fatal("a guard larger than the ring still returned a packet")
+	}
+}
+
 func TestRouterDropsSpoofedAndUnknownSSRC(t *testing.T) {
 	s := newTestServer(t, nil, nil)
 	a := s.peer("a", 0)

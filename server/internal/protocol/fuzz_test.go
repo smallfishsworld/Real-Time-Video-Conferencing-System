@@ -145,3 +145,27 @@ func FuzzControlFrame(f *testing.F) {
 		}
 	})
 }
+
+func FuzzParseNACK(f *testing.F) {
+	f.Add([]byte{0x81, 205, 0, 3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 7, 0x80, 1})
+	f.Fuzz(func(t *testing.T, b []byte) {
+		var n NACK
+		if err := ParseNACK(b, &n); err != nil {
+			return
+		}
+		buf := make([]byte, len(b))
+		size, err := n.MarshalTo(buf)
+		if err != nil || size != len(b) {
+			t.Fatalf("MarshalTo = %d, %v for a %d-byte NACK", size, err, len(b))
+		}
+		var m NACK
+		if err := ParseNACK(buf, &m); err != nil || m != n {
+			t.Fatalf("round trip mismatch")
+		}
+		lost := n.AppendLost(nil)
+		var p NACK
+		if p.SetLost(lost) != len(lost) || len(p.AppendLost(nil)) != len(lost) {
+			t.Fatalf("SetLost/AppendLost disagree on %v", lost)
+		}
+	})
+}

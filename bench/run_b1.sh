@@ -8,7 +8,8 @@
 # The loss rule runs before IPv4 defragmentation (priority -400), so it drops single
 # IP fragments, as a lossy link does. Only the server -> receiver direction is
 # impaired. Systems: the original code (legacy relay + legacy client media threads),
-# v2 without FEC, v2 with FEC (video k=4, audio k=2). P2P is disabled on the v2 server
+# v2 without recovery, v2 with FEC (video k=4, audio k=2), v2 with NACK retransmission
+# of video, and v2 with both (the client's default). P2P is disabled on the v2 server
 # so both systems relay through the server (legacy: relay mode, as `chgmode` selects).
 #
 # Usage: sudo bench/run_b1.sh            (all systems, all loss rates)
@@ -17,7 +18,7 @@
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 
-SYSTEMS=${SYSTEMS:-"legacy v2-nofec v2-fec"}
+SYSTEMS=${SYSTEMS:-"legacy v2-nofec v2-fec v2-nack v2-fec-nack"}
 LOSSES=${LOSSES:-"0 10 20 50 100"} # per mille
 SECONDS_PER_RUN=${SECONDS_PER_RUN:-41}
 OUT_DIR="$TMPDIR_BENCH/b1"
@@ -81,15 +82,16 @@ run_one() {
       --send --end-at "$end_at" --out "$OUT_DIR/$tag.send.json" >"$OUT_DIR/$tag.send.log" 2>&1 &
     local send_pid=$!
   else
-    local fec_v=4 fec_a=2
-    if [ "$system" = v2-nofec ]; then fec_v=0 fec_a=0; fi
+    local fec_v=4 fec_a=2 nack=""
+    case $system in v2-nofec | v2-nack) fec_v=0 fec_a=0 ;; esac
+    case $system in *nack) nack=--nack ;; esac
     ip netns exec "$SRV" "$CONFSERVER" -control-addr "$SERVER_IP:6100" -media-addr "$SERVER_IP:6100" \
       -metrics-addr 127.0.0.1:6101 -p2p=false -audio-fec-k "$fec_a" >"$OUT_DIR/$tag.server.log" 2>&1 &
     server_pid=$!
     wait_tcp "$SRV" "$SERVER_IP" 6100
     end_at=$(mono_plus "$SECONDS_PER_RUN")
     ip netns exec "$RCV" "$PY" "$BENCH/v2_client.py" --server "$SERVER_IP" --name receiver --create b1 \
-      --video-fec-k "$fec_v" --audio-fec-k "$fec_a" --end-at "$end_at" --out "$OUT_DIR/$tag.recv.json" \
+      --video-fec-k "$fec_v" --audio-fec-k "$fec_a" $nack --end-at "$end_at" --out "$OUT_DIR/$tag.recv.json" \
       >"$OUT_DIR/$tag.recv.log" 2>&1 &
     local recv_pid=$!
     sleep 1

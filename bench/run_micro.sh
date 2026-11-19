@@ -14,12 +14,15 @@ mkdir -p "$RESULTS"
 RAW="$RESULTS/micro.txt"
 log "waiting for the bench lock ($LOCK)"
 (cd "$ROOT/server" && nice -n 19 go test -c -o "$TMPDIR_BENCH/protocol.test" ./internal/protocol &&
-  nice -n 19 go test -c -o "$TMPDIR_BENCH/media.test" ./internal/media)
+  nice -n 19 go test -c -o "$TMPDIR_BENCH/media.test" ./internal/media &&
+  nice -n 19 go test -c -o "$TMPDIR_BENCH/udpio.test" ./internal/udpio)
 flock "$LOCK" bash -c "
   set -euo pipefail
   cd '$ROOT/server/internal/protocol'
   taskset -c $CPU '$TMPDIR_BENCH/protocol.test' -test.run '^\$' -test.bench . -test.benchmem -test.count $COUNT -test.cpu 1
   cd '$ROOT/server/internal/media'
   taskset -c $CPU '$TMPDIR_BENCH/media.test' -test.run '^\$' -test.bench . -test.benchmem -test.count $COUNT -test.cpu 1
+  cd '$ROOT/server/internal/udpio'
+  taskset -c $CPU '$TMPDIR_BENCH/udpio.test' -test.run '^\$' -test.bench . -test.benchmem -test.count $COUNT -test.cpu 1
 " >"$RAW"
 "$PY" "$BENCH/analyze_micro.py" "$RAW" "$RESULTS/micro.json"

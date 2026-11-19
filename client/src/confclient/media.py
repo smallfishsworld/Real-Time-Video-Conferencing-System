@@ -17,6 +17,7 @@ from typing import Any
 from .assembler import FrameAssembler, VideoFrame
 from .fec import FecDecoder
 from .jitter import AudioPlayout
+from .nack import NackStats, NackTracker
 from .packetizer import AudioPacketizer, VideoPacketizer
 from .protocol import (
     AUDIO_FRAME_SECONDS,
@@ -27,6 +28,7 @@ from .protocol import (
     TYPE_REGISTER_ACK,
     VIDEO_CLOCK_RATE,
     ProtocolError,
+    build_nacks,
     build_register,
     is_rtp,
     parse_addr,
@@ -54,6 +56,8 @@ class MediaConfig:
     keepalive_interval: float = 5.0
     switch_grace: float = 2.0
     socket_buffer: int = 1 << 20
+    nack: bool = True  # ask the server to resend lost video packets (relay mode)
+    nack_interval: float = 0.01
 
 
 @dataclass
@@ -70,6 +74,7 @@ class SessionStats:
     unknown_ssrc: int = 0
     malformed: int = 0
     fec_recovered: int = 0
+    nacks_sent: int = 0
     mixed_csrcs: set[int] = field(default_factory=set)
     frames_by_participant: dict[int, int] = field(default_factory=dict)
     packets_by_source: dict[str, int] = field(default_factory=lambda: {"server": 0, "peer": 0})
@@ -80,6 +85,7 @@ class _VideoIn:
     participant: int
     fec: FecDecoder = field(default_factory=FecDecoder)
     assembler: FrameAssembler = field(default_factory=FrameAssembler)
+    nack: NackTracker | None = None
 
 
 VideoCallback = Callable[[int, VideoFrame], None]
@@ -155,6 +161,8 @@ class MediaSession(asyncio.DatagramProtocol):
         observed = await self.register()
         self._tasks.append(asyncio.create_task(self._keepalive(), name="media-keepalive"))
         self._tasks.append(asyncio.create_task(self._expire_loop(), name="media-expire"))
+        if self.config.nack:
+            self._tasks.append(asyncio.create_task(self._nack_loop(), name="media-nack"))
         return observed
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
@@ -208,6 +216,31 @@ class MediaSession(asyncio.DatagramProtocol):
             for v in self._video_in.values():
                 v.assembler.expire(now)
 
+    async def _nack_loop(self) -> None:
+        own = int(self.joined["video_ssrc"])
+        while True:
+            await asyncio.sleep(self.config.nack_interval)
+            now = self.clock()
+            for ssrc, v in self._video_in.items():
+                if v.nack is None:
+                    continue
+                lost = v.nack.due(now)
+                # Only the server keeps a retransmission buffer, so P2P sends none.
+                if lost and self._peer is None:
+                    for pkt in build_nacks(own, ssrc, lost):
+                        self._send_raw(pkt, self.server)
+                        self.stats.nacks_sent += 1
+
+    def nack_stats(self) -> NackStats:
+        """NACK counters summed over the current senders."""
+        total = NackStats()
+        for v in self._video_in.values():
+            if v.nack is not None:
+                total.requested += v.nack.stats.requested
+                total.recovered += v.nack.stats.recovered
+                total.abandoned += v.nack.stats.abandoned
+        return total
+
     # Control-plane updates ------------------------------------------------------
 
     def update_roster(self, roster: dict[str, Any]) -> None:
@@ -226,7 +259,12 @@ class MediaSession(asyncio.DatagramProtocol):
                 del self._video_in[ssrc]
         for ssrc, pid in video.items():
             self._video_in.setdefault(
-                ssrc, _VideoIn(pid, assembler=FrameAssembler(self.config.video_deadline))
+                ssrc,
+                _VideoIn(
+                    pid,
+                    assembler=FrameAssembler(self.config.video_deadline),
+                    nack=NackTracker() if self.config.nack else None,
+                ),
             )
         for ssrc in list(self._audio_fec):
             if ssrc not in audio:
@@ -372,6 +410,10 @@ class MediaSession(asyncio.DatagramProtocol):
         else:
             return
         self.stats.fec_recovered += len(repaired)
+        if v.nack is not None:
+            v.nack.on_packet(seq, now)
+            for pkt in repaired:
+                v.nack.on_packet(peek_ssrc(pkt)[2], now)
         for pkt in packets + repaired:
             header, payload = parse_rtp(pkt)
             frame = v.assembler.push(header, payload, now)

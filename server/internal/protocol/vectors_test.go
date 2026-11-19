@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -51,6 +52,13 @@ type vectorFile struct {
 		Hex     string         `json:"hex"`
 		Message map[string]any `json:"message"`
 	} `json:"control"`
+	NACK []struct {
+		Name       string   `json:"name"`
+		Hex        string   `json:"hex"`
+		SenderSSRC uint32   `json:"sender_ssrc"`
+		MediaSSRC  uint32   `json:"media_ssrc"`
+		Lost       []uint16 `json:"lost"`
+	} `json:"nack"`
 	Invalid []struct {
 		Kind string `json:"kind"`
 		Name string `json:"name"`
@@ -259,6 +267,32 @@ func TestGoldenControl(t *testing.T) {
 	}
 }
 
+func TestGoldenNACK(t *testing.T) {
+	vecs := loadVectors(t).NACK
+	if len(vecs) == 0 {
+		t.Fatal("no NACK vectors")
+	}
+	for _, vec := range vecs {
+		t.Run(vec.Name, func(t *testing.T) {
+			b := unhex(t, vec.Hex)
+			var n NACK
+			if err := ParseNACK(b, &n); err != nil {
+				t.Fatal(err)
+			}
+			if n.SenderSSRC != vec.SenderSSRC || n.MediaSSRC != vec.MediaSSRC || !slices.Equal(n.AppendLost(nil), vec.Lost) {
+				t.Fatalf("got %+v, lost %v; want %v", n, n.AppendLost(nil), vec.Lost)
+			}
+			var m NACK
+			m.SenderSSRC, m.MediaSSRC = vec.SenderSSRC, vec.MediaSSRC
+			m.SetLost(vec.Lost)
+			buf := make([]byte, len(b))
+			if size, err := m.MarshalTo(buf); err != nil || !bytes.Equal(buf[:size], b) {
+				t.Fatalf("SetLost+MarshalTo = %x, %v; want %x", buf[:size], err, b)
+			}
+		})
+	}
+}
+
 func TestGoldenInvalid(t *testing.T) {
 	for _, vec := range loadVectors(t).Invalid {
 		t.Run(vec.Kind+"/"+vec.Name, func(t *testing.T) {
@@ -277,6 +311,9 @@ func TestGoldenInvalid(t *testing.T) {
 			case "register":
 				var r Register
 				err = ParseRegister(b, &r)
+			case "nack":
+				var n NACK
+				err = ParseNACK(b, &n)
 			case "control":
 				var body []byte
 				body, err = ReadFrame(bytes.NewReader(b), nil)

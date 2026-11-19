@@ -90,6 +90,7 @@ type collector struct {
 	rooms, participants, controlConns, slowDisconnects *prometheus.Desc
 	controlConnsTotal                                  *prometheus.Desc
 	readCalls, videoSendCalls, videoSendMessages       *prometheus.Desc
+	rtxMisses                                          *prometheus.Desc
 }
 
 func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Server) *collector {
@@ -117,6 +118,7 @@ func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Serve
 		readCalls:         d("media_read_syscalls_total", "Receive system calls on the media socket that returned datagrams."),
 		videoSendCalls:    d("video_send_syscalls_total", "System calls that sent forwarded video."),
 		videoSendMessages: d("video_send_messages_total", "Messages those calls carried; with UDP GSO a message holds several datagrams."),
+		rtxMisses:         d("video_rtx_misses_total", "NACKed video packets no longer in the sender's retransmission buffer."),
 	}
 }
 
@@ -125,7 +127,7 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 		c.packetsIn, c.bytesIn, c.packetsOut, c.bytesOut, c.drops,
 		c.mixerTicks, c.mixerOverruns, c.fecRecovered, c.concealed,
 		c.rooms, c.participants, c.controlConns, c.controlConnsTotal, c.slowDisconnects,
-		c.readCalls, c.videoSendCalls, c.videoSendMessages,
+		c.readCalls, c.videoSendCalls, c.videoSendMessages, c.rtxMisses,
 	} {
 		ch <- d
 	}
@@ -157,6 +159,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	counter(c.readCalls, st.ReadCalls.Load())
 	counter(c.videoSendCalls, st.VideoSendCalls.Load())
 	counter(c.videoSendMessages, st.VideoSendMessages.Load())
+	counter(c.rtxMisses, st.RTXMisses.Load())
 
 	view := c.reg.View()
 	byMode := map[string]int{room.ModeRelay.String(): 0, room.ModeP2P.String(): 0}

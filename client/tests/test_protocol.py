@@ -18,6 +18,8 @@ from confclient.protocol import (
     ProtocolError,
     RtpHeader,
     VideoHeader,
+    build_nack,
+    build_nacks,
     build_register,
     build_register_ack,
     encode_frame,
@@ -25,6 +27,7 @@ from confclient.protocol import (
     is_rtp,
     parse_addr,
     parse_fec,
+    parse_nack,
     parse_register,
     parse_register_ack,
     parse_rtp,
@@ -142,6 +145,7 @@ _PARSERS: dict[str, Callable[[bytes], object]] = {
     "fec": parse_fec,
     "register": parse_register,
     "control": lambda b: FrameDecoder().feed(b),
+    "nack": parse_nack,
 }
 
 
@@ -149,6 +153,24 @@ _PARSERS: dict[str, Callable[[bytes], object]] = {
 def test_invalid_vectors_are_rejected(vec: dict[str, Any]) -> None:
     with pytest.raises(ProtocolError):
         _PARSERS[vec["kind"]](bytes.fromhex(vec["hex"]))
+
+
+@pytest.mark.parametrize("vec", VECTORS["nack"], ids=_name)
+def test_nack_vectors(vec: dict[str, Any]) -> None:
+    raw = bytes.fromhex(vec["hex"])
+    assert build_nack(vec["sender_ssrc"], vec["media_ssrc"], vec["lost"]) == raw
+    assert parse_nack(raw) == (vec["sender_ssrc"], vec["media_ssrc"], vec["lost"])
+
+
+def test_build_nacks_splits_long_lists() -> None:
+    lost = [i * 20 for i in range(40)]  # too far apart to share an item: 40 items
+    pkts = build_nacks(1, 2, lost)
+    assert len(pkts) == 3
+    assert [seq for p in pkts for seq in parse_nack(p)[2]] == lost
+    with pytest.raises(ProtocolError):
+        build_nack(1, 2, lost)
+    with pytest.raises(ProtocolError):
+        build_nack(1, 2, [])
 
 
 def test_sequence_arithmetic_wraps() -> None:

@@ -56,6 +56,12 @@ def xor_parity(packets: list[bytes], ssrc: int, seq: int) -> bytes:
     return header + fec + bytes(parity)
 
 
+def nack(sender: int, media: int, items: list[tuple[int, int]]) -> bytes:
+    """RTCP generic NACK (RFC 4585): header, two SSRCs, then (PID, BLP) pairs."""
+    head = struct.pack("!BBHII", 0x80 | 1, 205, 2 + len(items), sender, media)
+    return head + b"".join(struct.pack("!HH", pid, blp) for pid, blp in items)
+
+
 def frame(body: dict) -> bytes:
     js = json.dumps(body, separators=(",", ":"), ensure_ascii=False).encode()
     return struct.pack("!I", len(js)) + js
@@ -177,6 +183,23 @@ def main() -> None:
         {"name": "register_ack_ipv6", "hex": ack6.hex(), "txid": 7, "addr": "[2001:db8::1]:6100"}
     )
 
+    vectors["nack"] = [
+        {
+            "name": "single",
+            "hex": nack(0x0A0B0C0D, 0x01020304, [(100, 0)]).hex(),
+            "sender_ssrc": 0x0A0B0C0D,
+            "media_ssrc": 0x01020304,
+            "lost": [100],
+        },
+        {
+            "name": "bitmask_and_wrap",
+            "hex": nack(7, 8, [(65534, 0b1000000000000101), (300, 0b10)]).hex(),
+            "sender_ssrc": 7,
+            "media_ssrc": 8,
+            "lost": [65534, 65535, 1, 14, 300, 302],
+        },
+    ]
+
     messages = [
         {"type": "hello", "name": "alice", "version": 1, "seq": 1},
         {"type": "join_room", "room_id": 3, "seq": 2},
@@ -227,6 +250,8 @@ def main() -> None:
         {"kind": "fec", "name": "count_too_large", "hex": struct.pack("!HBBBBHI", 1, 49, 0, 0, 0, 0, 0).hex()},
         {"kind": "register", "name": "short", "hex": reg[:20].hex()},
         {"kind": "register", "name": "wrong_version", "hex": (reg[:1] + b"\x02" + reg[2:]).hex()},
+        {"kind": "nack", "name": "no_items", "hex": nack(1, 2, []).hex()},
+        {"kind": "nack", "name": "length_beyond_packet", "hex": nack(1, 2, [(5, 0)]).hex()[:-8]},
         {"kind": "control", "name": "zero_length", "hex": "00000000"},
         {"kind": "control", "name": "too_large", "hex": "00010001"},
         {"kind": "control", "name": "no_type", "hex": frame({"name": "x"}).hex()},
@@ -247,7 +272,7 @@ def write_fuzz_seeds(vectors: dict[str, list[dict]]) -> None:
     rtp_pkts = [bytes.fromhex(v["hex"]) for v in vectors["rtp"]]
     parities = [bytes.fromhex(v["parity_hex"]) for v in vectors["fec"]]
     invalid = {k: [bytes.fromhex(v["hex"]) for v in vectors["invalid"] if v["kind"] == k] for k in
-               ("rtp", "video", "fec", "register", "control")}
+               ("rtp", "video", "fec", "register", "control", "nack")}
     seeds: dict[str, list[tuple[bytes, ...]]] = {
         "FuzzParseRTP": [(p,) for p in rtp_pkts + parities + invalid["rtp"]],
         "FuzzParseVideo": [(p[12:],) for p in rtp_pkts[:2]] + [(p,) for p in invalid["video"]],
@@ -259,6 +284,7 @@ def write_fuzz_seeds(vectors: dict[str, list[dict]]) -> None:
         "FuzzParseRegisterAck": [(bytes.fromhex(v["hex"]),) for v in vectors["register"][1:]],
         "FuzzControlFrame": [(bytes.fromhex(v["hex"]),) for v in vectors["control"]]
         + [(p,) for p in invalid["control"]],
+        "FuzzParseNACK": [(bytes.fromhex(v["hex"]),) for v in vectors["nack"]] + [(p,) for p in invalid["nack"]],
     }
     root = Path(__file__).resolve().parent.parent / "server" / "internal" / "protocol" / "testdata" / "fuzz"
     for target, entries in seeds.items():

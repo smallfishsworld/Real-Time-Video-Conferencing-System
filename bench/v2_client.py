@@ -137,6 +137,18 @@ async def video_loop(
         k += 1
 
 
+def nack_report(session: Any) -> dict[str, int]:
+    if session is None:
+        return {}
+    n = session.nack_stats()
+    return {
+        "nacks_sent": session.stats.nacks_sent,
+        "requested": n.requested,
+        "recovered": n.recovered,
+        "abandoned": n.abandoned,
+    }
+
+
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     frames = load_frames() if args.send_video else []
     media = MediaConfig(
@@ -144,6 +156,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         audio_fec_k=args.audio_fec_k,
         audio_delay_frames=max(1, args.jitter_ms // 20),
         max_send_kbps=args.max_send_kbps,
+        nack=args.nack,
     )
     mic = TaggedMicrophone(args.talker, args.talkers) if args.send_audio else None
     speakers: list[RecordingSpeaker] = []
@@ -203,6 +216,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         "rx_bytes": stats.bytes_in if stats else {},
         "rx_series": rx_series,
         "fec_recovered": stats.fec_recovered if stats else 0,
+        "nack": nack_report(session),
         "video_frames_rate_limited": stats.video_frames_rate_limited if stats else 0,
         "audio_frames_rate_limited": stats.audio_frames_rate_limited if stats else 0,
         "mode": session.mode if session else None,
@@ -233,6 +247,7 @@ def main() -> None:
     ap.add_argument("--video-fec-k", type=int, default=4)
     ap.add_argument("--audio-fec-k", type=int, default=2)
     ap.add_argument("--jitter-ms", type=int, default=60)
+    ap.add_argument("--nack", action="store_true", help="request lost video packets again (generic NACK)")
     ap.add_argument("--max-send-kbps", type=int, default=6000)
     ap.add_argument("--end-at", type=float, required=True, help="time.monotonic() at which to stop")
     ap.add_argument("--out", type=Path, required=True)

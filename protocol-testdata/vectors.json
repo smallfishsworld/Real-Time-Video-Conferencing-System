@@ -273,6 +273,16 @@
    "hex": "010200000102030405060708a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
   },
   {
+   "kind": "nack",
+   "name": "no_items",
+   "hex": "81cd00020000000100000002"
+  },
+  {
+   "kind": "nack",
+   "name": "length_beyond_packet",
+   "hex": "81cd00030000000100000002"
+  },
+  {
    "kind": "control",
    "name": "zero_length",
    "hex": "00000000"
@@ -286,6 +296,31 @@
    "kind": "control",
    "name": "no_type",
    "hex": "0000000c7b226e616d65223a2278227d"
+  }
+ ],
+ "nack": [
+  {
+   "name": "single",
+   "hex": "81cd00030a0b0c0d0102030400640000",
+   "sender_ssrc": 168496141,
+   "media_ssrc": 16909060,
+   "lost": [
+    100
+   ]
+  },
+  {
+   "name": "bitmask_and_wrap",
+   "hex": "81cd00040000000700000008fffe8005012c0002",
+   "sender_ssrc": 7,
+   "media_ssrc": 8,
+   "lost": [
+    65534,
+    65535,
+    1,
+    14,
+    300,
+    302
+   ]
   }
  ]
 }

@@ -41,6 +41,12 @@ def model_ratio(system: str, p: float, sizes: list[int]) -> float:
     frags = [math.ceil(s / 1200) for s in sizes]
     if system == "v2-nofec":
         return sum((1 - p) ** k for k in frags) / len(frags)
+    if system.endswith("nack"):
+        # Each packet gets the original try and up to three NACKed retransmissions, each
+        # lost independently (the NACKs themselves travel the unimpaired direction).
+        # FEC can only help further, so this is a lower bound for v2-fec-nack.
+        q = 1 - p**4
+        return sum(q**k for k in frags) / len(frags)
     total = 0.0
     for f in frags:  # groups of 4 media packets + 1 parity, never spanning frames
         prob = 1.0
@@ -135,6 +141,7 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
             "model_ratio_independent_loss": model_ratio(system, p, sizes),
             "latency_ms": summary(x * 1000 for x in latencies),
             "sender_frames_rate_limited": send.get("video_frames_rate_limited", 0),
+            "nack": recv.get("nack") or None,
         },
         "audio": audio,
         "receiver_kernel": {
@@ -157,7 +164,7 @@ def main() -> None:
     for net in sorted(d.glob("*.net.json")):
         tag = net.name.removesuffix(".net.json")
         runs.append(analyze_run(tag, d, sizes))
-    order = {"legacy": 0, "v2-nofec": 1, "v2-fec": 2}
+    order = {"legacy": 0, "v2-nofec": 1, "v2-fec": 2, "v2-nack": 3, "v2-fec-nack": 4}
     runs.sort(key=lambda r: (order.get(r["system"], 9), r["loss_percent"]))
     write_json(
         out,

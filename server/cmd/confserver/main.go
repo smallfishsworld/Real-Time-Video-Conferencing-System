@@ -42,6 +42,7 @@ func run(args []string) error {
 	fs.IntVar(&cfg.Media.AudioFECK, "audio-fec-k", cfg.Media.AudioFECK, "XOR parity group size for mixed audio (0 disables FEC)")
 	fs.IntVar(&cfg.Media.UDPBatch, "udp-batch", cfg.Media.UDPBatch, "most datagrams per recvmmsg/sendmmsg call (1 = one system call per datagram)")
 	fs.BoolVar(&cfg.Media.UDPGSO, "udp-gso", cfg.Media.UDPGSO, "send forwarded video as UDP GSO messages where the kernel supports it")
+	fs.IntVar(&cfg.Media.NACKBufferPackets, "nack-buffer", cfg.Media.NACKBufferPackets, "recent video packets kept per sender for NACK retransmission (0 disables)")
 	logLevel := fs.String("log-level", "info", "debug, info, warn or error")
 	logFormat := fs.String("log-format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {

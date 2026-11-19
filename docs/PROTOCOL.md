@@ -134,8 +134,13 @@ The first byte of a datagram decides how it is parsed (the same idea as RFC 7983
 |-------------|--------|
 | `0x01`      | `REGISTER` (client to server) |
 | `0x02`      | `REGISTER_ACK` (server to client) |
+| `0x81`, then `0xCD` (205) | RTCP generic NACK (client to server, section 2.9) |
 | `0x80-0xBF` | RTP (version 2) |
 | other       | dropped and counted as malformed |
+
+The NACK row is checked first. RTP packets of this system never have 205 in their
+second byte (payload types 96, 97 and 127, with or without the marker bit), so the two
+cannot be confused (the same rule as RFC 5761).
 
 Datagrams longer than 1500 bytes are dropped. Senders keep every datagram at or below
 1232 bytes of UDP payload, so packets never need IP fragmentation on a 1500-byte MTU
@@ -318,3 +323,41 @@ Then video and its parity packets are forwarded to every other registered member
 audio and its parity packets go to the room's mixer. A packet from one room can never be
 sent to a member of another room, because forwarding targets come only from the sender's
 own room in the routing table.
+
+### 2.9 Retransmission requests (RTCP generic NACK)
+
+A receiver in a relay room that is missing video packets asks the server to send them
+again with an RTCP generic NACK (RFC 4585, section 6.2.1):
+
+```
+ 0                   1                   2                   3
+|V=2|P| FMT=1 |   PT=205      |          length (words - 1)   |
+|              SSRC of packet sender (the requester's own SSRC) |
+|              SSRC of media source (the video stream)          |
+|            PID                |             BLP               |  1 to 16 items
+```
+
+PID is a lost sequence number; bit i of BLP set means PID + i + 1 is lost too, so one
+item covers up to 17 packets and one NACK up to 272. No padding, no compound RTCP.
+
+The server keeps the last 256 video packets (fragments and parity packets) of every
+sender (`-nack-buffer`) and answers a NACK by sending the listed packets, unchanged
+(same SSRC and sequence number), to the requester only. It drops the NACK, with the
+reasons of section 2.8, unless:
+
+1. the packet-sender SSRC is one of the requester's own SSRCs and the datagram comes
+   from its registered address (`unknown_ssrc`, `addr_mismatch`);
+2. the room is relaying (`p2p_mode`) and the request fits the requester's ingress
+   bucket (`rate_limited`);
+3. the media SSRC is the video stream of another member of the same room
+   (`bad_payload`).
+
+Packets no longer in the buffer are skipped and counted (`video_rtx_misses_total`).
+The retransmitted bytes count against a second token bucket of the requester (8 Mbit/s,
+256 KiB burst by default), so a receiver cannot make the server send more than that.
+
+The client requests a missing packet 5 ms after a later one arrives (so that
+reordering and FEC get the first chance), repeats the request every 30 ms, at most
+three times and for at most 250 ms, and does not request jumps of more than 128
+sequence numbers. In P2P mode it sends no NACKs, because peers keep no buffer. Audio
+is not retransmitted; it relies on FEC (section 2.6) and the mixer's concealment.

@@ -26,7 +26,7 @@ import pytest
 from confclient.app import ClientConfig, ConferenceApp, Devices
 from confclient.devices import AudioSink, AudioSource, FakeCamera, FakeMicrophone, FakeSpeaker, VideoSource
 from confclient.jitter import Frame
-from confclient.protocol import AUDIO_CLOCK_RATE
+from confclient.protocol import AUDIO_CLOCK_RATE, PT_VIDEO, peek_ssrc
 
 from .conftest import REPO, until
 
@@ -245,6 +245,56 @@ def test_three_party_call_video_mixed_audio_and_chat(server: Server) -> None:
             )
             assert all(abs(m.server_time_ms - now_ms) < 60_000 for m in c.app.chat_log)
             assert any(line.endswith(f"] {c.name}: hello from {c.name}") for line in c.log)
+
+        for c in clients:
+            await c.app.leave()
+            await c.app.close()
+
+    _run(scenario)
+
+
+def test_lost_video_is_resent_after_nack(server: Server) -> None:
+    """Carol loses two of every ten video packets on first arrival, in pairs so that
+    the XOR parity (one repair per group) cannot fill them; her NACKs must bring them
+    back from the server's buffer, so she sees about as many frames as Bob."""
+
+    async def scenario() -> None:
+        clients = [await _client(server, name) for name in FREQS]
+        alice, bob, carol = clients
+        room = (await alice.app.create("nack"))["room_id"]
+        await bob.app.join(room)
+        await carol.app.join(room)
+        await until(lambda: all(c.mode() == "relay" for c in clients), timeout=10)
+        await asyncio.sleep(2.5)  # past the switch grace period: everything is relayed
+
+        session = carol.app.session
+        assert session is not None
+        dropped: set[tuple[int, int]] = set()
+        receive = session.datagram_received
+
+        def lossy(data: bytes, addr: tuple[Any, ...]) -> None:
+            if len(data) >= 12 and data[1] & 0x7F == PT_VIDEO:
+                ssrc, _pt, seq = peek_ssrc(data)
+                if seq % 10 in (0, 1) and (ssrc, seq) not in dropped:
+                    dropped.add((ssrc, seq))
+                    return
+            receive(data, addr)
+
+        session.datagram_received = lossy  # type: ignore[method-assign]
+        start = {c.name: c.frames_from(alice) for c in (bob, carol)}
+        await asyncio.sleep(6)
+        got = {c.name: c.frames_from(alice) - start[c.name] for c in (bob, carol)}
+        nack = session.nack_stats()
+        assert len(dropped) > 50
+        # A pair that straddles two parity groups is one loss per group, which FEC
+        # repairs before any NACK is due; the rest must come back by retransmission.
+        detail = (nack, session.stats.fec_recovered, len(dropped))
+        assert nack.recovered + session.stats.fec_recovered >= 0.9 * len(dropped), detail
+        assert nack.recovered >= 0.3 * len(dropped), detail
+        assert got["carol"] >= 0.9 * got["bob"] > 0, got
+        metrics = await asyncio.to_thread(server.metrics)
+        assert metrics['confserver_media_packets_sent_total{kind="video_rtx"}'] >= nack.recovered
+        assert metrics['confserver_media_packets_received_total{kind="nack"}'] == session.stats.nacks_sent
 
         for c in clients:
             await c.app.leave()

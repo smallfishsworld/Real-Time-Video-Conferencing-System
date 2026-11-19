@@ -36,6 +36,14 @@ prepare() {
   if [ -f "$ROOT/server/cmd/loadgen/main.go" ]; then
     (cd "$ROOT/server" && nice -n 19 go build -o "$LOADGEN" ./cmd/loadgen)
   fi
+  # What the binaries were built from; the analysis scripts copy it into the results.
+  {
+    printf '{"git_commit": "%s", "utc": "%s", "git_dirty_files": [' \
+      "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    git -C "$ROOT" status --porcelain -- server client bench legacy ':!bench/results' |
+      sed 's/\\/\\\\/g; s/"/\\"/g; s/.*/"&"/' | paste -sd, -
+    printf ']}\n'
+  } >"$TMPDIR_BENCH/build.json"
   if [ ! -f "$BENCH/data/frames/frame_00999.jpg" ]; then
     log "generating the frame corpus"
     nice -n 19 "$PY" "$BENCH/gen_frames.py" --count 1000
