@@ -1,0 +1,949 @@
+{
+  "benchmark": "jitter_simulation",
+  "label": "before",
+  "description": "Deterministic simulation of the server mixer's and the client's audio jitter buffers (bench/jitter_scenarios.json; server/internal/media/jitter_sim_test.go and bench/jitter_sim.py). Latency is pop time minus send time of each played frame; a gap is a run of ticks in which the sender was active but no received frame was played.",
+  "command": "LABEL=before bench/run_jitter.sh",
+  "rundir": "bench/tmp/jitter/before-20261119T092156Z",
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "kernel_config": {
+      "CONFIG_IRQ_TIME_ACCOUNTING": "n",
+      "CONFIG_VIRT_CPU_ACCOUNTING_GEN": "n",
+      "CONFIG_TICK_CPU_ACCOUNTING": "y",
+      "CONFIG_HZ": "250"
+    },
+    "loadavg": "2.31 2.32 2.16 4/183 3516",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "d4eacfd",
+    "git_dirty": false,
+    "git_dirty_files": [],
+    "build": {
+      "git_commit": "d4eacfd",
+      "utc": "2026-11-19T09:21:56Z",
+      "git_dirty_files": [],
+      "git_diff_sha256": null,
+      "binaries": {
+        "media.test": "393c21a08a9920feeb28ce78ddd8d6c0b337defd94044dba20f91c56fa5e3105"
+      }
+    },
+    "utc": "2026-11-19T09:21:57Z"
+  },
+  "scenarios": {
+    "description": "Audio streams for the jitter-buffer simulations (bench/jitter_sim.py for the client, server/internal/media/jitter_sim_test.go for the server mixer). Frame k is sent at k * period_us of the receiver's clock and carries RTP timestamp k * 320. It arrives delay_us later, plus step_us for frames step_from..step_to-1, plus a uniform random jitter in [0, jitter_us) drawn from SplitMix64(seed + k). The first burst_frames frames all arrive when frame burst_frames-1 does. The receiver pops one frame every 20 ms, 7 ms after the send grid.",
+    "seed": 1,
+    "scenarios": [
+      {
+        "name": "steady",
+        "period_us": 20000,
+        "frames": 3000,
+        "delay_us": 30000
+      },
+      {
+        "name": "jitter_0_10ms",
+        "period_us": 20000,
+        "frames": 6000,
+        "delay_us": 30000,
+        "jitter_us": 10000
+      },
+      {
+        "name": "jitter_0_40ms",
+        "period_us": 20000,
+        "frames": 6000,
+        "delay_us": 30000,
+        "jitter_us": 40000
+      },
+      {
+        "name": "slow_sender_1000ppm",
+        "period_us": 20020,
+        "frames": 15000,
+        "delay_us": 30000
+      },
+      {
+        "name": "fast_sender_1000ppm",
+        "period_us": 19980,
+        "frames": 15000,
+        "delay_us": 30000
+      },
+      {
+        "name": "slow_sender_1000ppm_jitter_0_10ms",
+        "period_us": 20020,
+        "frames": 15000,
+        "delay_us": 30000,
+        "jitter_us": 10000
+      },
+      {
+        "name": "fast_sender_1000ppm_jitter_0_10ms",
+        "period_us": 19980,
+        "frames": 15000,
+        "delay_us": 30000,
+        "jitter_us": 10000
+      },
+      {
+        "name": "slow_sender_100ppm",
+        "period_us": 20002,
+        "frames": 45000,
+        "delay_us": 30000
+      },
+      {
+        "name": "startup_burst_50",
+        "period_us": 20000,
+        "frames": 3000,
+        "delay_us": 30000,
+        "burst_frames": 50
+      },
+      {
+        "name": "delay_step_up_60ms",
+        "period_us": 20000,
+        "frames": 3000,
+        "delay_us": 30000,
+        "step_from": 1000,
+        "step_to": 3000,
+        "step_us": 60000
+      },
+      {
+        "name": "delay_step_up_100ms",
+        "period_us": 20000,
+        "frames": 3000,
+        "delay_us": 30000,
+        "step_from": 1000,
+        "step_to": 3000,
+        "step_us": 100000
+      },
+      {
+        "name": "delay_step_down_100ms",
+        "period_us": 20000,
+        "frames": 3000,
+        "delay_us": 30000,
+        "step_from": 0,
+        "step_to": 1000,
+        "step_us": 100000
+      },
+      {
+        "name": "delay_spike_100ms_for_300ms",
+        "period_us": 20000,
+        "frames": 3000,
+        "delay_us": 30000,
+        "step_from": 1000,
+        "step_to": 1015,
+        "step_us": 100000
+      }
+    ]
+  },
+  "summary": {
+    "server": {
+      "steady": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 87
+      },
+      "jitter_0_10ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 87
+      },
+      "jitter_0_40ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 107
+      },
+      "slow_sender_1000ppm": {
+        "longest_unplayed_ms": 540,
+        "gaps_over_60ms": 5,
+        "late": 120,
+        "latency_last_10s_median_ms": 34.72
+      },
+      "fast_sender_1000ppm": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 161.82
+      },
+      "slow_sender_1000ppm_jitter_0_10ms": {
+        "longest_unplayed_ms": 540,
+        "gaps_over_60ms": 79,
+        "late": 1248,
+        "latency_last_10s_median_ms": 87.12
+      },
+      "fast_sender_1000ppm_jitter_0_10ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 161.82
+      },
+      "slow_sender_100ppm": {
+        "longest_unplayed_ms": 540,
+        "gaps_over_60ms": 1,
+        "late": 24,
+        "latency_last_10s_median_ms": 57.508
+      },
+      "startup_burst_50": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 167
+      },
+      "delay_step_up_60ms": {
+        "longest_unplayed_ms": 540,
+        "gaps_over_60ms": 1,
+        "late": 24,
+        "latency_last_10s_median_ms": 147
+      },
+      "delay_step_up_100ms": {
+        "longest_unplayed_ms": 540,
+        "gaps_over_60ms": 1,
+        "late": 22,
+        "latency_last_10s_median_ms": 187
+      },
+      "delay_step_down_100ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 167
+      },
+      "delay_spike_100ms_for_300ms": {
+        "longest_unplayed_ms": 300,
+        "gaps_over_60ms": 1,
+        "late": 15,
+        "latency_last_10s_median_ms": 87
+      }
+    },
+    "client": {
+      "steady": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 107.0
+      },
+      "jitter_0_10ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 107.0
+      },
+      "jitter_0_40ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 127.0
+      },
+      "slow_sender_1000ppm": {
+        "longest_unplayed_ms": 560,
+        "gaps_over_60ms": 3,
+        "late": 72,
+        "latency_last_10s_median_ms": 52.08
+      },
+      "fast_sender_1000ppm": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 201.78
+      },
+      "slow_sender_1000ppm_jitter_0_10ms": {
+        "longest_unplayed_ms": 560,
+        "gaps_over_60ms": 55,
+        "late": 731,
+        "latency_last_10s_median_ms": 52.08
+      },
+      "fast_sender_1000ppm_jitter_0_10ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 201.78
+      },
+      "slow_sender_100ppm": {
+        "longest_unplayed_ms": 560,
+        "gaps_over_60ms": 1,
+        "late": 24,
+        "latency_last_10s_median_ms": 97.512
+      },
+      "startup_burst_50": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 207.0
+      },
+      "delay_step_up_60ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 107.0
+      },
+      "delay_step_up_100ms": {
+        "longest_unplayed_ms": 560,
+        "gaps_over_60ms": 1,
+        "late": 23,
+        "latency_last_10s_median_ms": 207.0
+      },
+      "delay_step_down_100ms": {
+        "longest_unplayed_ms": 0,
+        "gaps_over_60ms": 0,
+        "late": 0,
+        "latency_last_10s_median_ms": 207.0
+      },
+      "delay_spike_100ms_for_300ms": {
+        "longest_unplayed_ms": 300,
+        "gaps_over_60ms": 1,
+        "late": 15,
+        "latency_last_10s_median_ms": 107.0
+      }
+    }
+  },
+  "results": [
+    {
+      "scenario": "steady",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 3000,
+      "active_ticks": 2995,
+      "played": 2995,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 87,
+        "p95": 87,
+        "max": 87
+      },
+      "latency_all_ms": {
+        "median": 87,
+        "p95": 87,
+        "max": 87
+      }
+    },
+    {
+      "scenario": "jitter_0_10ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 6000,
+      "active_ticks": 5995,
+      "played": 5995,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 87,
+        "p95": 87,
+        "max": 87
+      },
+      "latency_all_ms": {
+        "median": 87,
+        "p95": 87,
+        "max": 87
+      }
+    },
+    {
+      "scenario": "jitter_0_40ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 6000,
+      "active_ticks": 5994,
+      "played": 5994,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 107,
+        "p95": 107,
+        "max": 107
+      },
+      "latency_all_ms": {
+        "median": 107,
+        "p95": 107,
+        "max": 107
+      }
+    },
+    {
+      "scenario": "slow_sender_1000ppm",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 15000,
+      "active_ticks": 15010,
+      "played": 14875,
+      "concealed": 15,
+      "silent": 120,
+      "late": 120,
+      "never_played": 120,
+      "longest_unplayed_ms": 540,
+      "gaps_over_60ms": 5,
+      "latency_last_10s_ms": {
+        "median": 34.72,
+        "p95": 89.02,
+        "max": 89.5
+      },
+      "latency_all_ms": {
+        "median": 59.74,
+        "p95": 86.52,
+        "max": 89.5
+      }
+    },
+    {
+      "scenario": "fast_sender_1000ppm",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 15000,
+      "active_ticks": 14980,
+      "played": 14980,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 11,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 161.82,
+        "p95": 166.3,
+        "max": 166.8
+      },
+      "latency_all_ms": {
+        "median": 157.12,
+        "p95": 168.48,
+        "max": 169.84
+      }
+    },
+    {
+      "scenario": "slow_sender_1000ppm_jitter_0_10ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 15000,
+      "active_ticks": 15010,
+      "played": 13747,
+      "concealed": 758,
+      "silent": 505,
+      "late": 1248,
+      "never_played": 1248,
+      "longest_unplayed_ms": 540,
+      "gaps_over_60ms": 79,
+      "latency_last_10s_ms": {
+        "median": 87.12,
+        "p95": 89.52,
+        "max": 89.78
+      },
+      "latency_all_ms": {
+        "median": 62.46,
+        "p95": 87.22,
+        "max": 90.24
+      }
+    },
+    {
+      "scenario": "fast_sender_1000ppm_jitter_0_10ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 15000,
+      "active_ticks": 14980,
+      "played": 14980,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 11,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 161.82,
+        "p95": 166.3,
+        "max": 166.8
+      },
+      "latency_all_ms": {
+        "median": 157.76,
+        "p95": 169.18,
+        "max": 170.86
+      }
+    },
+    {
+      "scenario": "slow_sender_100ppm",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 45000,
+      "active_ticks": 45000,
+      "played": 44973,
+      "concealed": 3,
+      "silent": 24,
+      "late": 24,
+      "never_played": 24,
+      "longest_unplayed_ms": 540,
+      "gaps_over_60ms": 1,
+      "latency_last_10s_ms": {
+        "median": 57.508,
+        "p95": 57.956,
+        "max": 58.006
+      },
+      "latency_all_ms": {
+        "median": 65.99,
+        "p95": 86.226,
+        "max": 89.95
+      }
+    },
+    {
+      "scenario": "startup_burst_50",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 3000,
+      "active_ticks": 2948,
+      "played": 2948,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 43,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 167,
+        "p95": 167,
+        "max": 167
+      },
+      "latency_all_ms": {
+        "median": 167,
+        "p95": 167,
+        "max": 167
+      }
+    },
+    {
+      "scenario": "delay_step_up_60ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 3000,
+      "active_ticks": 2995,
+      "played": 2968,
+      "concealed": 3,
+      "silent": 24,
+      "late": 24,
+      "never_played": 24,
+      "longest_unplayed_ms": 540,
+      "gaps_over_60ms": 1,
+      "latency_last_10s_ms": {
+        "median": 147,
+        "p95": 147,
+        "max": 147
+      },
+      "latency_all_ms": {
+        "median": 147,
+        "p95": 147,
+        "max": 147
+      }
+    },
+    {
+      "scenario": "delay_step_up_100ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 3000,
+      "active_ticks": 2995,
+      "played": 2968,
+      "concealed": 3,
+      "silent": 24,
+      "late": 22,
+      "never_played": 22,
+      "longest_unplayed_ms": 540,
+      "gaps_over_60ms": 1,
+      "latency_last_10s_ms": {
+        "median": 187,
+        "p95": 187,
+        "max": 187
+      },
+      "latency_all_ms": {
+        "median": 187,
+        "p95": 187,
+        "max": 187
+      }
+    },
+    {
+      "scenario": "delay_step_down_100ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 3000,
+      "active_ticks": 2990,
+      "played": 2990,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 1,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 167,
+        "p95": 167,
+        "max": 167
+      },
+      "latency_all_ms": {
+        "median": 167,
+        "p95": 187,
+        "max": 187
+      }
+    },
+    {
+      "scenario": "delay_spike_100ms_for_300ms",
+      "impl": "server",
+      "delay_frames": 2,
+      "frames": 3000,
+      "active_ticks": 2995,
+      "played": 2980,
+      "concealed": 3,
+      "silent": 12,
+      "late": 15,
+      "never_played": 15,
+      "longest_unplayed_ms": 300,
+      "gaps_over_60ms": 1,
+      "latency_last_10s_ms": {
+        "median": 87,
+        "p95": 87,
+        "max": 87
+      },
+      "latency_all_ms": {
+        "median": 87,
+        "p95": 87,
+        "max": 87
+      }
+    },
+    {
+      "scenario": "steady",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 3000,
+      "active_ticks": 2994,
+      "played": 2994,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "latency_all_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "jitter_0_10ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 6000,
+      "active_ticks": 5994,
+      "played": 5994,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "latency_all_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "jitter_0_40ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 6000,
+      "active_ticks": 5993,
+      "played": 5993,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 127.0,
+        "p95": 127.0,
+        "max": 127.0
+      },
+      "latency_all_ms": {
+        "median": 127.0,
+        "p95": 127.0,
+        "max": 127.0
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "slow_sender_1000ppm",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 15000,
+      "active_ticks": 15009,
+      "played": 14925,
+      "concealed": 9,
+      "silent": 75,
+      "late": 72,
+      "never_played": 72,
+      "longest_unplayed_ms": 560,
+      "gaps_over_60ms": 3,
+      "latency_last_10s_ms": {
+        "median": 52.08,
+        "p95": 56.56,
+        "max": 57.06
+      },
+      "latency_all_ms": {
+        "median": 71.58,
+        "p95": 105.16,
+        "max": 109.5
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "fast_sender_1000ppm",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 15000,
+      "active_ticks": 14979,
+      "played": 14979,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 10,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 201.78,
+        "p95": 206.26,
+        "max": 206.76
+      },
+      "latency_all_ms": {
+        "median": 195.92,
+        "p95": 208.32,
+        "max": 209.8
+      },
+      "skipped": 10,
+      "duplicates": 0
+    },
+    {
+      "scenario": "slow_sender_1000ppm_jitter_0_10ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 15000,
+      "active_ticks": 15009,
+      "played": 14266,
+      "concealed": 450,
+      "silent": 293,
+      "late": 731,
+      "never_played": 731,
+      "longest_unplayed_ms": 560,
+      "gaps_over_60ms": 55,
+      "latency_last_10s_ms": {
+        "median": 52.08,
+        "p95": 56.56,
+        "max": 57.06
+      },
+      "latency_all_ms": {
+        "median": 73.74,
+        "p95": 105.84,
+        "max": 110.62
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "fast_sender_1000ppm_jitter_0_10ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 15000,
+      "active_ticks": 14979,
+      "played": 14979,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 10,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 201.78,
+        "p95": 206.26,
+        "max": 206.76
+      },
+      "latency_all_ms": {
+        "median": 196.52,
+        "p95": 208.98,
+        "max": 210.82
+      },
+      "skipped": 10,
+      "duplicates": 0
+    },
+    {
+      "scenario": "slow_sender_100ppm",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 45000,
+      "active_ticks": 44999,
+      "played": 44971,
+      "concealed": 3,
+      "silent": 25,
+      "late": 24,
+      "never_played": 24,
+      "longest_unplayed_ms": 560,
+      "gaps_over_60ms": 1,
+      "latency_last_10s_ms": {
+        "median": 97.512,
+        "p95": 97.96,
+        "max": 98.01
+      },
+      "latency_all_ms": {
+        "median": 74.97,
+        "p95": 106.228,
+        "max": 109.95
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "startup_burst_50",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 3000,
+      "active_ticks": 2948,
+      "played": 2948,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 41,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 207.0,
+        "p95": 207.0,
+        "max": 207.0
+      },
+      "latency_all_ms": {
+        "median": 207.0,
+        "p95": 207.0,
+        "max": 207.0
+      },
+      "skipped": 41,
+      "duplicates": 0
+    },
+    {
+      "scenario": "delay_step_up_60ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 3000,
+      "active_ticks": 2994,
+      "played": 2994,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "latency_all_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "delay_step_up_100ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 3000,
+      "active_ticks": 2994,
+      "played": 2966,
+      "concealed": 3,
+      "silent": 25,
+      "late": 23,
+      "never_played": 23,
+      "longest_unplayed_ms": 560,
+      "gaps_over_60ms": 1,
+      "latency_last_10s_ms": {
+        "median": 207.0,
+        "p95": 207.0,
+        "max": 207.0
+      },
+      "latency_all_ms": {
+        "median": 207.0,
+        "p95": 207.0,
+        "max": 207.0
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "delay_step_down_100ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 3000,
+      "active_ticks": 2989,
+      "played": 2989,
+      "concealed": 0,
+      "silent": 0,
+      "late": 0,
+      "never_played": 0,
+      "longest_unplayed_ms": 0,
+      "gaps_over_60ms": 0,
+      "latency_last_10s_ms": {
+        "median": 207.0,
+        "p95": 207.0,
+        "max": 207.0
+      },
+      "latency_all_ms": {
+        "median": 207.0,
+        "p95": 207.0,
+        "max": 207.0
+      },
+      "skipped": 0,
+      "duplicates": 0
+    },
+    {
+      "scenario": "delay_spike_100ms_for_300ms",
+      "impl": "client",
+      "delay_frames": 3,
+      "frames": 3000,
+      "active_ticks": 2994,
+      "played": 2979,
+      "concealed": 3,
+      "silent": 12,
+      "late": 15,
+      "never_played": 15,
+      "longest_unplayed_ms": 300,
+      "gaps_over_60ms": 1,
+      "latency_last_10s_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "latency_all_ms": {
+        "median": 107.0,
+        "p95": 107.0,
+        "max": 107.0
+      },
+      "skipped": 0,
+      "duplicates": 0
+    }
+  ]
+}
