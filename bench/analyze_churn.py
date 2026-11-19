@@ -49,6 +49,8 @@ def main() -> None:
             "runs": len(rows),
             "sent_per_run": rows[0]["sent"],
             "delivered": spread([float(x["delivered"]) for x in rows]),
+            # Runs made before the test told late packets from lost ones have neither.
+            **{k: spread([float(x[k]) for x in rows]) for k in ("late", "lost") if all(k in x for x in rows)},
             "latency_ms": {
                 q: spread([float(x["latency_ms"][q]) for x in rows]) for q in ("p50", "p90", "p99", "max")
             },

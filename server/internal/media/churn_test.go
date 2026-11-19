@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -262,29 +263,43 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz int, unlimitedRebinds b
 			time.Sleep(time.Until(next))
 		}
 	}()
-	var lat []float64
+	var lat, lateLat []float64
 	seen := make(map[uint32]bool)
 	buf := make([]byte, 2048)
-	deadline := time.Now().Add(time.Duration(seconds)*time.Second + time.Second)
-	for {
-		_ = b.SetReadDeadline(deadline)
-		n, err := b.Read(buf)
-		if err != nil {
-			break
+	// read records each new packet's latency in *into until the read deadline passes.
+	read := func(into *[]float64, deadline func() time.Time) {
+		for {
+			_ = b.SetReadDeadline(deadline())
+			n, err := b.Read(buf)
+			if err != nil {
+				return
+			}
+			var h protocol.RTPHeader
+			if _, err := protocol.ParseRTP(buf[:n], &h); err != nil || h.PayloadType != protocol.PTVideo {
+				continue
+			}
+			id := h.Timestamp / 6000
+			if id == 0 || int(id) > total || seen[id] {
+				continue
+			}
+			seen[id] = true
+			*into = append(*into, float64(time.Now().UnixNano()-sendTimes[id].Load())/1e6)
 		}
-		var h protocol.RTPHeader
-		if _, err := protocol.ParseRTP(buf[:n], &h); err != nil || h.PayloadType != protocol.PTVideo {
-			continue
-		}
-		id := h.Timestamp / 6000
-		if id == 0 || int(id) > total || seen[id] {
-			continue
-		}
-		seen[id] = true
-		lat = append(lat, float64(time.Now().UnixNano()-sendTimes[id].Load())/1e6)
 	}
+	// "Delivered" means received before the send phase ends plus 1 s.
+	end := time.Now().Add(time.Duration(seconds)*time.Second + time.Second)
+	read(&lat, func() time.Time { return end })
 	close(stop)
 	wg.Wait()
+	// Then, with the churn stopped, packets still on their way count as late, not lost:
+	// read until 1 s passes without one, for at most 10 s.
+	drainEnd := time.Now().Add(10 * time.Second)
+	read(&lateLat, func() time.Time {
+		if next := time.Now().Add(time.Second); next.Before(drainEnd) {
+			return next
+		}
+		return drainEnd
+	})
 	sort.Float64s(lat)
 	q := func(p float64) float64 {
 		if len(lat) == 0 {
@@ -304,6 +319,11 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz int, unlimitedRebinds b
 		"seconds":           seconds,
 		"sent":              total,
 		"delivered":         len(lat),
+		// Arrived after that, once the churn had stopped (at most 10 s later); lost =
+		// sent - delivered - late.
+		"late":                len(lateLat),
+		"lost":                total - len(lat) - len(lateLat),
+		"late_latency_ms_max": maxOr(lateLat, -1),
 		"latency_ms": map[string]float64{
 			"p50": q(0.5), "p90": q(0.9), "p99": q(0.99), "max": q(1),
 		},
@@ -314,6 +334,14 @@ func churnRun(t *testing.T, spammers, rebinders, floodHz int, unlimitedRebinds b
 		"table_rebuilds": s.router.Stats().TableRebuilds.Load(),
 		"room_rebuilds":  s.router.Stats().RoomRebuilds.Load(),
 	}
+}
+
+// maxOr is the largest value, or def when there is none.
+func maxOr(v []float64, def float64) float64 {
+	if len(v) == 0 {
+		return def
+	}
+	return slices.Max(v)
 }
 
 func churnSocket(t *testing.T) (*net.UDPConn, netip.AddrPort) {
