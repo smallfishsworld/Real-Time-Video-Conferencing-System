@@ -12,9 +12,9 @@ import pytest
 
 from confclient.fec import FecEncoder, recover
 from confclient.protocol import (
+    MAX_CONTROL_MESSAGE,
     MAX_FRAGMENT_PAYLOAD,
     MAX_SEND_DATAGRAM,
-    FrameDecoder,
     ProtocolError,
     RtpHeader,
     VideoHeader,
@@ -117,31 +117,55 @@ def test_register_vectors() -> None:
         assert parse_register_ack(bytes.fromhex(v["hex"])) == (v["txid"], (host, port), v["challenge"], nonce)
 
 
+async def _read_frames(raw: bytes, count: int, chunk: int = 1) -> list[dict[str, Any]]:
+    """read_frame (the client's reader) over a stream that delivers `chunk` bytes per
+    read, so framing cannot depend on how TCP split the stream."""
+    reader = asyncio.StreamReader()
+
+    async def feed() -> None:
+        for i in range(0, len(raw), chunk):
+            reader.feed_data(raw[i : i + chunk])
+            await asyncio.sleep(0)
+        reader.feed_eof()
+
+    feeder = asyncio.create_task(feed())
+    try:
+        return [await read_frame(reader) for _ in range(count)]
+    finally:
+        await feeder
+
+
 @pytest.mark.parametrize("vec", VECTORS["control"], ids=_name)
 def test_control_vectors(vec: dict[str, Any]) -> None:
     raw = bytes.fromhex(vec["hex"])
     assert encode_frame(vec["message"]) == raw
-    dec = FrameDecoder()
-    got: list[dict[str, Any]] = []
-    for i in range(len(raw)):  # one byte per read: framing must not depend on read sizes
-        got += dec.feed(raw[i : i + 1])
-    assert got == [vec["message"]]
+    assert asyncio.run(_read_frames(raw, 1)) == [vec["message"]]  # one byte per read
 
 
-def test_control_stream_of_all_vectors_in_one_read() -> None:
+@pytest.mark.parametrize("chunk", [1, 7, 1 << 20])
+def test_control_stream_of_all_vectors(chunk: int) -> None:
     stream = b"".join(bytes.fromhex(v["hex"]) for v in VECTORS["control"])
-    assert FrameDecoder().feed(stream) == [v["message"] for v in VECTORS["control"]]
+    got = asyncio.run(_read_frames(stream, len(VECTORS["control"]), chunk))
+    assert got == [v["message"] for v in VECTORS["control"]]
 
 
-def test_read_frame_from_asyncio_stream() -> None:
-    async def scenario() -> list[dict[str, Any]]:
-        reader = asyncio.StreamReader()
-        for v in VECTORS["control"]:
-            reader.feed_data(bytes.fromhex(v["hex"]))
-        reader.feed_eof()
-        return [await read_frame(reader) for _ in VECTORS["control"]]
-
-    assert asyncio.run(scenario()) == [v["message"] for v in VECTORS["control"]]
+@pytest.mark.parametrize(
+    ("body", "cause"),
+    [
+        (b"[" * 30_000 + b"]" * 30_000, RecursionError),
+        (b'{"type":"x","n":' + b"9" * 5000 + b"}", ValueError),
+        (b'{"type":"\xff"}', UnicodeDecodeError),
+        (b'{"type":', ValueError),
+    ],
+    ids=["deep_nesting", "5000_digit_number", "bad_utf8", "truncated_json"],
+)
+def test_malformed_bodies_raise_protocol_error(body: bytes, cause: type[Exception]) -> None:
+    """Review finding protocol-4: deep nesting raised RecursionError and a huge integer
+    ValueError, which escaped the reader task and broke ControlClient.close()."""
+    assert len(body) <= MAX_CONTROL_MESSAGE
+    with pytest.raises(ProtocolError) as err:
+        asyncio.run(_read_frames(struct.pack("!I", len(body)) + body, 1, chunk=len(body) + 4))
+    assert isinstance(err.value.__cause__, cause)
 
 
 _PARSERS: dict[str, Callable[[bytes], object]] = {
@@ -150,7 +174,7 @@ _PARSERS: dict[str, Callable[[bytes], object]] = {
     "fec": parse_fec,
     "register": parse_register,
     "register_ack": parse_register_ack,
-    "control": lambda b: FrameDecoder().feed(b),
+    "control": lambda b: asyncio.run(_read_frames(b, 1, chunk=len(b))),
     "nack": parse_nack,
 }
 

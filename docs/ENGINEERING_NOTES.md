@@ -33,9 +33,9 @@ replies). Media is RTP (RFC 3550) on one UDP port for the whole server, with a s
 fragmentation header for video, L16 audio and an XOR parity format modelled on RFC 5109.
 The Go decoders are native-fuzzed (`server/internal/protocol/fuzz_test.go`, seed corpus
 committed); both implementations are tested against the same golden vectors in
-`protocol-testdata/vectors.json`. Readers keep a buffer and extract complete frames, so
-TCP segmentation does not matter (there is a byte-at-a-time decoder test on the Python
-side).
+`protocol-testdata/vectors.json`. Readers read the 4-byte length and then exactly that
+many bytes, so TCP segmentation does not matter: `client/tests/test_protocol.py`
+feeds the client's reader (`read_frame`) every vector one byte per read.
 
 **Trade-off.** More code than `pickle`, and a version field to maintain. In exchange the
 packets are inspectable (Wireshark "Decode As... RTP" works) and nothing executes data

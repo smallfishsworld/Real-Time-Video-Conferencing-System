@@ -356,33 +356,13 @@ def encode_frame(msg: dict[str, Any]) -> bytes:
 def decode_body(body: bytes) -> dict[str, Any]:
     try:
         msg = json.loads(body)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (ValueError, RecursionError) as exc:
+        # ValueError covers bad UTF-8, bad JSON and integers too long to convert;
+        # RecursionError, nesting deeper than the interpreter's stack.
         raise ProtocolError("malformed control message") from exc
     if not isinstance(msg, dict) or not isinstance(msg.get("type"), str) or not msg["type"]:
         raise ProtocolError("control message without type")
     return msg
-
-
-class FrameDecoder:
-    """Incremental decoder for the length-prefixed control stream. It makes no
-    assumption about how the byte stream was split into reads."""
-
-    def __init__(self) -> None:
-        self._buf = bytearray()
-
-    def feed(self, data: bytes) -> list[dict[str, Any]]:
-        self._buf += data
-        out: list[dict[str, Any]] = []
-        while len(self._buf) >= 4:
-            (n,) = _LEN.unpack_from(self._buf, 0)
-            if n == 0 or n > MAX_CONTROL_MESSAGE:
-                raise ProtocolError(f"invalid control frame length {n}")
-            if len(self._buf) < 4 + n:
-                break
-            body = bytes(self._buf[4 : 4 + n])
-            del self._buf[: 4 + n]
-            out.append(decode_body(body))
-        return out
 
 
 async def read_frame(reader: asyncio.StreamReader) -> dict[str, Any]:
