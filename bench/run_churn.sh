@@ -2,7 +2,8 @@
 # Forwarding latency while the control plane churns (review finding server-1).
 #
 # Builds the server/internal/media test binary once, then runs TestChurnForwarding RUNS
-# times. Each run takes the bench lock on its own (about 4 x (SECONDS_PER_CONFIG + 4) s),
+# times. Each run takes the bench lock on its own (five configurations of
+# SECONDS_PER_CONFIG each; about 110 s with the defaults),
 # pinned to two CPUs with GOMAXPROCS=2. The raw JSON lines and the build record go to a
 # fresh directory per invocation, bench/tmp/churn/<LABEL>-<UTC>/, and
 # bench/analyze_churn.py writes bench/results/churn_<LABEL>.json from that directory only.
