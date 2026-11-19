@@ -69,6 +69,8 @@ def main() -> None:
     ap.add_argument("--mtu", type=int, default=65536)
     ap.add_argument("--server-cpu", default="1")
     ap.add_argument("--loadgen-cpus", default="2,3")
+    ap.add_argument("--server-args", default="", help="extra flags the v2 server ran with")
+    ap.add_argument("--command", default="sudo bench/run_b3.sh", help="the command line as run")
     args = ap.parse_args()
     systems: dict[str, Any] = {}
     for f in sorted(args.dir.glob("*.json")):
@@ -88,7 +90,7 @@ def main() -> None:
         args.out,
         {
             "benchmark": "B3 relay capacity",
-            "command": "sudo bench/run_b3.sh" + (f"  (MTU={args.mtu})" if args.mtu != 65536 else ""),
+            "command": args.command,
             "criteria": {"delivery_ratio_min": DELIVERY, "p99_latency_ms_max": P99_MS},
             "setup": {
                 "loopback_mtu": args.mtu,
@@ -96,6 +98,7 @@ def main() -> None:
                 "fps": 15,
                 "server_cpu": args.server_cpu,
                 "loadgen_cpus": args.loadgen_cpus,
+                "v2_server_args": args.server_args,
                 "note": "server pinned with taskset to one CPU; loadgen pinned to two others; v2 frame "
                 "delivery counts only frames whose every fragment arrived (FEC repair not used by the "
                 "load generator)",

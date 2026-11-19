@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/netip"
 	"sync"
@@ -174,8 +175,25 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 	}
 }
 
+// batchModes runs a router test with recvmmsg/sendmmsg batching and UDP GSO (the
+// defaults), with batching alone, and with one system call per datagram.
+func batchModes(t *testing.T, f func(t *testing.T, mediaCfg func(*Config))) {
+	for _, m := range []struct {
+		batch int
+		gso   bool
+	}{{DefaultConfig().UDPBatch, true}, {DefaultConfig().UDPBatch, false}, {1, false}} {
+		t.Run(fmt.Sprintf("udp-batch=%d,gso=%v", m.batch, m.gso), func(t *testing.T) {
+			f(t, func(c *Config) { c.UDPBatch, c.UDPGSO = m.batch, m.gso })
+		})
+	}
+}
+
 func TestRouterForwardsVideoOnlyWithinRoom(t *testing.T) {
-	s := newTestServer(t, nil, nil)
+	batchModes(t, testRouterForwardsVideoOnlyWithinRoom)
+}
+
+func testRouterForwardsVideoOnlyWithinRoom(t *testing.T, mediaCfg func(*Config)) {
+	s := newTestServer(t, nil, mediaCfg)
 	a1 := s.peer("a1", 0)
 	roomA := a1.client.InRoom()
 	a2, a3 := s.peer("a2", roomA), s.peer("a3", roomA)
@@ -202,6 +220,75 @@ func TestRouterForwardsVideoOnlyWithinRoom(t *testing.T) {
 	if st.PacketsIn["video"] != 1 || st.PacketsOut["video"] != 2 {
 		t.Fatalf("stats %+v", st)
 	}
+}
+
+// A burst of fragments with a parity packet after every four reaches the server's
+// socket before it reads, so a batched read returns many at once. Every copy must
+// arrive; fragments keep their order, and so do parity packets (which may move behind
+// the fragments of the same read).
+func TestRouterForwardsBurstsInOrder(t *testing.T) {
+	batchModes(t, func(t *testing.T, mediaCfg func(*Config)) {
+		s := newTestServer(t, nil, mediaCfg)
+		a1 := s.peer("a1", 0)
+		a2, a3 := s.peer("a2", a1.client.InRoom()), s.peer("a3", a1.client.InRoom())
+		for _, p := range []*peer{a1, a2, a3} {
+			p.register(s.addr)
+		}
+		const frags = 200
+		var sentFrags, sentParity [][]byte
+		var enc protocol.FECEncoder
+		for i := range frags {
+			pkt := a1.videoPacket(uint32(i + 1))
+			sentFrags = append(sentFrags, pkt)
+			a1.send(s.addr, pkt)
+			if err := enc.Add(pkt); err != nil {
+				t.Fatal(err)
+			}
+			if enc.Len() == 4 {
+				buf := make([]byte, protocol.MaxSendDatagram)
+				n, err := enc.Flush(buf, a1.joined.VideoSSRC, a1.seq)
+				if err != nil {
+					t.Fatal(err)
+				}
+				a1.seq++
+				sentParity = append(sentParity, buf[:n])
+				a1.send(s.addr, buf[:n])
+			}
+		}
+		total := len(sentFrags) + len(sentParity)
+		for _, p := range []*peer{a2, a3} {
+			got := p.recv(500 * time.Millisecond)
+			if len(got) != total {
+				t.Fatalf("%s got %d of %d packets", p.client.Name, len(got), total)
+			}
+			var gotFrags, gotParity [][]byte
+			for _, pkt := range got {
+				if pkt[1]&0x7f == protocol.PTFEC {
+					gotParity = append(gotParity, pkt)
+				} else {
+					gotFrags = append(gotFrags, pkt)
+				}
+			}
+			for _, c := range []struct {
+				what      string
+				got, sent [][]byte
+			}{{"fragment", gotFrags, sentFrags}, {"parity packet", gotParity, sentParity}} {
+				if len(c.got) != len(c.sent) {
+					t.Fatalf("%s got %d of %d %ss", p.client.Name, len(c.got), len(c.sent), c.what)
+				}
+				for i := range c.got {
+					if !bytes.Equal(c.got[i], c.sent[i]) {
+						t.Fatalf("%s: %s %d out of order", p.client.Name, c.what, i)
+					}
+				}
+			}
+		}
+		st := s.router.Stats().Snapshot()
+		if st.PacketsIn["video"]+st.PacketsIn["video_fec"] != uint64(total) ||
+			st.PacketsOut["video"] != uint64(2*total) || st.Drops["write_error"] != 0 {
+			t.Fatalf("stats %+v", st)
+		}
+	})
 }
 
 func TestRouterDropsSpoofedAndUnknownSSRC(t *testing.T) {

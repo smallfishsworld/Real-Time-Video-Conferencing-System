@@ -89,6 +89,7 @@ type collector struct {
 	mixerTicks, mixerOverruns, fecRecovered, concealed *prometheus.Desc
 	rooms, participants, controlConns, slowDisconnects *prometheus.Desc
 	controlConnsTotal                                  *prometheus.Desc
+	readCalls, videoSendCalls, videoSendMessages       *prometheus.Desc
 }
 
 func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Server) *collector {
@@ -113,6 +114,9 @@ func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Serve
 		controlConns:      d("control_connections", "Open control connections."),
 		controlConnsTotal: d("control_connections_total", "Control connections accepted."),
 		slowDisconnects:   d("control_slow_disconnects_total", "Control connections closed because their outbox overflowed."),
+		readCalls:         d("media_read_syscalls_total", "Receive system calls on the media socket that returned datagrams."),
+		videoSendCalls:    d("video_send_syscalls_total", "System calls that sent forwarded video."),
+		videoSendMessages: d("video_send_messages_total", "Messages those calls carried; with UDP GSO a message holds several datagrams."),
 	}
 }
 
@@ -121,6 +125,7 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 		c.packetsIn, c.bytesIn, c.packetsOut, c.bytesOut, c.drops,
 		c.mixerTicks, c.mixerOverruns, c.fecRecovered, c.concealed,
 		c.rooms, c.participants, c.controlConns, c.controlConnsTotal, c.slowDisconnects,
+		c.readCalls, c.videoSendCalls, c.videoSendMessages,
 	} {
 		ch <- d
 	}
@@ -149,6 +154,9 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	counter(c.mixerOverruns, st.MixerOverruns.Load())
 	counter(c.fecRecovered, st.FECRecovered.Load())
 	counter(c.concealed, st.AudioConcealed.Load())
+	counter(c.readCalls, st.ReadCalls.Load())
+	counter(c.videoSendCalls, st.VideoSendCalls.Load())
+	counter(c.videoSendMessages, st.VideoSendMessages.Load())
 
 	view := c.reg.View()
 	byMode := map[string]int{room.ModeRelay.String(): 0, room.ModeP2P.String(): 0}

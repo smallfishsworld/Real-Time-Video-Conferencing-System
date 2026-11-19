@@ -12,20 +12,27 @@
 #
 # Usage: sudo bench/run_b3.sh
 #        WIRES=v2 SIZES="8 16" MTU=1500 bench/run_b3.sh
-# Writes bench/results/b3_capacity[_mtu1500].json.
+#        WIRES=v2 SERVER_ARGS="-udp-batch 1" TAG=unbatched bench/run_b3.sh
+# Writes bench/results/b3_capacity[_mtu1500][_TAG].json. SERVER_ARGS are extra flags
+# for the v2 server (for example the pre-batching system-call pattern, "-udp-batch 1",
+# or batching without GSO, "-udp-gso=false"); TAG names such a variant.
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 
+DEFAULT_SIZES="8 16 32 48 64 96 128 160 192 224 256 320 384 448"
 WIRES=${WIRES:-"v2 legacy"}
-SIZES=${SIZES:-"8 16 32 48 64 96 128 160 192 224 256 320 384 448"}
+SIZES=${SIZES:-$DEFAULT_SIZES}
 FIXED=${FIXED:-16}             # participants for the CPU-per-participant-minute run
 MTU=${MTU:-65536}              # loopback MTU (65536 is the Linux default; 1500 = Ethernet)
 WINDOW=${WINDOW:-20s}
 FIXED_WINDOW=${FIXED_WINDOW:-60s}
 SERVER_CPU=${SERVER_CPU:-1}
 LOADGEN_CPUS=${LOADGEN_CPUS:-2,3}
+SERVER_ARGS=${SERVER_ARGS:-}
+TAG=${TAG:-}
 SUFFIX=""
 [ "$MTU" != 65536 ] && SUFFIX="_mtu$MTU"
+[ -n "$TAG" ] && SUFFIX="${SUFFIX}_$TAG"
 OUT_DIR="$TMPDIR_BENCH/b3$SUFFIX"
 NS=${NS_PREFIX}3
 
@@ -40,7 +47,7 @@ start_server() {
   local wire=$1 logf=$2
   if [ "$wire" = v2 ]; then
     ip netns exec "$NS" taskset -c "$SERVER_CPU" "$CONFSERVER" -control-addr 127.0.0.1:6100 \
-      -media-addr 127.0.0.1:6100 -metrics-addr "" -log-level warn >"$logf" 2>&1 &
+      -media-addr 127.0.0.1:6100 -metrics-addr "" -log-level warn $SERVER_ARGS >"$logf" 2>&1 &
     echo $!
   else
     ip netns exec "$NS" taskset -c "$SERVER_CPU" "$PY" "$BENCH/legacy_harness/server.py" --ip 127.0.0.1 \
@@ -112,5 +119,13 @@ for wire in $WIRES; do
   log "waiting for the bench lock ($LOCK) for $wire"
   flock "$LOCK" "$0" --sweep "$wire"
 done
+# The command line as run, with the settings that differ from the defaults.
+cmd="bench/run_b3.sh"
+[ -n "$TAG" ] && cmd="TAG=$TAG $cmd"
+[ -n "$SERVER_ARGS" ] && cmd="SERVER_ARGS=\"$SERVER_ARGS\" $cmd"
+[ "$MTU" != 65536 ] && cmd="MTU=$MTU $cmd"
+[ "$SIZES" != "$DEFAULT_SIZES" ] && cmd="SIZES=\"$SIZES\" $cmd"
+[ "$WIRES" != "v2 legacy" ] && cmd="WIRES=\"$WIRES\" $cmd"
 "$PY" "$BENCH/analyze_b3.py" "$OUT_DIR" "$RESULTS/b3_capacity$SUFFIX.json" --mtu "$MTU" \
-  --server-cpu "$SERVER_CPU" --loadgen-cpus "$LOADGEN_CPUS"
+  --server-cpu "$SERVER_CPU" --loadgen-cpus "$LOADGEN_CPUS" --server-args "$SERVER_ARGS" \
+  --command "sudo $cmd"

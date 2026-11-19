@@ -2,7 +2,11 @@
 // per-room audio mixing, per-sender rate limits and traffic statistics.
 package media
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio"
+)
 
 // InKind classifies received datagrams.
 type InKind int
@@ -71,6 +75,13 @@ type Stats struct {
 	BytesOut   [outKindCount]atomic.Uint64
 	Drops      [dropReasonCount]atomic.Uint64
 
+	// System calls on the media socket: reads that returned datagrams (recvmmsg
+	// returns many per call), sends of forwarded video, and the messages those sends
+	// carried (with UDP GSO, one message holds several datagrams).
+	ReadCalls         atomic.Uint64
+	VideoSendCalls    atomic.Uint64
+	VideoSendMessages atomic.Uint64
+
 	MixerTicks     atomic.Uint64
 	FECRecovered   atomic.Uint64 // upstream audio packets rebuilt from parity
 	MixerOverruns  atomic.Uint64 // ticks skipped because the mixer fell behind
@@ -88,6 +99,22 @@ func (s *Stats) out(k OutKind, n int) {
 }
 
 func (s *Stats) drop(r DropReason) { s.Drops[r].Add(1) }
+
+// The media plane tags the datagrams it queues on a udpio.Writer with their OutKind.
+var _ [udpio.MaxTags - int(outKindCount)]struct{}
+
+// sent counts the datagrams of one Writer flush.
+func (s *Stats) sent(res *udpio.Result) {
+	for k := range outKindCount {
+		if res.Packets[k] > 0 {
+			s.PacketsOut[k].Add(uint64(res.Packets[k]))
+			s.BytesOut[k].Add(uint64(res.Bytes[k]))
+		}
+	}
+	if res.Failed > 0 {
+		s.Drops[DropWriteError].Add(uint64(res.Failed))
+	}
+}
 
 // Snapshot is a plain copy of Stats, keyed by the label names used in metrics.
 type Snapshot struct {

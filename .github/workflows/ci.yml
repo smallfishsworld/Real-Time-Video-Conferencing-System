@@ -35,6 +35,11 @@ jobs:
           done
       - name: benchmarks compile and run once
         run: go test -run '^$' -bench . -benchtime 1x ./...
+      - name: builds without recvmmsg/sendmmsg (macOS, Windows, 32-bit Linux)
+        run: |
+          for target in darwin/arm64 windows/amd64 linux/386; do
+            GOOS=${target%/*} GOARCH=${target#*/} go vet ./... && GOOS=${target%/*} GOARCH=${target#*/} go build ./...
+          done
 
   python:
     name: Python client (ruff, mypy, pytest incl. end-to-end)

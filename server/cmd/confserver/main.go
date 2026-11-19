@@ -40,6 +40,8 @@ func run(args []string) error {
 	burstKiB := fs.Int("ingress-burst-kib", cfg.Media.IngressBurstBytes>>10, "per-sender burst allowance in KiB")
 	fs.IntVar(&cfg.Media.MixerDelayFrames, "mixer-delay-frames", cfg.Media.MixerDelayFrames, "per-sender jitter buffer before the mixer, in 20 ms frames")
 	fs.IntVar(&cfg.Media.AudioFECK, "audio-fec-k", cfg.Media.AudioFECK, "XOR parity group size for mixed audio (0 disables FEC)")
+	fs.IntVar(&cfg.Media.UDPBatch, "udp-batch", cfg.Media.UDPBatch, "most datagrams per recvmmsg/sendmmsg call (1 = one system call per datagram)")
+	fs.BoolVar(&cfg.Media.UDPGSO, "udp-gso", cfg.Media.UDPGSO, "send forwarded video as UDP GSO messages where the kernel supports it")
 	logLevel := fs.String("log-level", "info", "debug, info, warn or error")
 	logFormat := fs.String("log-format", "text", "text or json")
 	if err := fs.Parse(args); err != nil {

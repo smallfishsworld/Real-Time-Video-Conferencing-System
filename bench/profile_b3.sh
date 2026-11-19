@@ -5,13 +5,14 @@
 # bench/results/pprof_<label>.txt (top functions and a breakdown by code path).
 #
 # Usage: sudo bench/profile_b3.sh                      (128 participants, label "v2")
-#        PARTICIPANTS=96 LABEL=v2-batched bench/profile_b3.sh
+#        PARTICIPANTS=96 LABEL=v2-unbatched SERVER_ARGS="-udp-batch 1" bench/profile_b3.sh
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 
 PARTICIPANTS=${PARTICIPANTS:-128}
 LABEL=${LABEL:-v2}
 SECONDS_PROFILED=${SECONDS_PROFILED:-15}
+SERVER_ARGS=${SERVER_ARGS:-}
 SERVER_CPU=${SERVER_CPU:-1}
 LOADGEN_CPUS=${LOADGEN_CPUS:-2,3}
 NS=${NS_PREFIX}3
@@ -23,7 +24,7 @@ if [ "${1:-}" = --locked ]; then
   ip netns add "$NS"
   ip -n "$NS" link set lo up
   ip netns exec "$NS" taskset -c "$SERVER_CPU" "$CONFSERVER" -control-addr 127.0.0.1:6100 \
-    -media-addr 127.0.0.1:6100 -metrics-addr 127.0.0.1:6101 -pprof -log-level warn \
+    -media-addr 127.0.0.1:6100 -metrics-addr 127.0.0.1:6101 -pprof -log-level warn $SERVER_ARGS \
     >"$OUT_DIR/server.log" 2>&1 &
   pid=$!
   wait_tcp "$NS" 127.0.0.1 6100

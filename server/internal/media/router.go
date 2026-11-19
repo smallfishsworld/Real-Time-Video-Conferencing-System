@@ -12,6 +12,7 @@ import (
 
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/room"
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio"
 )
 
 // wireOverhead is added to every packet's size when charging the ingress token bucket
@@ -31,6 +32,13 @@ type Config struct {
 	MixerDelayFrames   int // per-sender jitter buffer in front of the mixer
 	AudioFECK          int // parity group size for mixed streams; 0 disables FEC
 	RegistersPerSec    int // all REGISTER packets together; 0 disables the limit
+	// UDPBatch is the most datagrams read per recvmmsg call; the video copies they
+	// produce go out with sendmmsg. 1 (or 0) reads and writes one datagram per
+	// system call, as the server did before batching.
+	UDPBatch int
+	// UDPGSO sends each sender's video packets of one read to each receiver as UDP
+	// GSO messages (needs UDPBatch > 1 and Linux 4.18 or later).
+	UDPGSO bool
 }
 
 // DefaultConfig returns the server defaults (8 Mbit/s per sender, 256 KiB burst).
@@ -41,6 +49,8 @@ func DefaultConfig() Config {
 		MixerDelayFrames:   2,
 		AudioFECK:          2,
 		RegistersPerSec:    2000,
+		UDPBatch:           64,
+		UDPGSO:             true,
 	}
 }
 
@@ -71,7 +81,7 @@ type route struct {
 	kind    kind
 	addr    netip.AddrPort
 	room    *room.RoomView
-	targets []netip.AddrPort // video: the other registered members
+	targets []udpio.Dest // video: the other registered members
 }
 
 type routeTable struct {
@@ -83,6 +93,8 @@ type routeTable struct {
 // so the per-packet path takes no locks except the sender's own rate limiter.
 type Router struct {
 	conn  *net.UDPConn
+	io    *udpio.Conn
+	batch int // datagrams per read
 	reg   Registrar
 	cfg   Config
 	hooks Hooks
@@ -90,6 +102,13 @@ type Router struct {
 	table atomic.Pointer[routeTable]
 
 	regBucket *tokenBucket
+
+	// Owned by the Serve goroutine: the video packets of the read being handled,
+	// grouped by sender, and the writer their copies go out through.
+	runs      []videoRun
+	nruns     int
+	forwarded int // packets in runs that have receivers, for the ForwardLatency hook
+	out       *udpio.Writer
 
 	mu     sync.Mutex // guards parts, rooms and closed
 	parts  map[uint32]*participant
@@ -101,8 +120,11 @@ type Router struct {
 // NewRouter creates a router for conn. Call Serve to start it and connect the
 // registry with registry.Observe(router.OnView).
 func NewRouter(conn *net.UDPConn, reg Registrar, cfg Config, hooks Hooks) *Router {
+	batch := max(1, cfg.UDPBatch)
 	r := &Router{
 		conn:      conn,
+		io:        udpio.New(conn, udpio.Options{Batching: batch > 1, GSO: cfg.UDPGSO}),
+		batch:     batch,
 		reg:       reg,
 		cfg:       cfg,
 		hooks:     hooks,
@@ -110,8 +132,41 @@ func NewRouter(conn *net.UDPConn, reg Registrar, cfg Config, hooks Hooks) *Route
 		parts:     make(map[uint32]*participant),
 		rooms:     make(map[uint32]*mixRoom),
 	}
+	r.out = r.io.NewWriter()
 	r.table.Store(&routeTable{bySSRC: map[uint32]*route{}})
 	return r
+}
+
+// Batching reports whether the router reads and writes with recvmmsg and sendmmsg.
+func (r *Router) Batching() bool { return r.io.Batching() }
+
+// GSO reports whether the router currently sends video with UDP GSO.
+func (r *Router) GSO() bool { return r.io.GSO() }
+
+// videoRun is the video packets one sender had in a read, fragments and parity packets
+// apart: a sender's full fragments all have one length and its parity packets another,
+// so each list goes to a receiver as one GSO message (or a few).
+type videoRun struct {
+	rt     *route
+	frags  [][]byte
+	parity [][]byte
+}
+
+// run returns the videoRun of rt in the current read, starting one if needed.
+// Packets of one sender usually arrive back to back, so the search starts at the end.
+func (r *Router) run(rt *route) *videoRun {
+	for i := r.nruns - 1; i >= 0; i-- {
+		if r.runs[i].rt == rt {
+			return &r.runs[i]
+		}
+	}
+	if r.nruns == len(r.runs) {
+		r.runs = append(r.runs, videoRun{})
+	}
+	vr := &r.runs[r.nruns]
+	r.nruns++
+	vr.rt = rt
+	return vr
 }
 
 // Stats returns the router's counters.
@@ -122,20 +177,64 @@ func (r *Router) LocalAddr() netip.AddrPort {
 	return r.conn.LocalAddr().(*net.UDPAddr).AddrPort()
 }
 
-// Serve reads datagrams until the socket is closed.
+// Serve reads datagrams until the socket is closed. It handles the datagrams of each
+// read in order and sends the video copies they produce together at the end.
 func (r *Router) Serve() error {
-	buf := make([]byte, 2048)
+	ms := make([]udpio.Message, r.batch)
+	for i := range ms {
+		ms[i].Buf = make([]byte, 2048)
+	}
 	for {
-		n, src, err := r.conn.ReadFromUDPAddrPort(buf)
+		n, err := r.io.ReadBatch(ms)
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				return nil
 			}
 			continue
 		}
-		src = netip.AddrPortFrom(src.Addr().Unmap(), src.Port())
-		r.handle(buf[:n], src, time.Now())
+		r.stats.ReadCalls.Add(1)
+		now := time.Now()
+		for i := range n {
+			r.handle(ms[i].Buf[:ms[i].N], ms[i].Addr, now)
+		}
+		r.flush(now)
 	}
+}
+
+// flush sends the copies of the video packets collected since the last flush:
+// for each sender and receiver, the sender's fragments in order, then its parity
+// packets. received is when the packets were read.
+func (r *Router) flush(received time.Time) {
+	for i := range r.nruns {
+		vr := &r.runs[i]
+		for t := range vr.rt.targets {
+			d := &vr.rt.targets[t]
+			for _, pkt := range vr.frags {
+				r.out.Add(pkt, d, uint8(OutVideo))
+			}
+			for _, pkt := range vr.parity {
+				r.out.Add(pkt, d, uint8(OutVideo))
+			}
+		}
+		clear(vr.frags)
+		clear(vr.parity)
+		vr.rt, vr.frags, vr.parity = nil, vr.frags[:0], vr.parity[:0]
+	}
+	r.nruns = 0
+	if r.out.Len() == 0 {
+		return
+	}
+	res := r.out.Flush()
+	r.stats.sent(&res)
+	r.stats.VideoSendCalls.Add(uint64(res.Calls))
+	r.stats.VideoSendMessages.Add(uint64(res.Messages))
+	if r.hooks.ForwardLatency != nil {
+		d := time.Since(received)
+		for range r.forwarded {
+			r.hooks.ForwardLatency(d)
+		}
+	}
+	r.forwarded = 0
 }
 
 // Close stops the mixers and closes the socket, which ends Serve.
@@ -219,7 +318,7 @@ func (r *Router) handleRTP(pkt []byte, src netip.AddrPort, now time.Time) {
 		return
 	}
 	if rt.kind == kindVideo {
-		r.forwardVideo(rt, pkt, payload, pt, now)
+		r.forwardVideo(rt, pkt, payload, pt)
 		return
 	}
 	switch pt {
@@ -244,9 +343,10 @@ func (r *Router) handleRTP(pkt []byte, src netip.AddrPort, now time.Time) {
 	}
 }
 
-// forwardVideo sends a video fragment or its parity packet unchanged to every other
-// registered member of the sender's room (SFU forwarding, no re-encoding).
-func (r *Router) forwardVideo(rt *route, pkt, payload []byte, pt uint8, now time.Time) {
+// forwardVideo collects a video fragment or its parity packet for forwarding,
+// unchanged, to every other registered member of the sender's room (SFU forwarding,
+// no re-encoding) at the next flush. pkt must stay untouched until then.
+func (r *Router) forwardVideo(rt *route, pkt, payload []byte, pt uint8) {
 	switch pt {
 	case protocol.PTVideo:
 		var v protocol.VideoHeader
@@ -266,16 +366,16 @@ func (r *Router) forwardVideo(rt *route, pkt, payload []byte, pt uint8, now time
 		r.stats.drop(DropBadPayload)
 		return
 	}
-	for _, dst := range rt.targets {
-		if _, err := r.conn.WriteToUDPAddrPort(pkt, dst); err != nil {
-			r.stats.drop(DropWriteError)
-			continue
-		}
-		r.stats.out(OutVideo, len(pkt))
+	if len(rt.targets) == 0 {
+		return
 	}
-	if r.hooks.ForwardLatency != nil && len(rt.targets) > 0 {
-		r.hooks.ForwardLatency(time.Since(now))
+	vr := r.run(rt)
+	if pt == protocol.PTVideo {
+		vr.frags = append(vr.frags, pkt)
+	} else {
+		vr.parity = append(vr.parity, pkt)
 	}
+	r.forwarded++
 }
 
 // OnView rebuilds the routing table and the mixers from a registry view. The registry
@@ -317,10 +417,10 @@ func (r *Router) OnView(v *room.View) {
 			}
 			liveParts[mv.AudioSSRC] = true
 			snap.members[j] = mixMember{p: p, addr: mv.Addr}
-			targets := make([]netip.AddrPort, 0, len(rv.Members)-1)
+			targets := make([]udpio.Dest, 0, len(rv.Members)-1)
 			for _, other := range rv.Members {
 				if other.ID != mv.ID && other.Addr.IsValid() {
-					targets = append(targets, other.Addr)
+					targets = append(targets, r.io.Dest(other.Addr))
 				}
 			}
 			table.bySSRC[mv.AudioSSRC] = &route{p: p, kind: kindAudio, addr: mv.Addr, room: rv}
