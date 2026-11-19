@@ -541,47 +541,64 @@ same size, which have three repeats.
 
 ## Go microbenchmarks
 
-`go test -bench . -benchmem -count 5 -cpu 1`, pinned to one CPU; the table shows the
-median of the five runs. One `BenchmarkForwardVideo` operation is one full-size video
-fragment routed to the three other members of a four-member room over real loopback
-sockets: `unbatched` sends each copy with its own `sendto`, as the server did before
-batching; `sendmmsg/batch=N` sends the copies of N packets with one `sendmmsg`, as the
-server does when a read returns N datagrams; `gso/batch=N` also merges each receiver's
-copies into UDP GSO messages; `gso+nack-buffer` also copies every packet into the
-sender's retransmission buffer (the server's default). `udpio.BenchmarkSendFrame`
-sends one frame's worth of datagrams (24 x 1220 bytes) to one receiver with each
-mechanism. The receiving sockets are not read, so the kernel drops datagrams once their
-buffers are full; every variant pays the same receive-side cost up to that point. The
+`bench/run_micro.sh` runs `go test -bench . -benchmem -count 5 -cpu 1` for the
+protocol, media and udpio packages, each test binary pinned to CPU 1 under the bench
+lock; the table shows the median and range of the five runs, and `micro.json` records
+the build. One `BenchmarkForwardVideo` operation is one full-size video fragment routed
+to the three other members of a four-member room over real loopback sockets:
+`unbatched` sends each copy with its own `sendto`, as the server did before batching;
+`sendmmsg/batch=N` sends the copies of N packets with one `sendmmsg`, as the server does
+when a read returns N datagrams; `gso/batch=N` also merges each receiver's copies into
+UDP GSO messages; `gso+nack-buffer` also copies every packet into the sender's
+retransmission buffer (the server's default). `udpio.BenchmarkSendFrame` sends one
+frame's worth of datagrams (24 x 1220 bytes) to one receiver with each mechanism. The
 other benchmarks do no I/O.
 
-Per forwarded packet, sending the three copies with GSO in batches of 64 took 1 009 ns
-against 3 946 ns with one `sendto` each and 2 950 ns with plain `sendmmsg`; for a whole
-frame to one receiver, 7 546 ns against 30 768 ns and 27 516 ns. The retransmission
-buffer adds 146 ns per packet (1 155 ns).
+**The send benchmarks are loopback-only numbers.** Their receivers are loopback
+sockets, so each time includes the receivers' IP receive path, which on lo runs in
+softirq on the sending CPU, and a UDP GSO message goes up that path whole, split only
+at the receiving socket (these benchmarks do not split GSO messages before lo as B3
+does). A GSO variant therefore skips most of the per-datagram receive work that the
+other variants pay, so its speed-up is an upper bound that a real network path, where
+the receive side is another machine, would not show. The receiving sockets are not
+read; the kernel drops datagrams once their buffers are full. The allocation counts and
+the benchmarks without I/O are not affected by this.
 
 <!-- BEGIN GENERATED micro -->
-| Benchmark | ns/op (median of 5) | MB/s | B/op | allocs/op |
-|---|---|---|---|---|
-| `protocol.BenchmarkParseRTPVideoFragment` | 6.1 |  | 0 | 0 |
-| `protocol.BenchmarkMarshalRTPHeader` | 5.9 |  | 0 | 0 |
-| `protocol.BenchmarkFECEncodeVideoGroup` | 198.1 | 24629 | 0 | 0 |
-| `protocol.BenchmarkFECRecoverVideoFragment` | 159.9 | 7629 | 0 | 0 |
-| `media.BenchmarkMixerTick/members=3` (4.50 packets/op) | 3725.0 |  | 0 | 0 |
-| `media.BenchmarkMixerTick/members=4` (6.00 packets/op) | 5164.0 |  | 0 | 0 |
-| `media.BenchmarkMixerTick/members=5` (7.50 packets/op) | 6389.0 |  | 0 | 0 |
-| `media.BenchmarkMixerTick/members=16` (24.00 packets/op) | 21121.0 |  | 0 | 0 |
-| `media.BenchmarkMixMinus` | 1895.0 |  | 0 | 0 |
-| `media.BenchmarkForwardVideo/unbatched` | 3946.0 | 928 | 0 | 0 |
-| `media.BenchmarkForwardVideo/sendmmsg/batch=1` | 3774.0 | 970 | 0 | 0 |
-| `media.BenchmarkForwardVideo/sendmmsg/batch=16` | 3475.0 | 1053 | 0 | 0 |
-| `media.BenchmarkForwardVideo/sendmmsg/batch=64` | 2950.0 | 1241 | 0 | 0 |
-| `media.BenchmarkForwardVideo/gso/batch=16` | 1088.0 | 3365 | 0 | 0 |
-| `media.BenchmarkForwardVideo/gso/batch=64` | 1009.0 | 3628 | 0 | 0 |
-| `media.BenchmarkForwardVideo/gso+nack-buffer/batch=64` | 1155.0 | 3170 | 0 | 0 |
-| `udpio.BenchmarkSendFrame/sendto` | 30768.0 | 952 | 0 | 0 |
-| `udpio.BenchmarkSendFrame/sendmmsg` | 27516.0 | 1064 | 0 | 0 |
-| `udpio.BenchmarkSendFrame/sendmmsg+gso` | 7546.0 | 3880 | 0 | 0 |
+| Benchmark | ns/op, median (5 runs) | range | MB/s | B/op | allocs/op |
+|---|---|---|---|---|---|
+| `protocol.BenchmarkParseRTPVideoFragment` | 8.1 | 7.0-9.1 |  | 0 | 0 |
+| `protocol.BenchmarkMarshalRTPHeader` | 6.8 | 6.3-8.1 |  | 0 | 0 |
+| `protocol.BenchmarkFECEncodeVideoGroup` | 290.2 | 262.0-362.7 | 16816 | 0 | 0 |
+| `protocol.BenchmarkFECRecoverVideoFragment` | 266.4 | 215.2-297.7 | 4579 | 0 | 0 |
+| `media.BenchmarkMixerTick/members=3` (4.50 packets/op) | 5749.0 | 4998.0-5959.0 |  | 0 | 0 |
+| `media.BenchmarkMixerTick/members=4` (6.00 packets/op) | 7393.0 | 5238.0-8637.0 |  | 0 | 0 |
+| `media.BenchmarkMixerTick/members=5` (7.50 packets/op) | 8553.0 | 6419.0-10631.0 |  | 0 | 0 |
+| `media.BenchmarkMixerTick/members=16` (24.00 packets/op) | 22842.0 | 20129.0-23494.0 |  | 0 | 0 |
+| `media.BenchmarkMixMinus` | 2030.0 | 1928.0-3050.0 |  | 0 | 0 |
+| `media.BenchmarkForwardVideo/unbatched` | 6285.0 | 5951.0-8260.0 | 582 | 0 | 0 |
+| `media.BenchmarkForwardVideo/sendmmsg/batch=1` | 5937.0 | 5201.0-6623.0 | 617 | 0 | 0 |
+| `media.BenchmarkForwardVideo/sendmmsg/batch=16` | 5120.0 | 4404.0-6319.0 | 715 | 0 | 0 |
+| `media.BenchmarkForwardVideo/sendmmsg/batch=64` | 4914.0 | 4652.0-5780.0 | 745 | 0 | 0 |
+| `media.BenchmarkForwardVideo/gso/batch=16` | 1142.0 | 1118.0-1583.0 | 3204 | 0 | 0 |
+| `media.BenchmarkForwardVideo/gso/batch=64` | 1038.0 | 1003.0-1058.0 | 3528 | 0 | 0 |
+| `media.BenchmarkForwardVideo/gso+nack-buffer/batch=64` | 1059.0 | 1042.0-1160.0 | 3457 | 0 | 0 |
+| `udpio.BenchmarkSendFrame/sendto` | 31682.0 | 31042.0-38467.0 | 924 | 0 | 0 |
+| `udpio.BenchmarkSendFrame/sendmmsg` | 30648.0 | 27315.0-31446.0 | 955 | 0 | 0 |
+| `udpio.BenchmarkSendFrame/sendmmsg+gso` | 7917.0 | 7838.0-8805.0 | 3699 | 0 | 0 |
 <!-- END GENERATED micro -->
+
+Every benchmark allocates nothing per operation. On loopback, sending the three copies
+of a forwarded packet took a median of 6 285 ns with one `sendto` each, 4 914 ns with
+`sendmmsg` in batches of 64 and 1 038 ns with GSO in batches of 64; the retransmission
+buffer adds 21 ns (1 059 ns). Sending one frame (24 datagrams) to one receiver took
+31 682 ns with `sendto`, 30 648 ns with `sendmmsg` and 7 917 ns with `sendmmsg` and
+GSO. Against `sendmmsg` alone, GSO took 4.7 times less time per forwarded packet and
+3.9 times less per frame, far more than the 19 % less CPU that B3 measured for the
+whole server, because here a GSO message goes up the loopback receive path whole. A
+mixer tick (mix-minus for every member, one packet per receiver) took 7.4 us with four
+members (range 5.2-8.6 us) and 22.8 us with sixteen.
+
 ## Earlier result sets (v1)
 
 `bench/results/v1/` keeps the first results of every benchmark, made before this round
