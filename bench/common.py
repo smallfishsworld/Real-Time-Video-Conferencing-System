@@ -136,6 +136,9 @@ def environment() -> dict[str, Any]:
                 break
     except OSError:
         pass
+    dirty = run(
+        ["git", "-C", str(ROOT), "status", "--porcelain", "--", "server", "client", "bench", "legacy"]
+    )
     return {
         "kernel": platform.release(),
         "cpu": cpu,
@@ -143,9 +146,9 @@ def environment() -> dict[str, Any]:
         "python": platform.python_version(),
         "go": run(["go", "version"]),
         "git_commit": run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"]),
-        "git_dirty": bool(
-            run(["git", "-C", str(ROOT), "status", "--porcelain", "--", "server", "client", "bench"])
-        ),
+        "git_dirty": bool(dirty),
+        # Uncommitted paths when the results were written (right after the runs).
+        "git_dirty_files": [line.strip() for line in dirty.splitlines()],
         "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 

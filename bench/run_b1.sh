@@ -92,9 +92,14 @@ run_one() {
       --out "$OUT_DIR/$tag.send.json" >"$OUT_DIR/$tag.send.log" 2>&1 &
     local send_pid=$!
   fi
-  wait "$send_pid" "$recv_pid"
-  printf '{"system": "%s", "loss_per_mille": %s, "nft": %s, "snmp_rcv": %s, "snmp_srv": %s}\n' \
-    "$system" "$loss" "$(nft_counters)" "$(snmp "$RCV")" "$(snmp "$SRV")" >"$OUT_DIR/$tag.net.json"
+  # Sample the receiver's IPv4 reassembly memory (it is per namespace) twice a second.
+  ip netns exec "$RCV" "$PY" "$BENCH/lib/fragmem.py" "$end_at" >"$OUT_DIR/$tag.frag.txt" &
+  local frag_pid=$!
+  wait "$send_pid" "$recv_pid" "$frag_pid"
+  printf '{"system": "%s", "loss_per_mille": %s, "nft": %s, "snmp_rcv": %s, "snmp_srv": %s, "ipfrag_high_thresh": %s, "ipfrag_time": %s}\n' \
+    "$system" "$loss" "$(nft_counters)" "$(snmp "$RCV")" "$(snmp "$SRV")" \
+    "$(ip netns exec "$RCV" cat /proc/sys/net/ipv4/ipfrag_high_thresh)" \
+    "$(ip netns exec "$RCV" cat /proc/sys/net/ipv4/ipfrag_time)" >"$OUT_DIR/$tag.net.json"
   kill "$server_pid" 2>/dev/null || true
   wait "$server_pid" 2>/dev/null || true
   cleanup_netns
