@@ -10,12 +10,13 @@ the sender's name and a timestamp; multi-party video and server-mixed audio; sev
 isolated meetings at once; peer-to-peer media for two participants with automatic
 switching to the relay and back.
 
-This branch (`v2`) is a rewrite of the original course project, which is kept unchanged
-in [`legacy/`](legacy/) so that every comparison below can be reproduced from this
-repository. [`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md) explains each
+This branch (`v2`) is a rebuild of the 2024 course version, which is kept unchanged in
+[`legacy/`](legacy/) so that every comparison below can be rerun from this repository.
+[`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md) explains each
 change (problem, measurement, fix, trade-off), [`docs/PROTOCOL.md`](docs/PROTOCOL.md)
-specifies the wire format byte by byte, and [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)
-has the methodology and full results.
+specifies the wire format (byte layouts for the binary formats, field tables for the
+JSON control messages), and [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) has the
+methodology and full results.
 
 ## Results at a glance
 
