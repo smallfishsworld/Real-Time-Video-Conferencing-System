@@ -106,6 +106,13 @@ type Stats struct {
 	FECRecovered   atomic.Uint64 // upstream audio packets rebuilt from parity
 	MixerOverruns  atomic.Uint64 // ticks skipped because the mixer fell behind
 	AudioConcealed atomic.Uint64 // sender frames missing when the mixer needed them
+
+	// Jitter-buffer corrections (jitter.go): frames dropped because a sender's buffer
+	// stayed above its target, concealed frames inserted because it stayed below, and
+	// re-anchors after a run of late packets.
+	AudioDrained    atomic.Uint64
+	AudioStretched  atomic.Uint64
+	AudioReanchored atomic.Uint64
 }
 
 func (s *Stats) in(k InKind, n int) {

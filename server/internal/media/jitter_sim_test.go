@@ -234,3 +234,70 @@ func TestJitterSimulation(t *testing.T) {
 		}
 	}
 }
+
+// The mixer's default 2-frame buffer, fed at a 30 ms one-way delay, plays each frame
+// 87 ms after it was sent (30 ms, plus 40 ms of buffer, plus 17 ms until the next tick).
+const jitterSimTarget = 87.0
+
+func TestJitterBufferFollowsSenderClockDrift(t *testing.T) {
+	for _, sc := range []jitterScenario{
+		{Name: "slow 1000 ppm", PeriodUS: 20020, Frames: 15000, DelayUS: 30000},
+		{Name: "fast 1000 ppm", PeriodUS: 19980, Frames: 15000, DelayUS: 30000},
+		{Name: "slow 1000 ppm, 0-10 ms jitter", PeriodUS: 20020, Frames: 15000, DelayUS: 30000, JitterUS: 10000},
+		{Name: "fast 1000 ppm, 0-10 ms jitter", PeriodUS: 19980, Frames: 15000, DelayUS: 30000, JitterUS: 10000},
+	} {
+		res := simulateJitter(sc, 1, 2)
+		// Five minutes of drift is 15 frames: each is absorbed by one repeated or one
+		// dropped frame, never by a gap, and the latency stays within a frame of the
+		// target.
+		if res.LongestUnplayedMS > 20 || res.Late != 0 {
+			t.Errorf("%s: longest gap %d ms, %d late", sc.Name, res.LongestUnplayedMS, res.Late)
+		}
+		if lat := res.LatencyLast10sMS; lat.Max > jitterSimTarget+20 || lat.Median < jitterSimTarget-20 {
+			t.Errorf("%s: latency over the last 10 s %+v, target %v ms", sc.Name, lat, jitterSimTarget)
+		}
+	}
+}
+
+func TestJitterBufferReanchorsAfterDelayStep(t *testing.T) {
+	for _, c := range []struct {
+		stepMS, maxGapMS int
+	}{{60, 60}, {100, 120}} {
+		sc := jitterScenario{Name: "step", PeriodUS: 20000, Frames: 3000, DelayUS: 30000,
+			StepFrom: 1000, StepTo: 3000, StepUS: int64(c.stepMS) * 1000}
+		res := simulateJitter(sc, 1, 2)
+		// Without re-anchoring, the late packets were dropped until 25 empty ticks
+		// had passed: a 540 ms gap.
+		if res.LongestUnplayedMS > c.maxGapMS {
+			t.Errorf("+%d ms step: longest gap %d ms, want at most %d", c.stepMS, res.LongestUnplayedMS, c.maxGapMS)
+		}
+		if want := jitterSimTarget + float64(c.stepMS); res.LatencyLast10sMS.Median != want {
+			t.Errorf("+%d ms step: latency %v ms, want %v", c.stepMS, res.LatencyLast10sMS.Median, want)
+		}
+	}
+}
+
+func TestJitterBufferDrainsBackToTheTarget(t *testing.T) {
+	for _, sc := range []jitterScenario{
+		{Name: "50-frame start-up burst", PeriodUS: 20000, Frames: 3000, DelayUS: 30000, BurstFrames: 50},
+		{Name: "-100 ms delay step", PeriodUS: 20000, Frames: 3000, DelayUS: 30000, StepTo: 1000, StepUS: 100000},
+	} {
+		res := simulateJitter(sc, 1, 2)
+		if res.LongestUnplayedMS != 0 || res.LatencyLast10sMS.Max != jitterSimTarget {
+			t.Errorf("%s: longest gap %d ms, latency over the last 10 s %+v, want %v ms",
+				sc.Name, res.LongestUnplayedMS, res.LatencyLast10sMS, jitterSimTarget)
+		}
+	}
+}
+
+func TestJitterBufferSteadyStreamsAreUntouched(t *testing.T) {
+	for _, sc := range []jitterScenario{
+		{Name: "steady", PeriodUS: 20000, Frames: 3000, DelayUS: 30000},
+		{Name: "0-10 ms jitter", PeriodUS: 20000, Frames: 6000, DelayUS: 30000, JitterUS: 10000},
+	} {
+		res := simulateJitter(sc, 1, 2)
+		if res.Played != res.ActiveTicks || res.LatencyAllMS.Max != jitterSimTarget {
+			t.Errorf("%s: played %d of %d ticks, latency %+v", sc.Name, res.Played, res.ActiveTicks, res.LatencyAllMS)
+		}
+	}
+}

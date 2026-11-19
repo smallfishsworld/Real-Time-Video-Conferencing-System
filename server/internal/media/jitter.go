@@ -12,11 +12,22 @@ const (
 	// jbSlots bounds the per-sender buffer to 16 frames (320 ms).
 	jbSlots = 16
 	// jbMaxExtra is how far beyond the target delay the buffer may grow before the
-	// oldest frames are skipped to bound latency (sender clock faster than ours).
+	// oldest frames are skipped at once (a burst of packets).
 	jbMaxExtra = 4
 	// jbIdleReset: after this many consecutive empty ticks the buffer re-synchronises
 	// on the next packet, so a new talk spurt starts at the target delay again.
 	jbIdleReset = 25
+	// jbLateResync: when this many packets in a row arrive after their playout time,
+	// the sender's delay has grown, and the buffer re-anchors on the newest of them
+	// (keeping them) instead of dropping packets until jbIdleReset empty ticks.
+	jbLateResync = 3
+	// jbWindow: every jbWindow ticks (500 ms) the buffer compares its level, the
+	// frames it holds beyond the playout cursor, with the target delay. A window in
+	// which the level never fell to the target drops one frame (the sender's clock
+	// is faster than ours, or its delay fell); a window in which it never reached
+	// the target plays one concealed frame without advancing (a slower clock). That
+	// keeps the latency at the target and the buffer from running dry.
+	jbWindow = 25
 	// plcMaxFrames: missing frames concealed by repeating the last frame, halving its
 	// amplitude each time, before the sender is treated as silent.
 	plcMaxFrames = 3
@@ -70,6 +81,12 @@ type jitterBuffer struct {
 	head    int    // ring index of cursor
 	idle    int
 	slots   [jbSlots]jbSlot
+
+	newest         uint32               // highest timestamp stored since the last resync
+	late           [jbLateResync]jbSlot // the current run of late frames
+	lateN          int
+	win            int // ticks in the current level window
+	winMin, winMax int
 
 	last     audioFrame
 	haveLast bool
@@ -190,15 +207,29 @@ func (jb *jitterBuffer) tryRecover(p *paritySlot) {
 	}
 }
 
+// resync anchors the playout cursor delay frames behind ts and empties the buffer.
 func (jb *jitterBuffer) resync(ts uint32) {
 	jb.started = true
 	jb.cursor = ts - uint32(jb.delay*frameSamples)
+	jb.newest = ts
 	jb.head = 0
 	jb.idle = 0
 	jb.haveLast = false
 	jb.plc = 0
+	jb.lateN = 0
+	jb.resetWindow()
 	for i := range jb.slots {
 		jb.slots[i].valid = false
+	}
+}
+
+func (jb *jitterBuffer) resetWindow() {
+	jb.win, jb.winMin, jb.winMax = 0, jbSlots, -jbSlots
+}
+
+func decodeFrame(dst *audioFrame, payload []byte) {
+	for i := range dst {
+		dst[i] = int16(binary.BigEndian.Uint16(payload[2*i:]))
 	}
 }
 
@@ -209,11 +240,15 @@ func (jb *jitterBuffer) insert(ts uint32, payload []byte) pushResult {
 	}
 	d := int32(ts - jb.cursor)
 	if d < 0 {
-		return pushLate
+		return jb.insertLate(ts, payload)
 	}
+	jb.lateN = 0
 	if d%frameSamples != 0 || int(d/frameSamples) >= jbSlots {
 		jb.resync(ts)
 		d = int32(jb.delay * frameSamples)
+	}
+	if int32(ts-jb.newest) > 0 {
+		jb.newest = ts
 	}
 	idx := int(d / frameSamples)
 	if skip := idx - jb.delay - jbMaxExtra; skip > 0 {
@@ -227,10 +262,55 @@ func (jb *jitterBuffer) insert(ts uint32, payload []byte) pushResult {
 	s := &jb.slots[(jb.head+idx)%jbSlots]
 	s.valid = true
 	s.ts = ts
-	for i := range s.samples {
-		s.samples[i] = int16(binary.BigEndian.Uint16(payload[2*i:]))
-	}
+	decodeFrame(&s.samples, payload)
 	return pushAccepted
+}
+
+// insertLate handles a frame whose playout time has passed. After jbLateResync of
+// them in a row it re-anchors the cursor delay frames behind the newest and stores
+// the run, so the stream continues at its new delay. Lock must be held.
+func (jb *jitterBuffer) insertLate(ts uint32, payload []byte) pushResult {
+	l := &jb.late[jb.lateN%jbLateResync]
+	l.valid, l.ts = true, ts
+	decodeFrame(&l.samples, payload)
+	jb.lateN++
+	if jb.lateN < jbLateResync {
+		return pushLate
+	}
+	haveLast := jb.haveLast
+	jb.resync(ts)
+	jb.haveLast = haveLast // conceal across the jump as across a loss
+	for i := range jb.late {
+		l := &jb.late[i]
+		d := int32(l.ts - jb.cursor)
+		if l.valid && d >= 0 && d%frameSamples == 0 && int(d/frameSamples) < jbSlots {
+			s := &jb.slots[(jb.head+int(d/frameSamples))%jbSlots]
+			s.valid, s.ts, s.samples = true, l.ts, l.samples
+		}
+		l.valid = false
+	}
+	jb.stats.AudioReanchored.Add(1)
+	return pushAccepted
+}
+
+// level tracks the frames held beyond the cursor and, once per window, says whether
+// to drop a frame (+1), repeat one (-1) or do nothing (0). Lock must be held.
+func (jb *jitterBuffer) level() int {
+	lv := int(int32(jb.newest-jb.cursor)) / frameSamples
+	jb.winMin = min(jb.winMin, lv)
+	jb.winMax = max(jb.winMax, lv)
+	if jb.win++; jb.win < jbWindow {
+		return 0
+	}
+	lo, hi := jb.winMin, jb.winMax
+	jb.resetWindow()
+	switch {
+	case lo > jb.delay:
+		return 1
+	case hi < jb.delay:
+		return -1
+	}
+	return 0
 }
 
 // pop returns the frame due at this tick. It reports false when the sender has nothing
@@ -240,6 +320,21 @@ func (jb *jitterBuffer) pop(dst *audioFrame) (ok, concealed bool) {
 	defer jb.mu.Unlock()
 	if !jb.started {
 		return false, false
+	}
+	switch jb.level() {
+	case 1: // drop the frame due now and play the next one
+		jb.slots[jb.head].valid = false
+		jb.head = (jb.head + 1) % jbSlots
+		jb.cursor += frameSamples
+		jb.stats.AudioDrained.Add(1)
+	case -1: // stretch: conceal one frame and play the due one at the next tick
+		if s := &jb.slots[jb.head]; jb.haveLast && s.valid && s.ts == jb.cursor {
+			for i, v := range jb.last {
+				dst[i] = v >> 1
+			}
+			jb.stats.AudioStretched.Add(1)
+			return true, true
+		}
 	}
 	s := &jb.slots[jb.head]
 	got := s.valid && s.ts == jb.cursor

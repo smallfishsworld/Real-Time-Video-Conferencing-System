@@ -93,7 +93,7 @@ type collector struct {
 	rtxMisses, readErrors                              *prometheus.Desc
 	udpBatching, udpGSO                                *prometheus.Desc
 	bindings, bindingsExpired, tableRebuilds           *prometheus.Desc
-	roomRebuilds                                       *prometheus.Desc
+	roomRebuilds, jitterCorrections                    *prometheus.Desc
 }
 
 func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Server) *collector {
@@ -129,6 +129,9 @@ func newCollector(router *media.Router, reg *room.Registry, sig *signaling.Serve
 		bindingsExpired:   d("media_bindings_expired_total", "Media bindings dropped after the binding timeout without keepalives."),
 		tableRebuilds:     d("routing_table_rebuilds_total", "Routing tables built from registry views."),
 		roomRebuilds:      d("routing_room_rebuilds_total", "Rooms whose routes were rebuilt (unchanged rooms are reused)."),
+		jitterCorrections: d("audio_jitter_corrections_total",
+			"Mixer jitter-buffer corrections: drained (frame dropped, buffer above target), stretched "+
+				"(concealed frame inserted, buffer below target), reanchored (after late packets in a row).", "kind"),
 	}
 }
 
@@ -139,6 +142,7 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 		c.rooms, c.participants, c.controlConns, c.controlConnsTotal, c.slowDisconnects,
 		c.readCalls, c.videoSendCalls, c.videoSendMessages, c.rtxMisses, c.readErrors,
 		c.udpBatching, c.udpGSO, c.bindings, c.bindingsExpired, c.tableRebuilds, c.roomRebuilds,
+		c.jitterCorrections,
 	} {
 		ch <- d
 	}
@@ -176,6 +180,9 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	counter(c.bindingsExpired, st.BindingsExpired.Load())
 	counter(c.tableRebuilds, st.TableRebuilds.Load())
 	counter(c.roomRebuilds, st.RoomRebuilds.Load())
+	counter(c.jitterCorrections, st.AudioDrained.Load(), "drained")
+	counter(c.jitterCorrections, st.AudioStretched.Load(), "stretched")
+	counter(c.jitterCorrections, st.AudioReanchored.Load(), "reanchored")
 	gauge(c.udpBatching, boolGauge(c.router.Batching()))
 	gauge(c.udpGSO, boolGauge(c.router.GSO()))
 
