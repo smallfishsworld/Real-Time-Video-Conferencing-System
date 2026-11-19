@@ -991,7 +991,7 @@ CHURN_LABELS = {
     "keepalives+media_state": "+ 20 members toggling media_state 50 times/s",
     "keepalives+media_state+rebinds": "+ media_state toggles + 4 members rebinding every 100 ms",
     "keepalives+register_flood": "+ one member sending 1500 REGISTERs/s",
-    "keepalives+media_state+rebinds_all_served": "as the third row, with every rebind served",
+    "keepalives+media_state+rebinds_all_served": "as the third row, per-member rebind limit raised to 1000/s",
 }
 
 
