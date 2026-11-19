@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .aio import cancel_and_wait
-from .assembler import FrameAssembler, VideoFrame
+from .assembler import AssemblerStats, FrameAssembler, VideoFrame
 from .fec import FecDecoder
 from .jitter import AudioPlayout
 from .nack import NackStats, NackTracker
@@ -264,6 +264,19 @@ class MediaSession(asyncio.DatagramProtocol):
                 total.requested += v.nack.stats.requested
                 total.recovered += v.nack.stats.recovered
                 total.abandoned += v.nack.stats.abandoned
+        return total
+
+    def assembler_stats(self) -> AssemblerStats:
+        """Frame assembly counters (completed, expired, superseded, ...) summed over
+        the current senders."""
+        total = AssemblerStats()
+        for v in self._video_in.values():
+            a = v.assembler.stats
+            total.completed += a.completed
+            total.expired += a.expired
+            total.superseded += a.superseded
+            total.duplicates += a.duplicates
+            total.malformed += a.malformed
         return total
 
     # Control-plane updates ------------------------------------------------------

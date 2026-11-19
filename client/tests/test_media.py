@@ -288,6 +288,35 @@ def test_relay_path_with_one_loss_per_fec_group() -> None:
     _run(scenario)
 
 
+def test_assembler_stats_count_a_frame_that_a_newer_one_superseded() -> None:
+    """Frame 1 loses two packets of one FEC group, so it cannot complete; once frame 2
+    is shown, the newest-wins assembler discards it and counts it as superseded."""
+
+    async def scenario() -> None:
+        async with fake_server() as server:
+            a, b = Peer(server, 1), Peer(server, 2)
+            await a.session.start()
+            await b.session.start()
+            for p in (a, b):
+                p.session.update_roster(_roster(a.joined, b.joined))
+            for i in range(3):
+                a.session.send_video(JPEG, i / 15)
+            fragments = fragment_count(len(JPEG))
+            per_frame = fragments + -(-fragments // 4)
+            await until(lambda: len(server.received) == 3 * per_frame)
+            for k, (data, _src) in enumerate(server.received):
+                if k not in (per_frame, per_frame + 1):  # frame 1's first two fragments
+                    server.send(data, b.session.local_addr)
+            await until(lambda: len(b.frames) == 2)
+            stats = b.session.assembler_stats()
+            assert (stats.completed, stats.superseded, stats.expired) == (2, 1, 0)
+            assert b.session.stats.fec_recovered == 0
+            await a.session.close()
+            await b.session.close()
+
+    _run(scenario)
+
+
 def test_send_cap_drops_whole_frames() -> None:
     async def scenario() -> None:
         async with fake_server() as server:
