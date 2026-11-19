@@ -24,7 +24,11 @@ from .devices import (
     PyAudioSpeaker,
     VideoSource,
 )
+from .jitter import MAX_DELAY_FRAMES
 from .media import MediaConfig
+from .protocol import MAX_FEC_GROUP, ProtocolError
+
+AUDIO_MAX_DELAY_MS = 20 * MAX_DELAY_FRAMES
 
 HELP = """commands:
   list                  show open meetings
@@ -41,25 +45,66 @@ HELP = """commands:
   exit                  leave and quit"""
 
 
+def _ranged(kind: Callable[[str], float], lo: float, hi: float, step: int = 0) -> Callable[[str], float]:
+    """An argparse type that accepts kind(text) in [lo, hi] (and a multiple of step)."""
+
+    def parse(text: str) -> float:
+        try:
+            value = kind(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"not a number: {text!r}") from None
+        if not lo <= value <= hi:  # also rejects NaN
+            raise argparse.ArgumentTypeError(f"{text} is not in {lo:g}..{hi:g}")
+        if step and value % step:
+            raise argparse.ArgumentTypeError(f"{text} is not a multiple of {step}")
+        return value
+
+    return parse
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="confclient", description="Real-time video conferencing client")
     p.add_argument("--server", default="127.0.0.1", help="server host (default: 127.0.0.1)")
-    p.add_argument("--port", type=int, default=6100, help="server control port (default: 6100)")
+    p.add_argument(
+        "--port", type=_ranged(int, 1, 65535), default=6100, help="server control port (default: 6100)"
+    )
     p.add_argument("--name", required=True, help="display name")
     p.add_argument("--fake-media", action="store_true", help="synthetic camera and tone instead of devices")
     p.add_argument("--headless", action="store_true", help="no window")
     p.add_argument("--no-video", action="store_true", help="start with the camera off")
     p.add_argument("--no-audio", action="store_true", help="start with the microphone off")
-    p.add_argument("--width", type=int, default=480)
-    p.add_argument("--height", type=int, default=480)
-    p.add_argument("--fps", type=float, default=15.0)
-    p.add_argument("--jpeg-quality", type=int, default=85)
-    p.add_argument(
-        "--max-send-kbps", type=int, default=6000, help="cap on this client's upload (default: 6000)"
+    p.add_argument("--width", type=_ranged(int, 16, 4096), default=480)
+    p.add_argument("--height", type=_ranged(int, 16, 4096), default=480)
+    p.add_argument("--fps", type=_ranged(float, 0.1, 120), default=15.0)
+    p.add_argument("--jpeg-quality", type=_ranged(int, 1, 100), default=85)
+    cap = p.add_mutually_exclusive_group()
+    cap.add_argument(
+        "--max-send-kbps",
+        type=_ranged(int, 1, 1_000_000),
+        default=6000,
+        help="cap on this client's media upload, video and audio with their parity (default: 6000)",
     )
-    p.add_argument("--video-fec-k", type=int, default=4, help="video parity group size, 0 disables FEC")
-    p.add_argument("--audio-fec-k", type=int, default=2, help="audio parity group size, 0 disables FEC")
-    p.add_argument("--jitter-ms", type=int, default=60, help="audio playout delay (multiple of 20 ms)")
+    cap.add_argument(
+        "--no-send-cap", action="store_true", help="send without an upload cap (prints a warning)"
+    )
+    p.add_argument(
+        "--video-fec-k",
+        type=_ranged(int, 0, MAX_FEC_GROUP),
+        default=4,
+        help=f"video parity group size, 0 disables FEC (0..{MAX_FEC_GROUP})",
+    )
+    p.add_argument(
+        "--audio-fec-k",
+        type=_ranged(int, 0, MAX_FEC_GROUP),
+        default=2,
+        help=f"audio parity group size, 0 disables FEC (0..{MAX_FEC_GROUP})",
+    )
+    p.add_argument(
+        "--jitter-ms",
+        type=_ranged(int, 20, AUDIO_MAX_DELAY_MS, 20),
+        default=60,
+        help=f"audio playout delay, a multiple of 20 ms (20..{AUDIO_MAX_DELAY_MS})",
+    )
     p.add_argument("--create", nargs="?", const="", metavar="TITLE", help="create a meeting at start")
     p.add_argument("--join", type=int, metavar="ID", help="join a meeting at start")
     p.add_argument(
@@ -104,10 +149,10 @@ def make_devices(args: argparse.Namespace) -> Devices:
 
 def config_from_args(args: argparse.Namespace) -> ClientConfig:
     media = MediaConfig(
-        max_send_kbps=args.max_send_kbps,
+        max_send_kbps=None if args.no_send_cap else args.max_send_kbps,
         video_fec_k=args.video_fec_k,
         audio_fec_k=args.audio_fec_k,
-        audio_delay_frames=max(1, args.jitter_ms // 20),
+        audio_delay_frames=args.jitter_ms // 20,
     )
     return ClientConfig(
         name=args.name,
@@ -175,14 +220,11 @@ async def handle_command(app: ConferenceApp, line: str) -> bool:
             await app.chat(arg)
         elif cmd in ("video", "audio", "switch"):
             kind, value = (arg, None) if cmd == "switch" else (cmd, arg)
+            if kind not in ("video", "audio") or value not in (None, "", "on", "off"):
+                raise ValueError(f"usage: {cmd} on|off" if cmd != "switch" else "usage: switch video|audio")
             current = app.video_on if kind == "video" else app.audio_on
             on = (not current) if value in (None, "") else value == "on"
-            if kind == "video":
-                await app.set_video(on)
-            elif kind == "audio":
-                await app.set_audio(on)
-            else:
-                raise ValueError("usage: switch video|audio")
+            on = await (app.set_video(on) if kind == "video" else app.set_audio(on))
             app.out(f"* {kind} {'on' if on else 'off'}")
         elif cmd == "status":
             app.out(_status(app))
@@ -194,7 +236,11 @@ async def handle_command(app: ConferenceApp, line: str) -> bool:
             app.out(f"unknown command {cmd!r}; type 'help'")
     except ServerError as exc:
         app.out(f"! {exc.code}: {exc.message}")
-    except (ValueError, TimeoutError, ConnectionError) as exc:
+    except TimeoutError:
+        app.out("! the server did not answer in time")
+    except (ValueError, ConnectionError, OSError, RuntimeError, ProtocolError) as exc:
+        # OSError and RuntimeError: a device or the network failed (for example the
+        # media path to the server could not be opened); the client carries on.
         app.out(f"! {exc}")
     return True
 
@@ -225,11 +271,17 @@ async def run(args: argparse.Namespace) -> int:
     if window and importlib.util.find_spec("cv2") is None:
         print("opencv-python is not installed: running without a window")
         window = False
-    app = ConferenceApp(config_from_args(args), make_devices(args), out=_say, window=window)
+    cfg = config_from_args(args)
+    if cfg.media.max_send_kbps is None:
+        print("warning: --no-send-cap: this client's upload is not capped")
+    app = ConferenceApp(cfg, make_devices(args), out=_say, window=window)
     try:
         welcome = await app.start()
+    except ServerError as exc:
+        print(f"the server refused the connection: {exc.code}: {exc.message}")
+        return 1
     except (OSError, TimeoutError) as exc:
-        print(f"cannot connect to {args.server}:{args.port}: {exc}")
+        print(f"cannot connect to {args.server}:{args.port}: {exc or type(exc).__name__}")
         return 1
     print(f"connected as {args.name} (client {welcome['client_id']}); type 'help' for commands", flush=True)
     try:

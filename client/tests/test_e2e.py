@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from confclient.app import ClientConfig, ConferenceApp, Devices
+from confclient.app import ClientConfig, ConferenceApp, Devices, ServerError
 from confclient.devices import AudioSink, AudioSource, FakeCamera, FakeMicrophone, FakeSpeaker, VideoSource
 from confclient.jitter import Frame
 from confclient.protocol import AUDIO_CLOCK_RATE, PT_VIDEO, peek_ssrc
@@ -145,7 +145,7 @@ class Client:
         return 0 if s is None else s.stats.frames_by_participant.get(other.pid, 0)
 
 
-async def _client(server: Server, name: str) -> Client:
+async def _client(server: Server, name: str, **cfg: Any) -> Client:
     speakers: list[FakeSpeaker] = []
 
     def camera() -> VideoSource:
@@ -161,7 +161,7 @@ async def _client(server: Server, name: str) -> Client:
 
     log: list[str] = []
     app = ConferenceApp(
-        ClientConfig(name=name, server="127.0.0.1", port=server.control_port),
+        ClientConfig(name=name, server="127.0.0.1", port=server.control_port, **cfg),
         Devices(camera, mic, speaker),
         log.append,
     )
@@ -353,6 +353,122 @@ def test_p2p_switching_and_cancel(server: Server) -> None:
             await c.app.close()
 
     _run(scenario)
+
+
+def _roster_entry(c: Client, of: Client) -> dict[str, Any]:
+    assert c.app.roster is not None
+    return next(p for p in c.app.roster["participants"] if p["participant_id"] == of.pid)
+
+
+def test_camera_and_microphone_toggles_answer_at_once(server: Server) -> None:
+    """Review finding protocol-1: the server answered media_state with a roster event
+    that had no seq, so every toggle (and a join with the camera or microphone off)
+    waited out the 5 s request timeout and reported an error."""
+
+    async def timed(aw: Any) -> Any:
+        start = time.monotonic()
+        result = await asyncio.wait_for(aw, 2)
+        assert time.monotonic() - start < 2
+        return result
+
+    async def scenario() -> None:
+        alice = await _client(server, "alice")
+        bob = await _client(server, "bob", video_on=False, audio_on=False)
+        room = (await timed(alice.app.create("toggles")))["room_id"]
+        await timed(bob.app.join(room))
+        await until(lambda: alice.app.roster is not None and len(alice.app.roster["participants"]) == 2)
+        await until(lambda: not _roster_entry(alice, bob)["video"] and not _roster_entry(alice, bob)["audio"])
+        assert await timed(bob.app.set_video(True)) is True
+        assert await timed(bob.app.set_audio(True)) is True
+        await until(lambda: _roster_entry(alice, bob)["video"] and _roster_entry(alice, bob)["audio"])
+        frames = alice.frames_from(bob)
+        await until(lambda: alice.frames_from(bob) >= frames + 5, timeout=10)
+        assert await timed(alice.app.set_video(False)) is False
+        await until(lambda: not _roster_entry(bob, alice)["video"])
+        assert not any("did not answer" in line or line.startswith("! ") for line in alice.log + bob.log)
+        for c in (alice, bob):
+            await c.app.leave()
+            await c.app.close()
+
+    _run(scenario)
+
+
+def test_a_refused_chat_is_reported(server: Server) -> None:
+    """Review finding protocol-2: a chat the server refused vanished without a word."""
+
+    async def scenario() -> None:
+        alice = await _client(server, "alice")
+        with pytest.raises(ServerError) as err:  # not in a room
+            await asyncio.wait_for(alice.app.chat("hello"), 2)
+        assert err.value.code == "not_in_room"
+        await alice.app.create("chat")
+        with pytest.raises(ServerError) as err:
+            await asyncio.wait_for(alice.app.chat("x" * 2001), 2)
+        assert err.value.code == "bad_request"
+        await asyncio.wait_for(alice.app.chat("fine"), 2)
+        await until(lambda: [m.text for m in alice.app.chat_log] == ["fine"])
+        await alice.app.leave()
+        await alice.app.close()
+
+    _run(scenario)
+
+
+def _cli(server: Server, *args: str) -> list[str]:
+    return [
+        sys.executable,
+        "-m",
+        "confclient",
+        f"--port={server.control_port}",
+        "--fake-media",
+        "--headless",
+        "--width=160",
+        "--height=120",
+        "--fps=5",
+        *args,
+    ]
+
+
+def test_command_line_toggles_errors_and_cancel_then_exit(server: Server) -> None:
+    """The CLI half of review findings protocol-1, protocol-2, client-3 and client-10:
+    toggles answer at once, a refused chat is printed, and `cancel; exit` returns."""
+    script = "video off; video on; audio on; audio off; chat " + "x" * 2001 + "; chat ok; cancel; exit"
+    start = time.monotonic()
+    proc = subprocess.run(
+        _cli(server, "--name=alice", "--no-audio", "--create=demo", f"--script={script}"),
+        check=False,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
+    elapsed = time.monotonic() - start
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 0, out
+    lines = out.splitlines()
+    for expected in ("* video off", "* video on", "* audio on", "* audio off", "* meeting cancelled"):
+        assert expected in lines, out
+    assert any(line.startswith("! bad_request: text: ") for line in lines), out
+    assert "] alice: ok" in out
+    assert "did not answer" not in out
+    assert "Traceback" not in out
+    # Four toggles plus the --no-audio join each used to wait 5 s.
+    assert elapsed < 20, (elapsed, out)
+
+
+def test_command_line_reports_a_refused_hello(server: Server) -> None:
+    proc = subprocess.run(
+        _cli(server, "--name=" + "n" * 40, "--script=exit"),
+        check=False,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 1, out
+    assert "the server refused the connection: bad_request: name:" in out
+    assert "Traceback" not in out
 
 
 def test_command_line_clients(server: Server) -> None:

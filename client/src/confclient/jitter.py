@@ -26,6 +26,7 @@ _IDLE_RESET = 25  # empty ticks (500 ms) before the stream re-synchronises
 _PLC_FRAMES = 3  # concealed frames before falling silent
 _LATE_RESYNC = 3  # late packets in a row before the buffer re-anchors on the newest
 _WINDOW = 25  # ticks (500 ms) per buffer-level check
+MAX_DELAY_FRAMES = _SLOTS - _MAX_EXTRA - 1  # the largest target delay (1.16 s)
 
 
 class PlayStatus(Enum):
@@ -74,8 +75,8 @@ class AudioJitterBuffer:
     """
 
     def __init__(self, delay_frames: int = 3) -> None:
-        if not 1 <= delay_frames < _SLOTS - _MAX_EXTRA:
-            raise ValueError("delay_frames out of range")
+        if not 1 <= delay_frames <= MAX_DELAY_FRAMES:
+            raise ValueError(f"delay_frames must be 1..{MAX_DELAY_FRAMES}")
         self.delay = delay_frames
         self.stats = JitterStats()
         self._lock = threading.Lock()
