@@ -416,6 +416,95 @@ func TestRouterRejectsBadNACKs(t *testing.T) {
 	}
 }
 
+// A NACK counts against its sender's ingress budget: once that is spent, further
+// NACKs are dropped (DropNACKLimited) and bring back nothing.
+func TestRouterLimitsNACKsByIngressBudget(t *testing.T) {
+	// Each client has its own bucket: room for a1's one video packet, and for two of
+	// a2's NACKs but not a third.
+	const burst = 100
+	s := newTestServer(t, func(c *room.Config) { c.P2PEnabled = false }, func(c *Config) {
+		c.IngressBytesPerSec = 1 // no refill to speak of during the test
+		c.IngressBurstBytes = burst
+	})
+	a1 := s.peer("a1", 0)
+	a2 := s.peer("a2", a1.client.InRoom())
+	for _, p := range []*peer{a1, a2} {
+		p.register(s.addr)
+	}
+	pkt := a1.videoPacket(1)
+	video := len(pkt) + wireOverhead
+	a1.send(s.addr, pkt)
+	if got := a2.recv(300 * time.Millisecond); len(got) != 1 {
+		t.Fatalf("a2 got %d packets", len(got))
+	}
+	seq := uint16(pkt[2])<<8 | uint16(pkt[3])
+	req := nackPacket(t, a2.joined.VideoSSRC, a1.joined.VideoSSRC, seq)
+	nack := len(req) + wireOverhead
+	if video > burst || 2*nack > burst || 3*nack <= burst {
+		t.Fatalf("budget does not fit the packets: video %d B, NACK %d B", video, nack)
+	}
+	st := s.router.Stats()
+	for i := range 3 {
+		a2.send(s.addr, req)
+		got := a2.recv(200 * time.Millisecond)
+		if want := 1; i == 2 {
+			want = 0
+			if len(got) != want {
+				t.Fatalf("NACK %d past the budget brought back %d packets", i+1, len(got))
+			}
+		} else if len(got) != want {
+			t.Fatalf("NACK %d brought back %d packets, want %d", i+1, len(got), want)
+		}
+	}
+	if d := st.Drops[DropNACKLimited].Load(); d != 1 {
+		t.Fatalf("nack_limited drops = %d, want 1", d)
+	}
+	if n := st.PacketsOut[OutVideoRTX].Load(); n != 2 {
+		t.Fatalf("%d retransmissions, want 2", n)
+	}
+}
+
+// Retransmissions count against the requester's retransmission budget: once it is
+// spent, the rest of the NACK is dropped (DropRTXBudget) and nothing more is resent.
+func TestRouterStopsRetransmittingPastTheRTXBudget(t *testing.T) {
+	s := newTestServer(t, func(c *room.Config) { c.P2PEnabled = false }, func(c *Config) {
+		c.RTXBytesPerSec = 1  // no refill to speak of during the test
+		c.RTXBurstBytes = 120 // two retransmissions of a ~50-byte packet, not three
+	})
+	a1 := s.peer("a1", 0)
+	a2 := s.peer("a2", a1.client.InRoom())
+	for _, p := range []*peer{a1, a2} {
+		p.register(s.addr)
+	}
+	var seqs []uint16
+	for i := range 5 {
+		pkt := a1.videoPacket(uint32(i + 1))
+		if c := len(pkt) + wireOverhead; 2*c > 120 || 3*c <= 120 {
+			t.Fatalf("a retransmission costs %d B, which does not fit the test's budget", c)
+		}
+		seqs = append(seqs, uint16(pkt[2])<<8|uint16(pkt[3]))
+		a1.send(s.addr, pkt)
+	}
+	if got := a2.recv(300 * time.Millisecond); len(got) != len(seqs) {
+		t.Fatalf("a2 got %d packets", len(got))
+	}
+	st := s.router.Stats()
+	a2.send(s.addr, nackPacket(t, a2.joined.VideoSSRC, a1.joined.VideoSSRC, seqs...))
+	if got := a2.recv(300 * time.Millisecond); len(got) != 2 {
+		t.Fatalf("a2 got %d retransmissions, want 2 (the budget)", len(got))
+	}
+	waitFor(t, "rtx budget drop", func() bool { return st.Drops[DropRTXBudget].Load() == 1 })
+	// The budget is spent: a second NACK brings back nothing.
+	a2.send(s.addr, nackPacket(t, a2.joined.VideoSSRC, a1.joined.VideoSSRC, seqs[2:]...))
+	if got := a2.recv(200 * time.Millisecond); len(got) != 0 {
+		t.Fatalf("a2 got %d retransmissions past the budget", len(got))
+	}
+	waitFor(t, "second rtx budget drop", func() bool { return st.Drops[DropRTXBudget].Load() == 2 })
+	if n := st.PacketsOut[OutVideoRTX].Load(); n != 2 {
+		t.Fatalf("%d retransmissions, want 2", n)
+	}
+}
+
 func TestRouterNACKDisabled(t *testing.T) {
 	s := newTestServer(t, func(c *room.Config) { c.P2PEnabled = false }, func(c *Config) { c.NACKBufferPackets = 0 })
 	a1 := s.peer("a1", 0)
