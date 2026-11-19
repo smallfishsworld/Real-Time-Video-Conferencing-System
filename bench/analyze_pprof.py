@@ -22,7 +22,10 @@ PATHS = [
     ("  reading packets (recvfrom)", r"^net\.\(\*UDPConn\)\.ReadFromUDPAddrPort$"),
     ("audio mixers (20 ms ticks)", r"^.*media\.\(\*mixRoom\)\.run$"),
     ("  mixed-stream sends", r"^.*media\.\(\*mixRoom\)\.write$"),
-    ("all system calls (Syscall6)", r"^(internal/runtime/syscall|runtime/internal/syscall|syscall)\.Syscall6$"),
+    (
+        "all system calls (Syscall6)",
+        r"^(internal/runtime/syscall|runtime/internal/syscall|syscall)\.Syscall6$",
+    ),
     ("Go scheduler and netpoller", r"^runtime\.(schedule|findRunnable|netpoll)$"),
     ("garbage collector", r"^runtime\.gcBgMarkWorker$"),
 ]
