@@ -91,6 +91,7 @@ type config struct {
 	AllowRemote  bool
 	LocalBase    string
 	ServerPID    int
+	ServerCore   int
 	ConfBase     int
 	Out          string
 	Label        string
@@ -125,6 +126,8 @@ func parseFlags(args []string) (config, error) {
 		hardRemoteRoomSize, hardRemoteParticipants))
 	fs.StringVar(&c.LocalBase, "local-base", "127.1.0.0", "legacy: participant i binds base+i (one address per participant)")
 	fs.IntVar(&c.ServerPID, "server-pid", 0, "read this process's CPU time from /proc at the window edges")
+	fs.IntVar(&c.ServerCore, "server-core", -1, "read this CPU's busy and softirq time from /proc/stat at the window edges "+
+		"(the core the server is pinned to; softirq work there is charged to whatever task it interrupted)")
 	fs.IntVar(&c.ConfBase, "conf-base", 1, "legacy: first conference ID")
 	fs.StringVar(&c.Out, "out", "", "write the result JSON here (default stdout)")
 	fs.StringVar(&c.Label, "label", "", "free-form label stored in the result")
@@ -486,11 +489,21 @@ type result struct {
 	ServerCPUSeconds     *float64           `json:"server_cpu_seconds,omitempty"`
 	ServerCPUPerPartMin  *float64           `json:"server_cpu_seconds_per_participant_minute,omitempty"`
 	ServerCPUUtil        *float64           `json:"server_cpu_utilisation,omitempty"`
+	ServerCore           *coreReport        `json:"server_core,omitempty"`
 	LoadgenCPUSeconds    float64            `json:"loadgen_cpu_seconds"`
 	LoadgenCPUUtil       float64            `json:"loadgen_cpu_utilisation"`
 	LoadgenGOMAXPROCS    int                `json:"loadgen_gomaxprocs"`
 	ControlLost          int                `json:"control_connections_lost"`
 	StartedUTC           string             `json:"started_utc"`
+}
+
+// coreReport is what /proc/stat says the server's CPU did during the window, whoever it
+// was charged to.
+type coreReport struct {
+	CPU            int     `json:"cpu"`
+	BusySeconds    float64 `json:"busy_seconds"`    // all but idle and iowait
+	SoftirqSeconds float64 `json:"softirq_seconds"` // softirq time accounted as such (see kernel_config)
+	Utilisation    float64 `json:"utilisation"`
 }
 
 // wireReport is the run's traffic on the wire: the estimate for the average and for
@@ -607,11 +620,16 @@ func run(args []string) error {
 
 	var cpu0, cpu1 float64
 	var haveCPU bool
+	var core0, core1 coreTimes
+	var core0Err, core1Err error = errors.New("not read"), errors.New("not read")
 	sleepUntil(clk, winStart)
 	if cfg.ServerPID > 0 {
 		if v, err := procCPUSeconds(cfg.ServerPID); err == nil {
 			cpu0, haveCPU = v, true
 		}
+	}
+	if cfg.ServerCore >= 0 {
+		core0, core0Err = readCoreTimes(cfg.ServerCore)
 	}
 	selfWin0 := selfCPUSeconds()
 	sleepUntil(clk, winEnd)
@@ -621,6 +639,9 @@ func run(args []string) error {
 		} else {
 			haveCPU = false
 		}
+	}
+	if cfg.ServerCore >= 0 {
+		core1, core1Err = readCoreTimes(cfg.ServerCore)
 	}
 	selfWin1 := selfCPUSeconds()
 	lost := 0
@@ -708,6 +729,15 @@ func run(args []string) error {
 		perPM := d / (float64(cfg.Participants) * cfg.Duration.Minutes())
 		util := d / cfg.Duration.Seconds()
 		res.ServerCPUSeconds, res.ServerCPUPerPartMin, res.ServerCPUUtil = &d, &perPM, &util
+	}
+	if core0Err == nil && core1Err == nil {
+		busy := core1.busy - core0.busy
+		res.ServerCore = &coreReport{
+			CPU:            cfg.ServerCore,
+			BusySeconds:    busy,
+			SoftirqSeconds: core1.softirq - core0.softirq,
+			Utilisation:    busy / cfg.Duration.Seconds(),
+		}
 	}
 	res.LoadgenCPUSeconds = selfWin1 - selfWin0
 	res.LoadgenCPUUtil = res.LoadgenCPUSeconds / cfg.Duration.Seconds()
@@ -866,6 +896,43 @@ func selfCPUSeconds() float64 {
 		return 0
 	}
 	return v
+}
+
+// coreTimes is one CPU's line of /proc/stat, in seconds.
+type coreTimes struct{ busy, softirq float64 }
+
+func readCoreTimes(cpu int) (coreTimes, error) {
+	b, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return coreTimes{}, err
+	}
+	return parseCoreTimes(string(b), cpu)
+}
+
+// parseCoreTimes reads "cpuN user nice system idle iowait irq softirq steal ..." (in
+// USER_HZ ticks).
+func parseCoreTimes(stat string, cpu int) (coreTimes, error) {
+	prefix := fmt.Sprintf("cpu%d ", cpu)
+	for _, line := range strings.Split(stat, "\n") {
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		f := strings.Fields(line)[1:]
+		if len(f) < 8 {
+			break
+		}
+		var v [8]uint64
+		for i := range v {
+			x, err := strconv.ParseUint(f[i], 10, 64)
+			if err != nil {
+				return coreTimes{}, fmt.Errorf("malformed /proc/stat line %q", line)
+			}
+			v[i] = x
+		}
+		busy := v[0] + v[1] + v[2] + v[5] + v[6] + v[7] // user nice system irq softirq steal
+		return coreTimes{busy: float64(busy) / clkTck, softirq: float64(v[6]) / clkTck}, nil
+	}
+	return coreTimes{}, fmt.Errorf("no cpu%d line in /proc/stat", cpu)
 }
 
 // clkTck is USER_HZ, which is 100 on every Linux architecture Go supports.

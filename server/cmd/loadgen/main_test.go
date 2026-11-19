@@ -90,6 +90,17 @@ func TestParseStatCPU(t *testing.T) {
 	}
 }
 
+func TestParseCoreTimes(t *testing.T) {
+	stat := "cpu  1 2 3 4 5 6 7 8 0 0\ncpu0 10 0 10 500 0 0 0 0 0 0\ncpu1 100 5 200 1000 50 10 40 3 0 0\nintr 1\n"
+	got, err := parseCoreTimes(stat, 1)
+	if err != nil || got.busy != 3.58 || got.softirq != 0.4 { // (100+5+200+10+40+3)/100, 40/100
+		t.Fatalf("parseCoreTimes = %+v, %v; want busy 3.58 s and softirq 0.4 s", got, err)
+	}
+	if _, err := parseCoreTimes(stat, 7); err == nil {
+		t.Error("parseCoreTimes found a CPU that is not there")
+	}
+}
+
 func TestValidateSafetyLimits(t *testing.T) {
 	base := func() config {
 		c, err := parseFlags(nil)
