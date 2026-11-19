@@ -312,11 +312,15 @@ The benchmarks run entirely inside network namespaces on one machine.
 ## Tests
 
 ```sh
-make test          # everything below
-cd server && go vet ./... && staticcheck ./... && go test -race ./...
-cd client && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
+make test          # the linters (gofmt, go vet, staticcheck, ruff, mypy), then go test -race and pytest
 make fuzz          # 30 s of native Go fuzzing per decoder
+make ci            # every step of the CI workflow's Linux jobs; run it in a fresh clone (see Makefile)
 ```
+
+The Makefile runs staticcheck 2025.1.1 with `go run`, as CI does; `go install
+honnef.co/go/tools/cmd/staticcheck@2025.1.1` installs the same version (then pass
+`STATICCHECK=staticcheck`). mypy checks the client, its tests and `bench/` in strict mode
+for Python 3.11, the oldest version the client supports.
 
 - Go: table-driven unit tests (room state machine, mode decisions, mixer saturation and
   mix-minus, FEC recovery of any single lost packet, header round trips), fuzz tests
@@ -328,8 +332,15 @@ make fuzz          # 30 s of native Go fuzzing per decoder
   reordering and duplicates, audio jitter buffer and concealment, rate limiting, the
   media session against a fake server, and end-to-end tests (`pytest -m e2e`) that build
   and start the Go server and run three headless clients with synthetic media.
-- CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the same commands, short
-  fuzzing, and builds and smoke-tests the container image.
+- CI: a GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml);
+  verified locally, not yet run on GitHub) with lint, the Go race tests, short fuzzing,
+  every benchmark run once, the client's tests on Python 3.11 and 3.13 on Linux
+  (end-to-end tests included) and unit tests on macOS and Windows, the Go tests on macOS
+  and Windows, and a build and smoke test of the container image. Every step of its
+  Linux jobs passed with `make ci` in a fresh clone of this branch; the macOS and
+  Windows jobs have not run anywhere. The first local run of the Python 3.11 job found a
+  bug that had made the client unusable on 3.11 (the media session never registered;
+  fixed in `fix(client): register media on Python 3.11`).
 
 ## Benchmarks
 
