@@ -174,9 +174,11 @@ for it:
 
 A client should answer every challenge it receives, at any time, by echoing its nonce
 from the socket it arrived on. The server ignores `REGISTER`s with unknown tokens, and
-limits `REGISTER`s per member (10/s, burst 20), per source address (20/s, burst 40),
-and for the whole server (`-max-registers-per-sec`, default 2000), and binding changes
-per member (1/s, burst 4).
+limits `REGISTER`s per member (10/s, burst 20), per source IP and port (20/s, burst
+40; sources share 4096 slots by a keyed hash, so a collision only makes the limit
+stricter, and one host with many sockets gets one budget per socket), and for the
+whole server (`-max-registers-per-sec`, default 2000), and binding changes per member
+(1/s, burst 4).
 
 ```
 REGISTER (36 bytes)
@@ -270,7 +272,8 @@ packet with this 8-byte payload header after the RTP header:
 ```
 
 * `frame id` increases by one per frame and wraps at 2^32.
-* `0 <= fragment index < fragment count <= 1024`; frames above 1 MiB are not sent.
+* `0 <= fragment index < fragment count <= 1024`, so a frame is at most
+  1024 x 1200 = 1,228,800 bytes (1.17 MiB); larger frames are not sent.
 * All fragments of a frame share the RTP timestamp (capture time, 90 kHz) and use
   consecutive sequence numbers, with FEC packets in between (section 2.6).
 * Frames are independent JPEG images, so a receiver can show frame n+1 even if frame n was

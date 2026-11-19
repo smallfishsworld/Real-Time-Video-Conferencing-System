@@ -101,11 +101,12 @@ func DefaultConfig() Config {
 const (
 	memberRegisterRate  = 10 // per member, whatever the source address
 	memberRegisterBurst = 20
-	sourceRegisterRate  = 20 // per source address, whatever the token
+	sourceRegisterRate  = 20 // per source IP and port, whatever the token
 	sourceRegisterBurst = 40
-	// sourceBuckets is the size of the per-source table. Sources share slots by a
-	// keyed hash, so the table is bounded and a collision only makes the limit
-	// stricter for the sources involved.
+	// sourceBuckets is the size of the per-source table, keyed by IP and port (so
+	// each socket of a host has its own budget; the server-wide limit bounds them
+	// all). Sources share slots by a keyed hash, so the table is bounded and a
+	// collision only makes the limit stricter for the sources involved.
 	sourceBuckets = 4096
 	// nonceEpoch: a challenge nonce is accepted in the epoch it was issued in and the
 	// next one.
