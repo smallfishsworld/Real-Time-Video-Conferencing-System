@@ -101,8 +101,12 @@ type jitterBuffer struct {
 	stats *Stats
 }
 
+// MaxMixerDelayFrames is the largest jitter-buffer delay the mixer supports, in 20 ms
+// frames; Config.MixerDelayFrames is clamped to 1..MaxMixerDelayFrames.
+const MaxMixerDelayFrames = jbSlots - jbMaxExtra - 1
+
 func newJitterBuffer(delayFrames int, stats *Stats) *jitterBuffer {
-	return &jitterBuffer{delay: max(1, min(delayFrames, jbSlots-jbMaxExtra-1)), stats: stats}
+	return &jitterBuffer{delay: max(1, min(delayFrames, MaxMixerDelayFrames)), stats: stats}
 }
 
 // push stores an audio packet. pkt is the complete RTP packet, h its parsed header and

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/app"
+	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/protocol"
 	"github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/room"
 )
@@ -47,7 +48,7 @@ func run(args []string) error {
 	rtxKbps := fs.Int("max-rtx-kbps", cfg.Media.RTXBytesPerSec*8/1000, "retransmissions one client may request, in kbit/s (must be > 0 when -nack-buffer > 0)")
 	fs.IntVar(&cfg.Media.RegistersPerSec, "max-registers-per-sec", cfg.Media.RegistersPerSec, "REGISTER packets with a valid token per second, all clients together (0 = no server-wide limit; per-member and per-source limits still apply)")
 	fs.DurationVar(&cfg.Media.BindingTimeout, "binding-timeout", cfg.Media.BindingTimeout, "drop a media binding after this long without a keepalive (0 = never)")
-	fs.IntVar(&cfg.Media.MixerDelayFrames, "mixer-delay-frames", cfg.Media.MixerDelayFrames, "per-sender jitter buffer before the mixer, in 20 ms frames")
+	fs.IntVar(&cfg.Media.MixerDelayFrames, "mixer-delay-frames", cfg.Media.MixerDelayFrames, fmt.Sprintf("per-sender jitter buffer before the mixer, in 20 ms frames (1..%d)", media.MaxMixerDelayFrames))
 	fs.IntVar(&cfg.Media.AudioFECK, "audio-fec-k", cfg.Media.AudioFECK, fmt.Sprintf("XOR parity group size for mixed audio, 0 to %d (0 disables FEC)", protocol.MaxFECGroup))
 	fs.IntVar(&cfg.Media.UDPBatch, "udp-batch", cfg.Media.UDPBatch, "most datagrams per recvmmsg/sendmmsg call (1 = one system call per datagram)")
 	fs.BoolVar(&cfg.Media.UDPGSO, "udp-gso", cfg.Media.UDPGSO, "send forwarded video as UDP GSO messages where the kernel supports it")
@@ -123,8 +124,9 @@ func validate(cfg *app.Config, ingressKbps, burstKiB, rtxKbps int, logFormat str
 		return fmt.Errorf("-nack-buffer %d: must be 0 or positive", cfg.Media.NACKBufferPackets)
 	case cfg.Media.AudioFECK < 0 || cfg.Media.AudioFECK > protocol.MaxFECGroup:
 		return fmt.Errorf("-audio-fec-k %d: must be 0 to %d", cfg.Media.AudioFECK, protocol.MaxFECGroup)
-	case cfg.Media.MixerDelayFrames < 0 || cfg.Media.MixerDelayFrames > 50:
-		return fmt.Errorf("-mixer-delay-frames %d: must be 0 to 50", cfg.Media.MixerDelayFrames)
+	case cfg.Media.MixerDelayFrames < 1 || cfg.Media.MixerDelayFrames > media.MaxMixerDelayFrames:
+		// The buffer would silently clamp anything else.
+		return fmt.Errorf("-mixer-delay-frames %d: must be 1 to %d", cfg.Media.MixerDelayFrames, media.MaxMixerDelayFrames)
 	case cfg.Media.RegistersPerSec < 0:
 		return fmt.Errorf("-max-registers-per-sec %d: must be 0 or positive", cfg.Media.RegistersPerSec)
 	case cfg.Media.BindingTimeout < 0 || cfg.Media.BindingTimeout > 0 && cfg.Media.BindingTimeout < 6*time.Second:

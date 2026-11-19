@@ -29,6 +29,8 @@ func TestInvalidFlagsAreRejected(t *testing.T) {
 		{"-control-rate", "NaN"},
 		{"-max-conns", "-1"},
 		{"-max-registers-per-sec", "-1"},
+		{"-mixer-delay-frames", "0"},
+		{"-mixer-delay-frames", "12"}, // the buffer holds at most 11 frames of delay
 		{"stray"},
 	} {
 		err := run(args)
