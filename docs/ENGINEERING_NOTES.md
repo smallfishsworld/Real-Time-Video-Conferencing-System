@@ -151,12 +151,17 @@ from both paths for 2 s after any switch, so in-flight packets on the old path a
 lost. The integration and end-to-end tests check that the server forwards nothing in P2P
 mode (its counters stay flat) and that P2P -> relay -> P2P works.
 
-### 2.7 Concurrency without per-packet locks or allocations (server hot path)
+### 2.7 Concurrency in the server's hot path: no allocations, and no lock for video
 
-- The room registry holds the only lock; after every change it publishes an immutable
-  view. The media router turns it into a routing table (SSRC -> sender, room, forwarding
-  targets) and swaps it in with an `atomic.Pointer`, so the per-packet path takes no
-  lock except the sender's own token bucket.
+- The room registry's lock is never taken by the goroutine that reads the media
+  socket. After every change the registry publishes an immutable view; a separate
+  rebuild goroutine turns it into a routing table (SSRC -> sender, room, forwarding
+  targets) and swaps it in with an `atomic.Pointer`. Forwarding a video packet takes no
+  lock: the per-sender token buckets belong to the forwarding goroutine.
+- An audio packet does take a lock: its sender's jitter-buffer mutex, which the
+  room's mixer goroutine also takes on every 20 ms tick to take the sender's next frame
+  out. The critical sections are short (copy the packet in, and at most rebuild one
+  packet of a parity group by XOR); no lock is shared between rooms or between senders.
 - Each room's mixer runs in its own goroutine and reads its member list from an
   atomically swapped snapshot.
 - Buffers are fixed per goroutine; the microbenchmarks report 0 allocations per packet

@@ -143,9 +143,12 @@ flowchart LR
   the other's observed address and forwards nothing. With three or more it relays.
   Clients accept media from both paths for 2 s after a switch and the server keeps
   relaying for 1 s, so switching loses nothing in flight.
-- **Hot path.** The routing table is rebuilt on control-plane changes and swapped
-  atomically; forwarding takes no lock except the sender's rate limiter and allocates
-  nothing per packet (`bench/results/micro.json`). On 64-bit Linux the media socket
+- **Hot path.** On control-plane changes a separate goroutine rebuilds the routing
+  table and swaps it in atomically, so the forwarding goroutine never waits for the
+  registry. Forwarding video takes no lock (the rate limiters belong to the forwarding
+  goroutine) and allocates nothing per packet (`bench/results/micro.json`); an audio
+  packet takes its sender's jitter-buffer lock, which the room's mixer goroutine
+  shares. On 64-bit Linux the media socket
   reads up to 64 datagrams per `recvmmsg` and sends all copies of a read with one
   `sendmmsg`, packing each sender's consecutive fragments for one receiver into a UDP GSO
   message, so the kernel's IP stack runs once per message instead of once per datagram
