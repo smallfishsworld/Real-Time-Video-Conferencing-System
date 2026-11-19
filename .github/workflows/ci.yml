@@ -1,5 +1,9 @@
 name: ci
 
+# Each Linux step runs one target of the top-level Makefile, so `make ci` runs the
+# same commands locally (in a fresh clone; see the Makefile). The macOS and Windows
+# jobs run plain go and pytest commands.
+
 on:
   push:
   pull_request:
@@ -8,45 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  go:
-    name: Go (vet, staticcheck, race tests)
+  lint:
+    name: Lint (gofmt, go vet incl. other platforms, staticcheck, ruff, mypy)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: server/go.mod
-          cache-dependency-path: server/go.sum
-      - name: gofmt
-        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
-      - name: go vet
-        run: go vet ./...
-      - name: staticcheck
-        run: go run honnef.co/go/tools/cmd/staticcheck@2025.1.1 ./...
-      - name: tests with the race detector
-        run: go test -race ./...
-      - name: short fuzzing of every decoder
-        run: |
-          for t in FuzzParseRTP FuzzParseVideo FuzzParseFEC FuzzFECRecovery FuzzParseRegister FuzzParseRegisterAck FuzzControlFrame FuzzParseNACK; do
-            go test -run '^$' -fuzz "^${t}\$" -fuzztime 10s ./internal/protocol
-          done
-      - name: benchmarks compile and run once
-        run: go test -run '^$' -bench . -benchtime 1x ./...
-      - name: builds without recvmmsg/sendmmsg (macOS, Windows, 32-bit Linux)
-        run: |
-          for target in darwin/arm64 windows/amd64 linux/386; do
-            GOOS=${target%/*} GOARCH=${target#*/} go vet ./... && GOOS=${target%/*} GOARCH=${target#*/} go build ./...
-          done
-
-  python:
-    name: Python client (ruff, mypy, pytest incl. end-to-end)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: client
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -54,32 +22,105 @@ jobs:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
       - uses: astral-sh/setup-uv@v6
+      - name: gofmt
+        run: make ci-gofmt
+      - name: go vet
+        run: make ci-vet
+      - name: staticcheck 2025.1.1
+        run: make ci-staticcheck
+      - name: vet and build without recvmmsg/sendmmsg (macOS, Windows, 32-bit Linux)
+        run: make ci-cross
+      - name: install (Python 3.13, with the bench group for bench/render.py)
+        run: make ci-py-lint-install
+      - name: ruff (client and bench)
+        run: make ci-ruff
+      - name: mypy (strict, python_version 3.11; client, tests and bench)
+        run: make ci-mypy
+
+  go:
+    name: Go (race tests, fuzzing, benchmarks once)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: tests with the race detector
+        run: make ci-race
+      - name: short fuzzing of every decoder
+        run: make ci-fuzz
+      - name: benchmarks compile and run once
+        run: make ci-bench
+
+  go-other-os:
+    name: Go tests on ${{ matrix.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: server
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: go vet
+        run: go vet ./...
+      - name: tests
+        run: go test ./...
+
+  python:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux: unit and end-to-end tests (the e2e tests build and start the Go server).
+          - { os: ubuntu-latest, python: "3.11", e2e: true }
+          - { os: ubuntu-latest, python: "3.13", e2e: true }
+          # macOS and Windows: unit tests.
+          - { os: macos-latest, python: "3.11", e2e: false }
+          - { os: windows-latest, python: "3.11", e2e: false }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        if: matrix.e2e
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: astral-sh/setup-uv@v6
       - name: install
-        run: uv sync --frozen --python 3.13
-      - name: ruff
-        run: uv run ruff check . ../bench && uv run ruff format --check . ../bench
-      - name: mypy
-        run: uv run mypy
-      - name: pytest (unit and end-to-end; the e2e tests build and start the Go server)
-        run: uv run pytest -v
+        if: matrix.e2e
+        run: make ci-py-install PYTHON=${{ matrix.python }}
+      - name: pytest (unit and end-to-end)
+        if: matrix.e2e
+        run: make ci-pytest
+      - name: install
+        if: ${{ !matrix.e2e }}
+        working-directory: client
+        run: uv sync --frozen --python ${{ matrix.python }}
+      - name: pytest (unit)
+        if: ${{ !matrix.e2e }}
+        working-directory: client
+        run: uv run --frozen pytest -v -m "not e2e"
 
   docker:
     name: Server container image
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: build
-        run: docker build -t confserver:ci -f server/Dockerfile server
+        run: make ci-docker-build
       - name: smoke test (flags after the image name are appended; HEALTHCHECK completes a hello)
-        run: |
-          docker run -d --name confserver --health-interval 1s \
-            -p 127.0.0.1:6100:6100/tcp -p 127.0.0.1:6100:6100/udp -p 127.0.0.1:6101:6101 \
-            confserver:ci -log-format json -p2p=false
-          for i in $(seq 1 30); do
-            [ "$(docker inspect -f '{{.State.Health.Status}}' confserver)" = healthy ] && break
-            sleep 1
-          done
-          docker inspect -f '{{.State.Health.Status}}' confserver | grep -qx healthy
-          curl -fsS http://127.0.0.1:6101/metrics | grep -q '^confserver_rooms'
-          docker logs confserver 2>&1 | head -n 1 | grep -q '^{'
-          docker rm -f confserver
+        run: make ci-docker-smoke
