@@ -11,6 +11,7 @@ writes its tag into samples [4i, 4i+4) and zeros into every other reserved slot.
 from __future__ import annotations
 
 import contextlib
+import gzip
 import json
 import math
 import os
@@ -122,6 +123,42 @@ def summary(values: Iterable[float]) -> dict[str, float | int | None]:
 # Result files ---------------------------------------------------------------------------
 
 
+KERNEL_CONFIG_KEYS = (
+    "CONFIG_IRQ_TIME_ACCOUNTING",
+    "CONFIG_VIRT_CPU_ACCOUNTING_GEN",
+    "CONFIG_TICK_CPU_ACCOUNTING",
+    "CONFIG_HZ",
+)
+
+
+def kernel_config() -> dict[str, str]:
+    """The CPU-accounting options of the running kernel ("n" when not set), read from
+    /proc/config.gz or /boot/config-<release>; empty when neither is readable."""
+    text = ""
+    with contextlib.suppress(OSError):
+        text = gzip.decompress(Path("/proc/config.gz").read_bytes()).decode()
+    if not text:
+        with contextlib.suppress(OSError):
+            text = Path(f"/boot/config-{platform.release()}").read_text()
+    if not text:
+        return {}
+    found = dict.fromkeys(KERNEL_CONFIG_KEYS, "n")
+    for line in text.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key in found:
+            found[key] = value
+    return found
+
+
+def softirq_jiffies(cpu: int) -> int | None:
+    """Softirq time of one CPU from /proc/stat, in USER_HZ ticks."""
+    with contextlib.suppress(OSError, ValueError, IndexError):
+        for line in Path("/proc/stat").read_text().splitlines():
+            if line.startswith(f"cpu{cpu} "):
+                return int(line.split()[7])
+    return None
+
+
 def environment() -> dict[str, Any]:
     def run(cmd: list[str]) -> str:
         try:
@@ -156,8 +193,16 @@ def environment() -> dict[str, Any]:
     build: dict[str, Any] | None = None
     with contextlib.suppress(OSError, ValueError):
         build = json.loads((ROOT / "bench" / "tmp" / "build.json").read_text())
+    loadavg = ""
+    with contextlib.suppress(OSError):
+        loadavg = Path("/proc/loadavg").read_text().strip()
     return {
         "kernel": platform.release(),
+        # How the kernel charges CPU time: with IRQ_TIME_ACCOUNTING off, softirq work
+        # (including loopback receive processing) is charged to whichever task was
+        # running when it ran.
+        "kernel_config": kernel_config(),
+        "loadavg": loadavg,
         "cpu": cpu,
         "cpus": os.cpu_count(),
         "python": platform.python_version(),
