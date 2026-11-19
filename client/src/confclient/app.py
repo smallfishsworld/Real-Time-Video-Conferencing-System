@@ -160,7 +160,15 @@ class ConferenceApp:
         self.room_closed.clear()
         self.remote_frames.clear()
         session = MediaSession(self.cfg.server, joined, self.playout, self._on_video, config=self.cfg.media)
-        await session.start()
+        try:
+            await session.start()
+        except (OSError, TimeoutError):
+            # Without a media path the membership is useless: give the seat back.
+            await session.close()
+            self.room = None
+            with contextlib.suppress(ServerError, ConnectionError, TimeoutError):
+                await self.control.request({"type": "leave_room"})
+            raise
         self.session = session
         if self.roster is not None and self.roster.get("room_id") == joined["room_id"]:
             session.update_roster(self.roster)
