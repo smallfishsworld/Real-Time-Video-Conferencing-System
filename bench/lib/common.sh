@@ -60,14 +60,20 @@ prepare() {
 # write_build_record OUT [BINARY...]: what the binaries were built from (commit, the
 # uncommitted paths outside bench/results and the SHA-256 of their diff against the
 # commit, null when there is none), when, the Go version, and each binary's SHA-256.
-# The analysis scripts copy it into the result files.
+# The diff misses untracked files and the Python code is not built, so the record also
+# has tree_sha256: one SHA-256 over the contents of every tracked and untracked (not
+# ignored) file under server, client, bench and legacy outside bench/results. And it
+# names the lock file the run used. The analysis scripts copy it into the result files.
 write_build_record() {
-  local out=$1 first=1 bin diff
+  local out=$1 first=1 bin diff tree
   shift
   diff=$(git -C "$ROOT" diff HEAD -- server client bench legacy ':!bench/results')
+  tree=$(cd "$ROOT" && git ls-files -z -co --exclude-standard -- server client bench legacy ':!bench/results' |
+    sort -z | xargs -0 -r sha256sum 2>/dev/null | sha256sum | cut -c1-64) || true
   {
-    printf '{"git_commit": "%s", "utc": "%s", "go": "%s", "git_dirty_files": [' \
-      "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(go version 2>/dev/null)"
+    printf '{"git_commit": "%s", "utc": "%s", "go": "%s", "tree_sha256": "%s", "lock": "%s", "git_dirty_files": [' \
+      "$(git -C "$ROOT" rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(go version 2>/dev/null)" \
+      "$tree" "$LOCK"
     git -C "$ROOT" status --porcelain -- server client bench legacy ':!bench/results' |
       sed 's/\\/\\\\/g; s/"/\\"/g; s/.*/"&"/' | paste -sd, -
     if [ -n "$diff" ]; then
