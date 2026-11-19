@@ -101,16 +101,32 @@ func (m *Media) Keepalive(token string) error {
 	return err
 }
 
-// Packetizer builds RTP packets for one SSRC.
+// Packetizer builds RTP packets for one SSRC. The test clients and the load generator
+// share it, so what the benchmarks send is what the tests check.
 type Packetizer struct {
 	SSRC uint32
 	Seq  uint16
 }
 
+func newBuffer() []byte { return make([]byte, protocol.MaxSendDatagram) }
+
 // VideoFrame appends the RTP packets of one JPEG frame (fragments of at most
 // MaxFragmentPayload bytes) to out and returns it. With fecK > 0 a parity packet
 // follows every fecK fragments and the last, possibly shorter, group of the frame.
 func (p *Packetizer) VideoFrame(out [][]byte, frame []byte, frameID, ts uint32, fecK int, enc *protocol.FECEncoder) [][]byte {
+	_ = p.VideoFrameTo(frame, frameID, ts, fecK, enc, newBuffer, func(pkt []byte) error {
+		out = append(out, pkt)
+		return nil
+	})
+	return out
+}
+
+// VideoFrameTo is VideoFrame without allocation: it builds each packet in the buffer
+// that next returns (at least MaxSendDatagram bytes) and passes it to emit, which may
+// use the packet until it lets next hand out that buffer again. It stops at emit's
+// first error.
+func (p *Packetizer) VideoFrameTo(frame []byte, frameID, ts uint32, fecK int, enc *protocol.FECEncoder,
+	next func() []byte, emit func([]byte) error) error {
 	count := protocol.FragmentCount(len(frame))
 	for i := 0; i < count; i++ {
 		chunk := frame[i*protocol.MaxFragmentPayload : min(len(frame), (i+1)*protocol.MaxFragmentPayload)]
@@ -122,47 +138,75 @@ func (p *Packetizer) VideoFrame(out [][]byte, frame []byte, frameID, ts uint32, 
 			SSRC:           p.SSRC,
 		}
 		p.Seq++
-		pkt := make([]byte, protocol.RTPHeaderSize+protocol.VideoHeaderSize+len(chunk))
-		n, _ := h.MarshalTo(pkt)
+		b := next()
+		n, _ := h.MarshalTo(b)
 		v := protocol.VideoHeader{FrameID: frameID, FragmentIndex: uint16(i), FragmentCount: uint16(count)}
-		m, _ := v.MarshalTo(pkt[n:])
-		copy(pkt[n+m:], chunk)
-		out = append(out, pkt)
+		m, _ := v.MarshalTo(b[n:])
+		c := copy(b[n+m:], chunk)
+		pkt := b[:n+m+c]
 		if fecK > 0 {
-			_ = enc.Add(pkt)
-			if enc.Len() >= fecK || i == count-1 {
-				out = p.appendParity(out, enc)
+			protect(enc, pkt)
+		}
+		if err := emit(pkt); err != nil {
+			return err
+		}
+		if fecK > 0 && (enc.Len() >= fecK || i == count-1) {
+			if err := p.flushParity(enc, next, emit); err != nil {
+				return err
 			}
 		}
 	}
-	return out
+	return nil
 }
 
 // AudioFrame returns the RTP packet of one 20 ms L16 frame (pcm is big-endian), plus a
 // parity packet when fecK > 0 completes a group.
 func (p *Packetizer) AudioFrame(out [][]byte, pcm []byte, ts uint32, marker bool, fecK int, enc *protocol.FECEncoder) [][]byte {
-	h := protocol.RTPHeader{Marker: marker, PayloadType: protocol.PTAudio, SequenceNumber: p.Seq, Timestamp: ts, SSRC: p.SSRC}
-	p.Seq++
-	pkt := make([]byte, protocol.RTPHeaderSize+len(pcm))
-	n, _ := h.MarshalTo(pkt)
-	copy(pkt[n:], pcm)
-	out = append(out, pkt)
-	if fecK > 0 {
-		_ = enc.Add(pkt)
-		if enc.Len() >= fecK {
-			out = p.appendParity(out, enc)
-		}
-	}
+	_ = p.AudioFrameTo(pcm, ts, marker, fecK, enc, newBuffer, func(pkt []byte) error {
+		out = append(out, pkt)
+		return nil
+	})
 	return out
 }
 
-// appendParity closes the current FEC group and appends its parity packet.
-func (p *Packetizer) appendParity(out [][]byte, enc *protocol.FECEncoder) [][]byte {
-	buf := make([]byte, protocol.MaxSendDatagram)
-	n, err := enc.Flush(buf, p.SSRC, p.Seq)
+// AudioFrameTo is AudioFrame without allocation, like VideoFrameTo.
+func (p *Packetizer) AudioFrameTo(pcm []byte, ts uint32, marker bool, fecK int, enc *protocol.FECEncoder,
+	next func() []byte, emit func([]byte) error) error {
+	h := protocol.RTPHeader{Marker: marker, PayloadType: protocol.PTAudio, SequenceNumber: p.Seq, Timestamp: ts, SSRC: p.SSRC}
+	p.Seq++
+	b := next()
+	n, _ := h.MarshalTo(b)
+	c := copy(b[n:], pcm)
+	pkt := b[:n+c]
+	if fecK > 0 {
+		protect(enc, pkt)
+	}
+	if err := emit(pkt); err != nil {
+		return err
+	}
+	if fecK > 0 && enc.Len() >= fecK {
+		return p.flushParity(enc, next, emit)
+	}
+	return nil
+}
+
+// protect adds pkt to the current FEC group. A packet the group cannot take (a
+// sequence gap, a full group) starts a new group, so one bad group cannot switch the
+// stream's FEC off for good.
+func protect(enc *protocol.FECEncoder, pkt []byte) {
+	if enc.Add(pkt) != nil {
+		enc.Reset()
+		_ = enc.Add(pkt)
+	}
+}
+
+// flushParity closes the current FEC group and emits its parity packet.
+func (p *Packetizer) flushParity(enc *protocol.FECEncoder, next func() []byte, emit func([]byte) error) error {
+	b := next()
+	n, err := enc.Flush(b, p.SSRC, p.Seq)
 	if err != nil {
-		return out
+		return nil // an empty group: nothing to send
 	}
 	p.Seq++
-	return append(out, buf[:n])
+	return emit(b[:n])
 }

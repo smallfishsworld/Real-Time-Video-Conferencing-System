@@ -147,74 +147,44 @@ func (p *v2Participant) queue(k int, pkt []byte) {
 	p.st.bytes.Add(int64(len(pkt)))
 }
 
+// sendVideo sends one frame with the shared packetizer, building the packets in
+// p.bufs and writing them in batches of up to `batch` datagrams.
 func (p *v2Participant) sendVideo(frame []byte, t tag) error {
-	count := protocol.FragmentCount(len(frame))
-	ts := uint32(t.SentNS * 9 / 100000) // 90 kHz
+	pz := client.Packetizer{SSRC: p.joined.VideoSSRC, Seq: p.vseq}
 	k := 0
-	for i := 0; i < count; i++ {
-		chunk := frame[i*protocol.MaxFragmentPayload : min(len(frame), (i+1)*protocol.MaxFragmentPayload)]
-		b := p.bufs[k][:]
-		h := protocol.RTPHeader{
-			Marker:         i == count-1,
-			PayloadType:    protocol.PTVideo,
-			SequenceNumber: p.vseq,
-			Timestamp:      ts,
-			SSRC:           p.joined.VideoSSRC,
-		}
-		p.vseq++
-		n, _ := h.MarshalTo(b)
-		v := protocol.VideoHeader{FrameID: t.Seq, FragmentIndex: uint16(i), FragmentCount: uint16(count)}
-		m, _ := v.MarshalTo(b[n:])
-		c := copy(b[n+m:], chunk)
-		pkt := b[:n+m+c]
-		p.queue(k, pkt)
-		k++
-		if p.cfg.FECK > 0 {
-			_ = p.venc.Add(pkt)
-			if p.venc.Len() >= p.cfg.FECK || i == count-1 {
-				fn, err := p.venc.Flush(p.bufs[k][:], p.joined.VideoSSRC, p.vseq)
-				if err == nil {
-					p.vseq++
-					p.queue(k, p.bufs[k][:fn])
-					k++
+	err := pz.VideoFrameTo(frame, t.Seq, uint32(t.SentNS*9/100000), p.cfg.FECK, &p.venc, // 90 kHz
+		func() []byte { return p.bufs[k][:] },
+		func(pkt []byte) error {
+			p.queue(k, pkt)
+			k++
+			if k == batch {
+				if err := p.write(k); err != nil {
+					return err
 				}
+				k = 0
 			}
-		}
-		if k >= batch-1 {
-			if err := p.write(k); err != nil {
-				return err
-			}
-			k = 0
-		}
+			return nil
+		})
+	p.vseq = pz.Seq
+	if err != nil {
+		return err
 	}
 	return p.write(k)
 }
 
 func (p *v2Participant) sendAudio(seq uint32) error {
-	b := p.bufs[0][:]
-	h := protocol.RTPHeader{
-		Marker:         seq == 0,
-		PayloadType:    protocol.PTAudio,
-		SequenceNumber: p.aseq,
-		Timestamp:      seq * protocol.AudioSamplesPerFrame,
-		SSRC:           p.joined.AudioSSRC,
-	}
-	p.aseq++
-	n, _ := h.MarshalTo(b)
-	c := copy(b[n:], p.pcm[:])
-	pkt := b[:n+c]
-	p.queue(0, pkt)
-	k := 1
-	if p.cfg.AudioFECK > 0 {
-		_ = p.aenc.Add(pkt)
-		if p.aenc.Len() >= p.cfg.AudioFECK {
-			fn, err := p.aenc.Flush(p.bufs[1][:], p.joined.AudioSSRC, p.aseq)
-			if err == nil {
-				p.aseq++
-				p.queue(1, p.bufs[1][:fn])
-				k = 2
-			}
-		}
+	pz := client.Packetizer{SSRC: p.joined.AudioSSRC, Seq: p.aseq}
+	k := 0
+	err := pz.AudioFrameTo(p.pcm[:], seq*protocol.AudioSamplesPerFrame, seq == 0, p.cfg.AudioFECK, &p.aenc,
+		func() []byte { return p.bufs[k][:] },
+		func(pkt []byte) error {
+			p.queue(k, pkt)
+			k++
+			return nil
+		})
+	p.aseq = pz.Seq
+	if err != nil {
+		return err
 	}
 	return p.write(k)
 }
