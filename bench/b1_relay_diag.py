@@ -17,7 +17,12 @@ frames never completed the next frame needed no NACK at all: it lost nothing on 
 first transmission, or every loss was in an FEC group whose other packets, parity
 included, got through, so the receiver could rebuild it on arrival. It also counts the
 retransmissions and how many of them repeated one already sent (a NACK retry sent before
-the first repair could return). FEC rebuilds at the receiver are not visible here.
+the first repair could return), and when the first repair of every lost packet passed the
+relay, over all frames and not only the frames never completed. Frames are counted over
+the whole run and, separately, inside the window that analyze_b1.py counts (frames sent
+in the first second and the last 1.5 s left out). Only the sender's video SSRC is read:
+its parity packets share its SSRC and sequence numbers, while the mixed audio and its
+parity have their own. FEC rebuilds at the receiver are not visible here.
 """
 
 from __future__ import annotations
@@ -29,6 +34,8 @@ from pathlib import Path
 
 PT_VIDEO = 96
 PT_FEC = 127
+EDGE_START, EDGE_END = 1.0, 1.5  # as in analyze_b1.py
+REPAIR_BY_MS = 64  # about one frame interval at 15.625 fps
 
 
 @dataclass
@@ -73,21 +80,34 @@ def diagnose(d: Path, tag: str) -> list[str]:
     recv = json.loads((d / f"{tag}.recv.json").read_text())
     stats = json.loads((d / f"{tag}.relay.json").read_text())
     completed = {int(e[1]) for e in recv["recv_video"]}
-    sent_order = [int(e[0]) for e in send["sent_video"]]
+    sent = [(int(e[0]), float(e[1])) for e in send["sent_video"] if len(e) < 3 or e[2]]
+    sent_order = [i for i, _ in sent]
+    lo, hi = sent[0][1] + EDGE_START, sent[-1][1] - EDGE_END
+    in_window = {pos for pos, (_, t) in enumerate(sent) if lo <= t <= hi}
     frames: dict[int, Frame] = {}
     order: list[int] = []
     seen: dict[int, int] = {}
     first_drop: dict[int, bool] = {}
     frame_of: dict[int, int] = {}
     parity: list[tuple[int, int, int]] = []
+    # Sequence number -> (frame id, ms after the frame's first fragment) of its first repair.
+    first_repair: dict[int, tuple[int, float]] = {}
     rtx = duplicates = 0
     nacks = nacks_dropped = 0
+    video_ssrc: bytes | None = None
     for t, direction, _length, dropped, head in log:
         b = bytes.fromhex(head)
         if direction == "up":
             if len(b) >= 2 and b[1] == 205:  # RTCP generic NACK
                 nacks += 1
                 nacks_dropped += int(dropped)
+            continue
+        if len(b) < 12:
+            continue
+        if video_ssrc is None and b[1] & 0x7F == PT_VIDEO:
+            video_ssrc = b[8:12]
+        # Keys below are sequence numbers, unique within this one SSRC.
+        if b[8:12] != video_ssrc:
             continue
         if len(b) >= 16 and b[1] & 0x7F == PT_FEC:
             pseq = int.from_bytes(b[2:4], "big")
@@ -107,6 +127,8 @@ def diagnose(d: Path, tag: str) -> list[str]:
             f = frames[fid] = Frame(int.from_bytes(b[18:20], "big"), t)
             order.append(fid)
         seen[seq] = seen.get(seq, 0) + 1
+        if seen[seq] == 2:
+            first_repair[seq] = (fid, 1000 * (t - f.first))
         if seen[seq] > 1:
             rtx += 1
             duplicates += int(seen[seq] > 2)
@@ -158,6 +180,16 @@ def diagnose(d: Path, tag: str) -> list[str]:
         )
     need = needs_nack(first_drop, frame_of, parity)
     missing = [pos for pos, idx in enumerate(sent_order) if idx not in completed and pos + 1 < len(order)]
+    every_repair = sorted(ms for _, ms in first_repair.values())
+    if every_repair:
+        by = sum(ms <= REPAIR_BY_MS for ms in every_repair)
+        out.append(
+            f"  over all frames, the first repair of each of the {len(every_repair)} packets repaired passed "
+            f"the relay {_median(every_repair):.1f} ms "
+            f"(median; {every_repair[0]:.0f}-{every_repair[-1]:.0f}) "
+            f"after its frame's first fragment, {by} ({100 * by / len(every_repair):.0f} %) within "
+            f"{REPAIR_BY_MS} ms"
+        )
     # When the first repair of each lost fragment of those frames passed the relay, and
     # the next frame's first fragment, in ms after the frame's first fragment.
     first_repairs = sorted(
@@ -170,13 +202,15 @@ def diagnose(d: Path, tag: str) -> list[str]:
     clean_next = sum(not need[order[pos + 1]] for pos in missing)
     clean_all = sum(not need[fid] for fid in order)
     share = 100 * clean_all / len(order)
+    window_missing = sum(pos in in_window for pos in missing)
     out.append(
-        f"  of the {len(missing)} frames never completed (next frame seen), the next frame needed no "
-        f"NACK for {clean_next}; of all {len(order)} frames, {clean_all} ({share:.1f} %) needed none"
+        f"  of the {len(missing)} frames never completed over the whole run ({window_missing} of them inside "
+        f"the window analyze_b1.py counts; next frame seen), the next frame needed no NACK for {clean_next}; "
+        f"of all {len(order)} frames, {clean_all} ({share:.1f} %) needed none"
     )
     if first_repairs and next_first:
         out.append(
-            f"  in those frames, the first repair of each lost fragment passed the relay "
+            f"  in those frames only (lost frames), the first repair of each lost fragment passed the relay "
             f"{_median(first_repairs):.0f} ms (median; {first_repairs[0]:.0f}-{first_repairs[-1]:.0f}) after "
             f"the frame's first fragment, and the next frame's first fragment "
             f"{_median(next_first):.0f} ms ({next_first[0]:.0f}-{next_first[-1]:.0f}) after it"
