@@ -36,10 +36,13 @@ SYSTEMS=${SYSTEMS:-"legacy v2"}
 SIZES=${SIZES:-"3 5"}
 REPEATS=${REPEATS:-3}
 MEASURE_SECONDS=${MEASURE_SECONDS:-60}
-OUT=${OUT:-$RESULTS/b2_audio.json}
+OUT_DEFAULT=$RESULTS/b2_audio.json
+OUT=${OUT:-$OUT_DEFAULT}
 RUNDIR="$TMPDIR_BENCH/b2/$CS305_RUN_ID"
 NS="${NS_PREFIX}b2"
 COMMAND="SYSTEMS=\"$SYSTEMS\" SIZES=\"$SIZES\" REPEATS=$REPEATS MEASURE_SECONDS=$MEASURE_SECONDS CHUNK_SECONDS=$CHUNK_SECONDS bench/run_b2.sh"
+# An output file other than the default is part of the command.
+[ "$OUT" = "$OUT_DEFAULT" ] || COMMAND="OUT=$OUT $COMMAND"
 
 setup_ns() {
   cleanup_netns
