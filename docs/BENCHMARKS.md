@@ -1,42 +1,72 @@
 # Benchmarks
 
-Four experiments compare the original course implementation (`legacy/`, run unmodified
-through `bench/legacy_harness/`) with v2. Each one is a single command, writes JSON to
-[`bench/results/`](../bench/results/), and `bench/render.py` turns the JSON into the
-tables and plots below. The tables between `BEGIN GENERATED` and `END GENERATED` markers
-are written by that script; do not edit them by hand.
+Seven experiments compare the original course implementation (`legacy/`, run unmodified
+through `bench/legacy_harness/`) with v2, or v2 before and after a fix. Each one is a
+single command that writes JSON to [`bench/results/`](../bench/results/);
+`bench/render.py` turns the JSON into the tables and plots below. The tables between
+`BEGIN GENERATED` and `END GENERATED` markers are written by that script; do not edit
+them by hand. Every number in the prose below comes from one of the files named next
+to it.
 
-| Experiment | Command | Result file | Takes |
+| Experiment | Command | Result file | Size of the run below |
 |---|---|---|---|
-| B1 loss resilience | `sudo bench/run_b1.sh` | `bench/results/b1_loss.json` | about 18 min |
-| B1 lost frames (after B1) | `python3 bench/b1_lost_frames.py > bench/results/b1_lost_frames.txt` | `bench/results/b1_lost_frames.txt` | seconds |
-| B2 multi-talker audio | `sudo bench/run_b2.sh` | `bench/results/b2_audio.json` | about 5 min |
-| B3 relay capacity | `sudo bench/run_b3.sh` and `sudo MTU=1500 bench/run_b3.sh` | `bench/results/b3_capacity.json`, `bench/results/b3_capacity_mtu1500.json` | about 15 min each |
-| B3 batching ablations | `sudo WIRES=v2 SIZES="96 128 160 192 224" SERVER_ARGS="-udp-batch 1" TAG=nobatch bench/run_b3.sh` and `sudo WIRES=v2 SIZES="128 160 192 224 256 320" SERVER_ARGS="-udp-gso=false" TAG=nogso bench/run_b3.sh`; repeated with `SIZES="160 192 224"` and `TAG=nobatch_repeat`, `TAG=nogso_repeat` | `bench/results/b3_capacity_nobatch.json`, `b3_capacity_nogso.json`, `b3_capacity_nobatch_repeat.json`, `b3_capacity_nogso_repeat.json` | 3-4 min each |
-| CPU profiles under the B3 load | `sudo LABEL=v2-gso bench/profile_b3.sh`, and with `LABEL=v2-sendmmsg SERVER_ARGS="-udp-gso=false"` or `LABEL=v2-unbatched SERVER_ARGS="-udp-batch 1"` | `bench/results/pprof_<label>.pb.gz`, `.txt`, `.metrics` | about 1 min each |
-| Go microbenchmarks | `bench/run_micro.sh` | `bench/results/micro.json` (raw: `micro.txt`) | about 2 min |
-| Tables and plots | `(cd client && uv run --group bench python ../bench/render.py)` | `bench/results/plots/`, `bench/results/tables.md` | seconds |
+| B1 loss resilience | `sudo bench/run_b1.sh` | `b1_loss.json` | 111 runs of 41 s (75 in one condition, 36 in the other) and one of 300 s |
+| B1 lost frames (after B1) | `python3 bench/b1_lost_frames.py bench/tmp/b1/<run ID>` | `b1_lost_frames.txt` | post-processing |
+| B1 relay diagnosis | `sudo RELAY_LOG=1 CONDITIONS=both-rtt50 HARD_SYSTEMS="v2-fec-nack v2-nack" HARD_LOSSES=50 REPEATS=1 bench/run_b1.sh`, then `python3 bench/b1_relay_diag.py bench/tmp/b1/<run ID>` | `b1_rtt50_relay_diag.txt` | 2 runs of 41 s |
+| B2 multi-talker audio | `sudo bench/run_b2.sh` | `b2_audio.json` | 12 runs of 60 s |
+| B3 relay capacity | `sudo bench/run_b3.sh` | `b3_capacity.json` | 80 sweep points of 20 s and 12 fixed-load runs of 60 s |
+| CPU profiles under the B3 load | `sudo bench/profile_b3.sh` | `pprof_<variant>.{json,txt,pb.gz,metrics}` | 3 profiles of 15 s |
+| Forwarding under control-plane churn | `LABEL=after bench/run_churn.sh` (and `LABEL=before` on the code before the fix, with `churn_before_harness.patch`) | `churn_before.json`, `churn_after.json` | 3 runs of 4 configurations x 20 s each |
+| Jitter buffers, simulated time | `LABEL=after bench/run_jitter.sh` (and `LABEL=before` on the code before the fix) | `jitter_before.json`, `jitter_after.json` | simulated time (no lock) |
+| Go microbenchmarks | `bench/run_micro.sh` | `micro.json` (raw: `micro.txt`) | 5 runs of each benchmark |
+| Tables and plots | `(cd client && uv run --group bench python ../bench/render.py)` | `plots/`, `tables.md` | post-processing |
 
-B1-B3 need root (network namespaces and nftables). Every script runs its timing-sensitive
-part under `flock /home/user/work/bench.lock` (override with `BENCH_LOCK=...`), so only
-one benchmark runs on the machine at a time, and removes its namespaces (and with them
-the nftables rules) on exit.
+B1-B3 and the profiles need root (network namespaces and nftables).
 
-## Environment
+## How these numbers were made
 
-All results were measured in one container: Linux 6.18, 4 vCPUs (Intel Xeon @ 2.10 GHz),
-Go 1.24.7, Python 3.13. Other jobs ran on the machine at the same time (the bench lock
-only serialises benchmarks), so treat small differences as noise. Each point is a single
-run; there are no repetitions or confidence intervals, except two repeated B3 ablation
-sweeps noted below. The `environment` object in each JSON file records the kernel, CPU
-and versions, the git commit and any uncommitted paths under `server/`, `client/`,
-`bench/` and `legacy/` when the results were written, and in `environment.build` the
-same for the moment the binaries were built (`bench/lib/common.sh`). The B1, B2, B3 and
-microbenchmark results were built from clean trees (commit 25e0e63; the B3 ablations
-also ff94edb, which only fixed how `run_b3.sh` passes flags to its analysis).
-`b3_capacity_unbatched.json`, the pre-batching cross-check, was run at 8e80e8d with two
-untracked files present (`server/Dockerfile`, `server/.dockerignore`) that are not part
-of the binaries.
+**Machine.** One shared virtual machine: Linux 6.18, 4 vCPUs (Intel Xeon @ 2.10 GHz),
+Go 1.24.7, Python 3.13. Other agents' jobs ran on it at the same time. Timing-sensitive
+steps of every benchmark here, and of the other jobs that measure time, take one lock
+(`flock` on `$BENCH_LOCK`, default `${XDG_RUNTIME_DIR:-/tmp}/cs305-bench.lock`), so no
+two measurements overlap; builds, tests and other work did run during measurements, at
+`nice -n 19`, mostly on CPU 0 (B3 and the profiles pin the server to CPU 1 and the load
+generator to CPUs 2-3). Each result records the load average when it was written.
+The kernel accounts CPU time by tick (`CONFIG_TICK_CPU_ACCOUNTING=y`, `CONFIG_HZ=250`)
+without IRQ time accounting (`CONFIG_IRQ_TIME_ACCOUNTING=n`): softirq work is charged
+to whichever process was running when it ran, which matters on loopback (B3).
+
+**One invocation, one set of files.** Each invocation gets a run ID
+(`CS305_RUN_ID`, UTC time plus PID), builds its binaries into `bench/tmp/build/<run ID>/`
+with a build record (`build.json`: commit, uncommitted paths and a hash of their diff,
+SHA-256 of each binary), creates network namespaces named after its own invocation
+only, and writes raw files to `bench/tmp/<benchmark>/<run ID>/`. The result JSON is made
+from that directory only and names it (`raw_files`), along with the exact command
+(`command`, also in `command.txt`), the build record (`environment.build`) and the
+state of the tree when the JSON was written (`environment`). The command is recorded
+with every setting spelled out, in the form a user would type it (`sudo ...`); the
+runs here were started as root through a wrapper that only set `BENCH_LOCK` to the
+lock file this machine's jobs share. A run whose processes
+failed is listed under `failed_runs` and left out. Long benchmarks run in chunks of at
+most 12 minutes under the lock and release it in between; Ctrl-C stops a run, and
+running the same command with the same `CS305_RUN_ID` resumes it with the same binaries
+and settings. Raw directories are not committed (`bench/tmp/` is ignored); the result
+JSON keeps the per-run values.
+
+**Repeats and statistics.** Every point of B1, B2 and B3 was run three times, with the
+repeats interleaved (all points of repeat 1, then repeat 2, ...), so a slow drift of the
+machine's load hits every system alike. Tables give the median of the repeats and their
+range (min-max); with three runs the range is not a confidence interval, only the spread
+seen. B1 also pools the frames of its three runs and gives a Wilson 95 % score interval
+for the delivery ratio. That interval treats frames as independent; losses that come in
+bursts (the original's reassembly queue, below) make it too narrow, so read it together
+with the run-to-run range. The CPU profiles are one 15 s window per server variant, and
+the microbenchmarks five runs each.
+
+**Earlier results.** The first results of each benchmark, from before this round of
+fixes, are kept in [`bench/results/v1/`](../bench/results/v1/). They were made with one
+run per point and, for B3 and the profiles, with loopback carrying whole UDP GSO
+messages (see B3); they are not used below.
 
 ## Test media
 

@@ -19,8 +19,10 @@ has the methodology and full results.
 
 ## Results at a glance
 
-All numbers were measured in one 4-vCPU Linux container (single runs unless noted; methodology in
-[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)).
+All numbers were measured on one shared 4-vCPU Linux virtual machine, on loopback or
+in network namespaces, with three runs per point: tables give the median and, in
+brackets, the range of the three runs. [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) has
+the methodology, the result file and run ID behind every number, and the caveats.
 
 **Loss resilience (B1).** Video frames delivered complete within 200 ms over a link
 with random packet loss (1500-byte MTU, same 480x480 JPEG frames for all systems):
@@ -307,17 +309,25 @@ make fuzz          # 30 s of native Go fuzzing per decoder
 
 ## Benchmarks
 
-Each experiment is one command and writes JSON to `bench/results/`; B1-B3 need root
-for network namespaces and nftables, and every timing-sensitive step runs under
-`flock /home/user/work/bench.lock` (override with `BENCH_LOCK`).
+Each experiment is one command and writes JSON to `bench/results/` from the raw files
+of that one invocation (`bench/tmp/<benchmark>/<run ID>/`), with the build record of
+the binaries it ran. B1-B3 need root for network namespaces and nftables, and create
+only namespaces named after their own invocation. Timing-sensitive steps run under
+`flock` on `${XDG_RUNTIME_DIR:-/tmp}/cs305-bench.lock` (set `BENCH_LOCK` to share a
+lock with other jobs on the machine), in chunks of at most 12 minutes so other jobs
+can take the lock in between; Ctrl-C stops a run, and the same `CS305_RUN_ID` resumes
+it. `docs/BENCHMARKS.md` has the method and every result.
 
 ```sh
-sudo bench/run_b1.sh                 # B1 loss resilience
-sudo bench/run_b2.sh                 # B2 multi-talker audio
-sudo bench/run_b3.sh                 # B3 relay capacity (sudo MTU=1500 bench/run_b3.sh for Ethernet MTU)
-sudo WIRES=v2 SERVER_ARGS="-udp-batch 1" TAG=nobatch bench/run_b3.sh   # B3 with batching off
-sudo LABEL=v2-gso bench/profile_b3.sh   # CPU profile of the v2 server at 128 participants
-bench/run_micro.sh                   # Go microbenchmarks
+sudo bench/run_b1.sh      # B1 loss resilience: 3 repeats per point, two loss conditions, one long run
+sudo bench/run_b2.sh      # B2 multi-talker audio: 3 and 5 parties, 3 repeats
+sudo bench/run_b3.sh      # B3 relay capacity: v2 with and without GSO / batching, and the original
+sudo MTU=1500 bench/run_b3.sh                  # the same at Ethernet MTU
+sudo bench/profile_b3.sh                       # CPU profiles of the v2 variants at 128 participants
+bench/run_micro.sh                             # Go microbenchmarks (the send ones use loopback receivers)
+LABEL=after bench/run_churn.sh                 # forwarding latency while the control plane churns
+LABEL=after bench/run_jitter.sh                # server and client jitter buffers, simulated time
+python3 bench/b1_lost_frames.py bench/tmp/b1/<run ID>   # which NACK frames were lost, and why
 (cd client && uv run --group bench python ../bench/render.py)   # tables and plots
 ```
 
@@ -342,7 +352,10 @@ configured IP address before importing it.
   and there is no congestion control or adaptive bitrate.
 - The host role is not transferred when the host leaves; such a room closes when it
   becomes empty.
-- Benchmarks ran on one shared machine over loopback and veth links, one run per point.
+- Benchmarks ran on one shared 4-CPU virtual machine over loopback and veth links, with
+  simulated devices at both ends; the loss and delay are emulated (nftables drops and a
+  userspace relay), not a real network. See `docs/BENCHMARKS.md` for the conditions of
+  each number.
 
 ## Repository layout
 

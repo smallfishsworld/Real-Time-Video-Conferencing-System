@@ -329,17 +329,27 @@ where it is used.
   original's loop blocks on the microphone read; B3 uses 15 fps for both.
 - **P2P disabled in B1** on the v2 server (`-p2p=false`) so that both systems relay
   through the server, as the original does in relay mode.
-- **Loss only on the server -> receiver link, UDP only.** nftables drops packets in the
+- **Two loss conditions in B1.** In the main one, nftables drops packets in the
   receiver's prerouting chain at priority -500, before defragmentation (-400), so single
-  IP fragments are lost as on a real network. TCP control traffic is not impaired.
+  IP fragments are lost as on a real network; only the server -> receiver direction
+  loses packets and the round trip is under a millisecond, the best case for NACK. In
+  the harder one (v2 only), a userspace relay drops datagrams independently in both
+  directions and adds 25 ms each way, so NACKs and retransmissions can be lost and every
+  repair costs at least 50 ms. TCP control traffic is never impaired.
 - **Delivery definitions.** B1 counts a frame as delivered when the complete frame was
   at the receiver within 200 ms of being sent. In B3 the load generator does not use FEC
   to repair frames, so v2's delivery there is a lower bound.
 - **CPU accounting.** B3 reads utime + stime of the server process from
   `/proc/<pid>/stat` at the edges of the measurement window, with the server pinned to
-  one CPU and the load generator to two others (`taskset`). On loopback the kernel's
-  receive-side work runs in the context of the sending process, so each side is charged
-  for delivering its own packets.
+  one CPU and the load generator to two others (`taskset`). On loopback the receive path
+  of a packet runs in softirq on the sending CPU, and with tick-based accounting
+  (`CONFIG_IRQ_TIME_ACCOUNTING=n`, recorded in each result) that time is charged to the
+  sending process: the server pays for its receivers' IP receive path, and the load
+  generator for the server's. Each B3 point records how much of the server core's busy
+  time was softirq. To keep that receive path the same for every variant, lo's
+  `gso_max_segs` is 1, so GSO messages are split before lo as in front of a NIC without
+  segmentation offload; with lo's default they would go up the receivers' stack whole,
+  which no real network does and which made GSO look better in the first B3 runs.
 - **Clocks.** All processes of a run are on one host and use CLOCK_MONOTONIC, so one-way
   latencies need no clock synchronisation.
 - **GSO in B1.** veth passes UDP GSO messages whole into the receiver's namespace, where
@@ -347,16 +357,18 @@ where it is used.
   veth makes the kernel split them as it transmits, so the rule sees single datagrams,
   as a lossy wire does.
 - **Before/after on one binary.** The batching comparison in B3 and in the profiles
-  uses one build with `-udp-batch 1` (the old system-call pattern) and
-  `-udp-gso=false`, so nothing else differs. `b3_capacity_unbatched.json` is the same
-  benchmark at commit 8e80e8d, before batching existed, as a cross-check. Each ablation
-  was swept twice; the spread between the two sweeps (160 or 192 participants, 0.552 or
-  0.611 CPU-seconds per participant-minute) is the noise floor for these comparisons.
-- **NACK in B1 sees a short round trip.** The namespaces' round trip is well under a
-  millisecond and only the server -> receiver direction loses packets, so NACKs always
-  arrive and a retransmission comes back within the client's 5 ms wait plus its 10 ms
-  request interval. The B1 NACK results are for a short path; on a long one each
-  repaired frame is one round trip later.
-- **Provenance.** Results record the commit and any uncommitted files both when the
-  binaries were built (`environment.build`) and when the results were written
+  uses one build with `-udp-batch=1` (one system call per datagram, the old pattern) and
+  `-udp-gso=false`, so nothing else differs.
+- **Repeats, interleaved.** Every B1, B2 and B3 point runs three times, interleaved by
+  repeat, so slow drifts in the shared machine's load hit every system alike. Results
+  give the median and the range of the repeats; B1 also pools its frames into a Wilson
+  95 % interval, which assumes independent frames and is too narrow where losses come
+  in bursts.
+- **NACK in the main B1 condition sees a short round trip.** NACKs always arrive and a
+  retransmission comes back within the client's 5 ms wait plus its 10 ms request
+  interval. The harder condition shows NACK on a 50 ms round trip with loss both ways.
+- **Provenance.** Each invocation has its own run ID, build directory, network
+  namespaces and raw directory, and its result is made from that directory only. Results
+  record the commit and any uncommitted files both when the binaries were built
+  (`environment.build`, with the binaries' SHA-256) and when the results were written
   (`environment.git_dirty_files`); files under `bench/results` do not count.
