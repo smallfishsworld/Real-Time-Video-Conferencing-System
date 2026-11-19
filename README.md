@@ -348,8 +348,11 @@ configured IP address before importing it.
   tested with real hardware; all tests and benchmarks use synthetic media.
 - Video is one JPEG per frame: simple and loss-tolerant, but about 4 Mbit/s for a
   480x480 stream at 15 fps, far more than an inter-frame codec would need.
-- No encryption: control messages and media are plaintext, and the session token only
-  binds a participant to a UDP address.
+- No encryption or message integrity: control messages and media are plaintext. A
+  REGISTER from a new address moves a member's media binding only after that address
+  echoes a server nonce, and a binding without keepalives for 15 s stops receiving, so
+  an off-path sender cannot redirect a room's media. An attacker who can read the token
+  on the path, or spoof the member's own address, still can.
 - P2P uses the address the server observed, with no ICE/STUN/TURN, so it works on a LAN
   or through permissive NATs only; otherwise rooms of two must run with `-p2p=false`.
 - Loss repair is XOR parity (one loss per group of four fragments) plus NACK
