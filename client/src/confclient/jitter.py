@@ -175,8 +175,8 @@ class AudioJitterBuffer:
                 self._cursor = (self._cursor + AUDIO_SAMPLES_PER_FRAME) & 0xFFFFFFFF
                 self.stats.drained += 1
             elif adjust < 0:  # stretch: conceal one frame, play the due one next tick
-                due = self._slots[self._head]
-                if self._last is not None and due is not None and due[0] == self._cursor:
+                waiting = self._slots[self._head]
+                if self._last is not None and waiting is not None and waiting[0] == self._cursor:
                     self.stats.stretched += 1
                     return (self._last >> 1).astype(np.int16), PlayStatus.CONCEALED
             entry = self._slots[self._head]
