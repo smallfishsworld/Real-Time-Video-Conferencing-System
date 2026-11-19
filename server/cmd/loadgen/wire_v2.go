@@ -94,13 +94,19 @@ func setupV2(ctx context.Context, cfg config, clk clock, server netip.Addr, part
 			// Events are not needed; read them so the buffer never fills. Ping like the
 			// real client does, or the server closes the connection after its 60 s idle
 			// timeout and the participant leaves the room in the middle of a long run.
+			// Send media keepalives every 5 s like the real client, or the server drops
+			// the binding after 15 s.
 			ping := time.NewTicker(15 * time.Second)
 			defer ping.Stop()
+			keep := time.NewTicker(5 * time.Second)
+			defer keep.Stop()
 			for {
 				select {
 				case <-ctrl.Events():
 				case <-ping.C:
 					_ = ctrl.Send(map[string]any{"type": protocol.TypePing})
+				case <-keep.C:
+					_ = media.Keepalive(msg.Token)
 				case <-ctrl.Done():
 					return
 				}
@@ -247,6 +253,9 @@ func (p *v2Participant) receive(ctx context.Context, rec *recorder) {
 			b := m.Buffers[0][:m.N]
 			if len(b) < protocol.RTPHeaderSize || b[0]>>6 != 2 {
 				rec.otherPackets++
+				if len(b) > 0 && b[0] == protocol.TypeRegisterAck {
+					p.answerChallenge(b)
+				}
 				continue
 			}
 			pt := b[1] & 0x7f
@@ -301,6 +310,23 @@ func (p *v2Participant) receive(ctx context.Context, rec *recorder) {
 			}
 		}
 	}
+}
+
+// answerChallenge echoes the nonce of a REGISTER_ACK challenge, as the real client
+// does when the server asks it to prove its address again (after its binding expired).
+func (p *v2Participant) answerChallenge(b []byte) {
+	var ack protocol.RegisterAck
+	if protocol.ParseRegisterAck(b, &ack) != nil || !ack.Challenge {
+		return
+	}
+	tok, err := protocol.ParseToken(p.joined.Token)
+	if err != nil {
+		return
+	}
+	reg := protocol.Register{TxID: ack.TxID, Token: tok, HasNonce: true, Nonce: ack.Nonce}
+	var pkt [protocol.RegisterSize]byte
+	n, _ := reg.MarshalTo(pkt[:])
+	_, _ = p.media.Conn.WriteToUDPAddrPort(pkt[:n], p.media.Server)
 }
 
 func (p *v2Participant) controlLost() bool {

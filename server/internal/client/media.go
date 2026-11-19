@@ -43,8 +43,10 @@ func (m *Media) Close() error { return m.Conn.Close() }
 // ErrNoAck is returned when the server never acknowledged the registration.
 var ErrNoAck = errors.New("client: no REGISTER_ACK")
 
-// Register sends REGISTER every interval until a matching REGISTER_ACK arrives or
-// timeout passes. Other datagrams that arrive meanwhile are discarded.
+// Register sends REGISTER every interval until the server binds the socket or timeout
+// passes. The server first answers with a challenge; Register echoes its nonce
+// (return routability) and waits for the final REGISTER_ACK. Other datagrams that
+// arrive meanwhile are discarded.
 func (m *Media) Register(token string, interval, timeout time.Duration) (netip.AddrPort, error) {
 	tok, err := protocol.ParseToken(token)
 	if err != nil {
@@ -54,11 +56,11 @@ func (m *Media) Register(token string, interval, timeout time.Duration) (netip.A
 	_, _ = rand.Read(txb[:])
 	reg := protocol.Register{TxID: binary.BigEndian.Uint64(txb[:]), Token: tok}
 	pkt := make([]byte, protocol.RegisterSize)
-	n, _ := reg.MarshalTo(pkt)
 	buf := make([]byte, 2048)
 	deadline := time.Now().Add(timeout)
 	defer func() { _ = m.Conn.SetReadDeadline(time.Time{}) }()
 	for time.Now().Before(deadline) {
+		n, _ := reg.MarshalTo(pkt)
 		if _, err := m.Conn.WriteToUDPAddrPort(pkt[:n], m.Server); err != nil {
 			return netip.AddrPort{}, err
 		}
@@ -70,12 +72,33 @@ func (m *Media) Register(token string, interval, timeout time.Duration) (netip.A
 				break
 			}
 			var ack protocol.RegisterAck
-			if protocol.ParseRegisterAck(buf[:k], &ack) == nil && ack.TxID == reg.TxID {
+			if protocol.ParseRegisterAck(buf[:k], &ack) != nil || ack.TxID != reg.TxID {
+				continue
+			}
+			if !ack.Challenge {
 				return ack.Observed, nil
 			}
+			reg.HasNonce, reg.Nonce = true, ack.Nonce
+			break // answer the challenge right away
 		}
 	}
 	return netip.AddrPort{}, ErrNoAck
+}
+
+// Keepalive sends one REGISTER for token, as clients do every 5 s to keep the binding
+// (the server drops bindings that stop sending them). It does not wait for the ACK.
+func (m *Media) Keepalive(token string) error {
+	tok, err := protocol.ParseToken(token)
+	if err != nil {
+		return err
+	}
+	var txb [8]byte
+	_, _ = rand.Read(txb[:])
+	reg := protocol.Register{TxID: binary.BigEndian.Uint64(txb[:]), Token: tok}
+	pkt := make([]byte, protocol.RegisterSize)
+	n, _ := reg.MarshalTo(pkt)
+	_, err = m.Conn.WriteToUDPAddrPort(pkt[:n], m.Server)
+	return err
 }
 
 // Packetizer builds RTP packets for one SSRC.

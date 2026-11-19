@@ -4,6 +4,7 @@ source and SSRC filtering, the switch grace period, FEC repair and the send cap.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -16,6 +17,7 @@ from confclient.packetizer import AudioPacketizer, VideoPacketizer
 from confclient.protocol import (
     PT_FEC,
     TYPE_REGISTER,
+    build_register,
     build_register_ack,
     fragment_count,
     parse_register,
@@ -28,12 +30,14 @@ JPEG = encode_jpeg(TestPattern(240, 240).frame(0))
 
 
 class FakeServer(asyncio.DatagramProtocol):
-    """Answers REGISTER like the real server and records everything else."""
+    """Answers REGISTER like the real server (a challenge for a new address, the
+    binding once the nonce comes back from it) and records everything else."""
 
     def __init__(self) -> None:
         self.transport: asyncio.DatagramTransport | None = None
         self.received: list[tuple[bytes, tuple[str, int]]] = []
         self.registered: dict[bytes, tuple[str, int]] = {}
+        self.challenges = 0
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         assert isinstance(transport, asyncio.DatagramTransport)
@@ -42,9 +46,15 @@ class FakeServer(asyncio.DatagramProtocol):
     def datagram_received(self, data: bytes, addr: tuple[Any, ...]) -> None:
         src = (str(addr[0]), int(addr[1]))
         if data and data[0] == TYPE_REGISTER:
-            txid, token = parse_register(data)
-            self.registered[token] = src
+            txid, token, echoed = parse_register(data)
             assert self.transport is not None
+            nonce = hashlib.sha256(token + repr(src).encode()).digest()[:8]
+            if self.registered.get(token) != src and echoed != nonce:
+                self.challenges += 1
+                ack = build_register_ack(txid, src[0], src[1], challenge=True, nonce=nonce)
+                self.transport.sendto(ack, src)
+                return
+            self.registered[token] = src
             self.transport.sendto(build_register_ack(txid, src[0], src[1]), src)
             return
         self.received.append((data, src))
@@ -138,6 +148,9 @@ def test_register_then_p2p_media_bypasses_the_server() -> None:
             await b.session.start()
             assert observed == a.session.local_addr  # the server saw our real address
             assert len(server.registered) == 2
+            # Each socket proved its address by echoing one challenge.
+            assert server.challenges == 2
+            assert a.session.stats.challenges == b.session.stats.challenges == 1
 
             assert a.session.send_video(JPEG, 0.0) is None  # nobody else in the room yet
             for p in (a, b):
@@ -157,6 +170,23 @@ def test_register_then_p2p_media_bypasses_the_server() -> None:
             assert [d for d, _ in server.received] == []  # nothing went through the server
             await a.session.close()
             await b.session.close()
+
+    _run(scenario)
+
+
+def test_binding_lost_later_is_restored_by_answering_the_challenge() -> None:
+    async def scenario() -> None:
+        async with fake_server() as server:
+            a = Peer(server, 1)
+            await a.session.start()
+            token = bytes.fromhex(a.joined["token"])
+            del server.registered[token]  # as when the server expired the binding
+            # The next keepalive is challenged; the session echoes the nonce at once.
+            a.session._send_raw(build_register(7, token), a.session.server)
+            await until(lambda: token in server.registered)
+            assert server.registered[token] == a.session.local_addr
+            assert a.session.stats.challenges == 2
+            await a.session.close()
 
     _run(scenario)
 

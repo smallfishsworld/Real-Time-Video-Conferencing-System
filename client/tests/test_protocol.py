@@ -101,15 +101,20 @@ def test_fec_vectors_encode_and_recover_every_member(vec: dict[str, Any]) -> Non
 
 def test_register_vectors() -> None:
     by_name = {v["name"]: v for v in VECTORS["register"]}
-    reg = by_name["register"]
-    token = bytes.fromhex(reg["token"])
-    assert build_register(reg["txid"], token).hex() == reg["hex"]
-    assert parse_register(bytes.fromhex(reg["hex"])) == (reg["txid"], token)
-    for name in ("register_ack_ipv4", "register_ack_ipv6"):
+    for name in ("register", "register_echoing_nonce"):
+        reg = by_name[name]
+        token = bytes.fromhex(reg["token"])
+        nonce = None if reg["nonce"] is None else bytes.fromhex(reg["nonce"])
+        assert build_register(reg["txid"], token, nonce).hex() == reg["hex"]
+        assert parse_register(bytes.fromhex(reg["hex"])) == (reg["txid"], token, nonce)
+    for name in ("register_ack_ipv4", "register_challenge_ipv4", "register_ack_ipv6"):
         v = by_name[name]
         host, port = parse_addr(v["addr"])
-        assert build_register_ack(v["txid"], host, port).hex() == v["hex"]
-        assert parse_register_ack(bytes.fromhex(v["hex"])) == (v["txid"], (host, port))
+        nonce = bytes.fromhex(v["nonce"])
+        assert (
+            build_register_ack(v["txid"], host, port, challenge=v["challenge"], nonce=nonce).hex() == v["hex"]
+        )
+        assert parse_register_ack(bytes.fromhex(v["hex"])) == (v["txid"], (host, port), v["challenge"], nonce)
 
 
 @pytest.mark.parametrize("vec", VECTORS["control"], ids=_name)
@@ -144,6 +149,7 @@ _PARSERS: dict[str, Callable[[bytes], object]] = {
     "video": parse_video,
     "fec": parse_fec,
     "register": parse_register,
+    "register_ack": parse_register_ack,
     "control": lambda b: FrameDecoder().feed(b),
     "nack": parse_nack,
 }

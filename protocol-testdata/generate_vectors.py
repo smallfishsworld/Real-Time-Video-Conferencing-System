@@ -169,18 +169,54 @@ def main() -> None:
     )
 
     token = bytes(range(0xA0, 0xB0))
-    reg = struct.pack("!BBHQ", 1, 1, 0, 0x0102030405060708) + token
+    nonce = bytes(range(0xC0, 0xC8))
+    reg = struct.pack("!BBBBQ", 1, 2, 0, 0, 0x0102030405060708) + token + bytes(8)
     vectors["register"].append(
-        {"name": "register", "hex": reg.hex(), "txid": 0x0102030405060708, "token": token.hex()}
+        {"name": "register", "hex": reg.hex(), "txid": 0x0102030405060708, "token": token.hex(), "nonce": None}
     )
-    ack4 = struct.pack("!BBBBQH", 2, 1, 4, 0, 42, 50000) + bytes([127, 0, 0, 2])
+    reg_nonce = struct.pack("!BBBBQ", 1, 2, 1, 0, 0x1112131415161718) + token + nonce
     vectors["register"].append(
-        {"name": "register_ack_ipv4", "hex": ack4.hex(), "txid": 42, "addr": "127.0.0.2:50000"}
+        {
+            "name": "register_echoing_nonce",
+            "hex": reg_nonce.hex(),
+            "txid": 0x1112131415161718,
+            "token": token.hex(),
+            "nonce": nonce.hex(),
+        }
+    )
+    ack4 = struct.pack("!BBBBQH", 2, 2, 4, 0, 42, 50000) + bytes([127, 0, 0, 2]) + bytes(8)
+    vectors["register"].append(
+        {
+            "name": "register_ack_ipv4",
+            "hex": ack4.hex(),
+            "txid": 42,
+            "addr": "127.0.0.2:50000",
+            "challenge": False,
+            "nonce": bytes(8).hex(),
+        }
+    )
+    challenge4 = struct.pack("!BBBBQH", 2, 2, 4, 1, 43, 50001) + bytes([127, 0, 0, 2]) + nonce
+    vectors["register"].append(
+        {
+            "name": "register_challenge_ipv4",
+            "hex": challenge4.hex(),
+            "txid": 43,
+            "addr": "127.0.0.2:50001",
+            "challenge": True,
+            "nonce": nonce.hex(),
+        }
     )
     ip6 = bytes.fromhex("20010db8000000000000000000000001")
-    ack6 = struct.pack("!BBBBQH", 2, 1, 6, 0, 7, 6100) + ip6
+    ack6 = struct.pack("!BBBBQH", 2, 2, 6, 0, 7, 6100) + ip6 + bytes(8)
     vectors["register"].append(
-        {"name": "register_ack_ipv6", "hex": ack6.hex(), "txid": 7, "addr": "[2001:db8::1]:6100"}
+        {
+            "name": "register_ack_ipv6",
+            "hex": ack6.hex(),
+            "txid": 7,
+            "addr": "[2001:db8::1]:6100",
+            "challenge": False,
+            "nonce": bytes(8).hex(),
+        }
     )
 
     vectors["nack"] = [
@@ -248,8 +284,11 @@ def main() -> None:
         {"kind": "video", "name": "no_fragment_bytes", "hex": video_header(1, 0, 1).hex()},
         {"kind": "fec", "name": "count_zero", "hex": struct.pack("!HBBBBHI", 1, 0, 0, 0, 0, 0, 0).hex()},
         {"kind": "fec", "name": "count_too_large", "hex": struct.pack("!HBBBBHI", 1, 49, 0, 0, 0, 0, 0).hex()},
-        {"kind": "register", "name": "short", "hex": reg[:20].hex()},
-        {"kind": "register", "name": "wrong_version", "hex": (reg[:1] + b"\x02" + reg[2:]).hex()},
+        {"kind": "register", "name": "short", "hex": reg[:28].hex()},
+        {"kind": "register", "name": "version1", "hex": (reg[:1] + b"\x01" + reg[2:]).hex()},
+        {"kind": "register", "name": "unknown_flag", "hex": (reg[:2] + b"\x02" + reg[3:]).hex()},
+        {"kind": "register_ack", "name": "no_nonce", "hex": ack4[:18].hex()},
+        {"kind": "register_ack", "name": "unknown_flag", "hex": (ack4[:3] + b"\x02" + ack4[4:]).hex()},
         {"kind": "nack", "name": "no_items", "hex": nack(1, 2, []).hex()},
         {"kind": "nack", "name": "length_beyond_packet", "hex": nack(1, 2, [(5, 0)]).hex()[:-8]},
         {"kind": "control", "name": "zero_length", "hex": "00000000"},
@@ -272,7 +311,9 @@ def write_fuzz_seeds(vectors: dict[str, list[dict]]) -> None:
     rtp_pkts = [bytes.fromhex(v["hex"]) for v in vectors["rtp"]]
     parities = [bytes.fromhex(v["parity_hex"]) for v in vectors["fec"]]
     invalid = {k: [bytes.fromhex(v["hex"]) for v in vectors["invalid"] if v["kind"] == k] for k in
-               ("rtp", "video", "fec", "register", "control", "nack")}
+               ("rtp", "video", "fec", "register", "register_ack", "control", "nack")}
+    registers = [bytes.fromhex(v["hex"]) for v in vectors["register"] if "token" in v]
+    acks = [bytes.fromhex(v["hex"]) for v in vectors["register"] if "addr" in v]
     seeds: dict[str, list[tuple[bytes, ...]]] = {
         "FuzzParseRTP": [(p,) for p in rtp_pkts + parities + invalid["rtp"]],
         "FuzzParseVideo": [(p[12:],) for p in rtp_pkts[:2]] + [(p,) for p in invalid["video"]],
@@ -280,8 +321,8 @@ def write_fuzz_seeds(vectors: dict[str, list[dict]]) -> None:
         "FuzzFECRecovery": [
             (bytes.fromhex(v["parity_hex"]), bytes.fromhex(v["packets_hex"][0])) for v in vectors["fec"]
         ],
-        "FuzzParseRegister": [(bytes.fromhex(vectors["register"][0]["hex"]),)] + [(p,) for p in invalid["register"]],
-        "FuzzParseRegisterAck": [(bytes.fromhex(v["hex"]),) for v in vectors["register"][1:]],
+        "FuzzParseRegister": [(p,) for p in registers + invalid["register"]],
+        "FuzzParseRegisterAck": [(p,) for p in acks + invalid["register_ack"]],
         "FuzzControlFrame": [(bytes.fromhex(v["hex"]),) for v in vectors["control"]]
         + [(p,) for p in invalid["control"]],
         "FuzzParseNACK": [(bytes.fromhex(v["hex"]),) for v in vectors["nack"]] + [(p,) for p in invalid["nack"]],

@@ -13,7 +13,7 @@ import json
 import struct
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NamedTuple
 
 RTP_VERSION = 2
 RTP_HEADER_SIZE = 12
@@ -42,9 +42,12 @@ MAX_PROTECTED_BODY = MAX_SEND_DATAGRAM - RTP_HEADER_SIZE - FEC_HEADER_SIZE
 
 TYPE_REGISTER = 0x01
 TYPE_REGISTER_ACK = 0x02
-REGISTER_VERSION = 1
-REGISTER_SIZE = 28
+REGISTER_VERSION = 2  # version 2 added the return-routability nonce
+REGISTER_SIZE = 36
 TOKEN_SIZE = 16
+NONCE_SIZE = 8
+REGISTER_FLAG_NONCE = 0x01  # the REGISTER echoes a challenge's nonce
+ACK_FLAG_CHALLENGE = 0x01  # the ACK is a challenge: the binding has not moved yet
 
 # RTCP generic NACK (RFC 4585): a receiver asks the server to resend video packets.
 RTCP_RTPFB = 205
@@ -58,7 +61,7 @@ CONTROL_VERSION = 1
 _RTP = struct.Struct("!BBHII")
 _VIDEO = struct.Struct("!IHH")
 _FEC = struct.Struct("!HBBBBHI")
-_REGISTER = struct.Struct("!BBHQ")
+_REGISTER = struct.Struct("!BBBBQ")
 _ACK = struct.Struct("!BBBBQH")
 _LEN = struct.Struct("!I")
 _NACK = struct.Struct("!BBHII")
@@ -273,41 +276,61 @@ def parse_nack(pkt: Buffer) -> tuple[int, int, list[int]]:
     return sender, media, lost
 
 
-def build_register(txid: int, token: bytes) -> bytes:
+def build_register(txid: int, token: bytes, nonce: bytes | None = None) -> bytes:
+    """A REGISTER; nonce is the one from the last challenge, echoed to prove that this
+    address receives what the server sends to it."""
     if len(token) != TOKEN_SIZE:
         raise ProtocolError("token must be 16 bytes")
-    return _REGISTER.pack(TYPE_REGISTER, REGISTER_VERSION, 0, txid) + token
+    if nonce is not None and len(nonce) != NONCE_SIZE:
+        raise ProtocolError("nonce must be 8 bytes")
+    flags = 0 if nonce is None else REGISTER_FLAG_NONCE
+    return (
+        _REGISTER.pack(TYPE_REGISTER, REGISTER_VERSION, flags, 0, txid) + token + (nonce or bytes(NONCE_SIZE))
+    )
 
 
-def parse_register(b: Buffer) -> tuple[int, bytes]:
+def parse_register(b: Buffer) -> tuple[int, bytes, bytes | None]:
+    """Return (transaction id, token, echoed nonce or None)."""
     if len(b) < REGISTER_SIZE:
         raise ProtocolError("REGISTER too short")
-    typ, version, _reserved, txid = _REGISTER.unpack_from(b, 0)
-    if typ != TYPE_REGISTER or version != REGISTER_VERSION:
+    typ, version, flags, _reserved, txid = _REGISTER.unpack_from(b, 0)
+    if typ != TYPE_REGISTER or version != REGISTER_VERSION or flags & ~REGISTER_FLAG_NONCE:
         raise ProtocolError("not a REGISTER packet")
-    return txid, bytes(b[12:28])
+    nonce = bytes(b[28:36]) if flags & REGISTER_FLAG_NONCE else None
+    return txid, bytes(b[12:28]), nonce
 
 
-def build_register_ack(txid: int, host: str, port: int) -> bytes:
+class RegisterAck(NamedTuple):
+    txid: int
+    observed: tuple[str, int]
+    challenge: bool  # the binding has not moved: send REGISTER again echoing nonce
+    nonce: bytes
+
+
+def build_register_ack(
+    txid: int, host: str, port: int, *, challenge: bool = False, nonce: bytes = bytes(NONCE_SIZE)
+) -> bytes:
     addr = ipaddress.ip_address(host)
     family = 4 if addr.version == 4 else 6
-    return _ACK.pack(TYPE_REGISTER_ACK, REGISTER_VERSION, family, 0, txid, port) + addr.packed
+    flags = ACK_FLAG_CHALLENGE if challenge else 0
+    return _ACK.pack(TYPE_REGISTER_ACK, REGISTER_VERSION, family, flags, txid, port) + addr.packed + nonce
 
 
-def parse_register_ack(b: Buffer) -> tuple[int, tuple[str, int]]:
-    """Return (transaction id, observed (host, port))."""
+def parse_register_ack(b: Buffer) -> RegisterAck:
     if len(b) < 14:
         raise ProtocolError("REGISTER_ACK too short")
-    typ, version, family, _reserved, txid, port = _ACK.unpack_from(b, 0)
-    if typ != TYPE_REGISTER_ACK or version != REGISTER_VERSION:
+    typ, version, family, flags, txid, port = _ACK.unpack_from(b, 0)
+    if typ != TYPE_REGISTER_ACK or version != REGISTER_VERSION or flags & ~ACK_FLAG_CHALLENGE:
         raise ProtocolError("not a REGISTER_ACK packet")
-    if family == 4 and len(b) >= 18:
-        host = str(ipaddress.IPv4Address(bytes(b[14:18])))
-    elif family == 6 and len(b) >= 30:
-        host = str(ipaddress.IPv6Address(bytes(b[14:30])))
-    else:
+    alen = {4: 4, 6: 16}.get(family)
+    if alen is None:
         raise ProtocolError("bad address family")
-    return txid, (host, port)
+    if len(b) < 14 + alen + NONCE_SIZE:
+        raise ProtocolError("REGISTER_ACK too short")
+    raw = bytes(b[14 : 14 + alen])
+    host = str(ipaddress.IPv4Address(raw) if alen == 4 else ipaddress.IPv6Address(raw))
+    nonce = bytes(b[14 + alen : 14 + alen + NONCE_SIZE])
+    return RegisterAck(txid, (host, port), bool(flags & ACK_FLAG_CHALLENGE), nonce)
 
 
 def parse_addr(addr: str) -> tuple[str, int]:

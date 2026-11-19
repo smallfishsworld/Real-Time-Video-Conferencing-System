@@ -75,6 +75,7 @@ class SessionStats:
     malformed: int = 0
     fec_recovered: int = 0
     nacks_sent: int = 0
+    challenges: int = 0  # REGISTER_ACK challenges answered
     mixed_csrcs: set[int] = field(default_factory=set)
     frames_by_participant: dict[int, int] = field(default_factory=dict)
     packets_by_source: dict[str, int] = field(default_factory=lambda: {"server": 0, "peer": 0})
@@ -391,12 +392,19 @@ class MediaSession(asyncio.DatagramProtocol):
         if src != self.server:
             return
         try:
-            txid, observed = parse_register_ack(data)
+            ack = parse_register_ack(data)
         except ProtocolError:
             return
+        if ack.challenge:
+            # The server wants proof that this socket receives what it sends here
+            # (first registration, a new NAT mapping, or an expired binding): echo the
+            # nonce from the same socket. Only the echo moves the binding.
+            self.stats.challenges += 1
+            self._send_raw(build_register(ack.txid, self._token, ack.nonce), self.server)
+            return
         fut = self._reg_future
-        if fut is not None and not fut.done() and txid == self._reg_txid:
-            fut.set_result(observed)
+        if fut is not None and not fut.done() and ack.txid == self._reg_txid:
+            fut.set_result(ack.observed)
 
     def _on_video(self, v: _VideoIn, pt: int, seq: int, data: bytes, now: float) -> None:
         if pt == PT_FEC:

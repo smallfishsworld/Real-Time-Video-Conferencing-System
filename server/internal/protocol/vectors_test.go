@@ -41,11 +41,13 @@ type vectorFile struct {
 		ParityHex  string   `json:"parity_hex"`
 	} `json:"fec"`
 	Register []struct {
-		Name  string `json:"name"`
-		Hex   string `json:"hex"`
-		TxID  uint64 `json:"txid"`
-		Token string `json:"token"`
-		Addr  string `json:"addr"`
+		Name      string  `json:"name"`
+		Hex       string  `json:"hex"`
+		TxID      uint64  `json:"txid"`
+		Token     string  `json:"token"`
+		Addr      string  `json:"addr"`
+		Challenge bool    `json:"challenge"`
+		Nonce     *string `json:"nonce"`
 	} `json:"register"`
 	Control []struct {
 		Name    string         `json:"name"`
@@ -211,7 +213,11 @@ func TestGoldenRegister(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if r.TxID != vec.TxID || r.Token != tok {
+				var nonce Nonce
+				if vec.Nonce != nil {
+					copy(nonce[:], unhex(t, *vec.Nonce))
+				}
+				if r.TxID != vec.TxID || r.Token != tok || r.HasNonce != (vec.Nonce != nil) || r.Nonce != nonce {
 					t.Fatalf("got %+v", r)
 				}
 				n, _ := r.MarshalTo(out)
@@ -224,7 +230,10 @@ func TestGoldenRegister(t *testing.T) {
 			if err := ParseRegisterAck(b, &a); err != nil {
 				t.Fatalf("ParseRegisterAck: %v", err)
 			}
-			if a.TxID != vec.TxID || a.Observed != netip.MustParseAddrPort(vec.Addr) {
+			var nonce Nonce
+			copy(nonce[:], unhex(t, *vec.Nonce))
+			if a.TxID != vec.TxID || a.Observed != netip.MustParseAddrPort(vec.Addr) ||
+				a.Challenge != vec.Challenge || a.Nonce != nonce {
 				t.Fatalf("got %+v", a)
 			}
 			n, err := a.MarshalTo(out)
@@ -311,6 +320,9 @@ func TestGoldenInvalid(t *testing.T) {
 			case "register":
 				var r Register
 				err = ParseRegister(b, &r)
+			case "register_ack":
+				var a RegisterAck
+				err = ParseRegisterAck(b, &a)
 			case "nack":
 				var n NACK
 				err = ParseNACK(b, &n)

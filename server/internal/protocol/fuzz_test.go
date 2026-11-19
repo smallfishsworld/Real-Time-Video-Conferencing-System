@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"bytes"
+	"net/netip"
 	"slices"
 	"testing"
 )
@@ -96,7 +97,8 @@ func FuzzFECRecovery(f *testing.F) {
 }
 
 func FuzzParseRegister(f *testing.F) {
-	f.Add(append([]byte{1, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8}, make([]byte, 16)...))
+	f.Add(append([]byte{1, 2, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8}, make([]byte, 24)...))
+	f.Add(append([]byte{1, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7, 8}, make([]byte, 24)...))
 	f.Fuzz(func(t *testing.T, b []byte) {
 		var r Register
 		if err := ParseRegister(b, &r); err != nil {
@@ -114,7 +116,7 @@ func FuzzParseRegister(f *testing.F) {
 }
 
 func FuzzParseRegisterAck(f *testing.F) {
-	f.Add([]byte{2, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 42, 0xC3, 0x50, 127, 0, 0, 1})
+	f.Add([]byte{2, 2, 4, 1, 0, 0, 0, 0, 0, 0, 0, 42, 0xC3, 0x50, 127, 0, 0, 1, 1, 2, 3, 4, 5, 6, 7, 8})
 	f.Fuzz(func(t *testing.T, b []byte) {
 		var a RegisterAck
 		if err := ParseRegisterAck(b, &a); err != nil {
@@ -123,9 +125,17 @@ func FuzzParseRegisterAck(f *testing.F) {
 		if !a.Observed.IsValid() {
 			t.Fatal("accepted an invalid address")
 		}
-		buf := make([]byte, 32)
-		if _, err := a.MarshalTo(buf); err != nil {
+		buf := make([]byte, 64)
+		n, err := a.MarshalTo(buf)
+		if err != nil {
 			t.Fatalf("re-encode: %v", err)
+		}
+		// MarshalTo sends an IPv4-mapped IPv6 address as IPv4.
+		want := a
+		want.Observed = netip.AddrPortFrom(a.Observed.Addr().Unmap(), a.Observed.Port())
+		var a2 RegisterAck
+		if err := ParseRegisterAck(buf[:n], &a2); err != nil || a2 != want {
+			t.Fatalf("round trip mismatch: %+v vs %+v", a2, a)
 		}
 	})
 }
