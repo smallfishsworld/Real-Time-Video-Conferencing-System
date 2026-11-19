@@ -13,8 +13,15 @@ person at a terminal:
   20000 + ID). Each participant binds its sockets to its own loopback or veth address
   instead of 0.0.0.0, as if it ran on its own machine (the legacy relay skips every
   receiver whose IP equals the sender's IP).
-* mode: `p2p` is set to False (relay), which is what auto_mode_switch picks for three
-  or more members and what the `chgmode` command selects for two.
+* mode: `p2p` is set to False (relay). The original's auto_mode_switch thread would
+  pick relay for three or more members but P2P for two, so in a two-member call (B1)
+  the original would run P2P unless `chgmode` selected relay. B1 forces relay because
+  the brief compares the server-relayed path and because its topology has no route
+  from the sender's namespace to the receiver's; both systems then cross the same lossy
+  server -> receiver link, so the loss comparison is unaffected.
+* threads left out: start_conference also starts videoplayer (shows the local camera
+  and the received frames with cv2.imshow), auto_mode_switch (see above) and debug
+  (prints the member list every 10 s). None of them touches the sockets.
 
 The media threads are the original ConferenceClient.keep_share and keep_recv methods.
 The UDP socket is wrapped to log what is sent and received, `vid_da` is a dict that
