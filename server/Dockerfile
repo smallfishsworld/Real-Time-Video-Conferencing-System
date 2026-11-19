@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 #
 # Conference server image: a static binary on an empty base, running as a non-root user.
 #
@@ -17,7 +17,11 @@
 # On a shared machine, --build-arg GOMAXPROCS=2 --build-arg GOFLAGS=-p=2 limits the
 # build to two threads.
 
-FROM golang:1.24.7-alpine AS build
+# Both images are pinned by digest (the frontend above and the Go toolchain here), so a
+# rebuild uses exactly these images, whatever their tags point to later. To update,
+# pull the new tag and copy its digest from
+# `docker image inspect --format '{{json .RepoDigests}}' golang:<version>-alpine`.
+FROM golang:1.24.7-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5 AS build
 ARG GOMAXPROCS
 ARG GOFLAGS
 WORKDIR /src
