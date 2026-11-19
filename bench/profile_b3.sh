@@ -14,6 +14,8 @@
 #
 # Usage: sudo bench/profile_b3.sh
 #        PARTICIPANTS=96 PROFILES="v2-gso=" bench/profile_b3.sh
+#        CS305_RUN_ID=<run ID> bench/profile_b3.sh --analyze   (redo the result files of a run,
+#        with the same environment as the run; its command is read from the raw directory)
 # Environment: PARTICIPANTS (128), SECONDS_PROFILED (15), GSO_MAX_SEGS (1),
 #   PROFILES ("v2-unbatched=-udp-batch=1 v2-sendmmsg=-udp-gso=false v2-gso="),
 #   SERVER_CPU (1), LOADGEN_CPUS (2,3), MAX_MBPS (12000), MAX_PPS (1500000).
@@ -69,10 +71,36 @@ profile() {
   cleanup_netns
 }
 
+# analyze: the result files of every profile, from this run's raw files and binaries.
+analyze() {
+  local p name
+  for p in $PROFILES; do
+    name=${p%%=*}
+    cp "$RUNDIR/$name.pb.gz" "$RESULTS/pprof_$name.pb.gz"
+    cp "$RUNDIR/$name.metrics" "$RESULTS/pprof_$name.metrics"
+    # --server-args=VALUE: the flags start with a dash, which argparse would take for an option.
+    "$PY" "$BENCH/analyze_pprof.py" "$RUNDIR/$name.pb.gz" "$CONFSERVER" "$RUNDIR/$name.loadgen.json" \
+      "$RUNDIR/$name.metrics" --provenance "$RESULTS/pprof_$name.json" --build "$BUILD_DIR/build.json" \
+      --run-id "$CS305_RUN_ID" --command "sudo $(cat "$RUNDIR/command.txt")" \
+      --server-args="$(printf '%s' "${p#*=}" | tr ',' ' ')" --raw-dir "$RUNDIR" >"$RESULTS/pprof_$name.txt"
+    head -20 "$RESULTS/pprof_$name.txt"
+  done
+}
+
 if [ "${1:-}" = --locked ]; then
   trap cleanup_netns EXIT
   trap 'exit 130' INT TERM
   for p in $PROFILES; do profile "${p%%=*}" "${p#*=}"; done
+  exit 0
+fi
+
+# CS305_RUN_ID=<run ID> bench/profile_b3.sh --analyze: redo the analysis of that run.
+if [ "${1:-}" = --analyze ]; then
+  [ -f "$RUNDIR/command.txt" ] || {
+    echo "no raw files of run $CS305_RUN_ID in $RUNDIR" >&2
+    exit 2
+  }
+  analyze
   exit 0
 fi
 
@@ -81,15 +109,7 @@ trap cleanup_netns EXIT # only this run's namespaces
 trap 'exit 130' INT TERM
 prepare
 mkdir -p "$RUNDIR"
+printf '%s\n' "$COMMAND" >"$RUNDIR/command.txt"
 log "waiting for the bench lock ($LOCK)"
 locked "$0" --locked
-for p in $PROFILES; do
-  name=${p%%=*}
-  cp "$RUNDIR/$name.pb.gz" "$RESULTS/pprof_$name.pb.gz"
-  cp "$RUNDIR/$name.metrics" "$RESULTS/pprof_$name.metrics"
-  "$PY" "$BENCH/analyze_pprof.py" "$RUNDIR/$name.pb.gz" "$CONFSERVER" "$RUNDIR/$name.loadgen.json" \
-    "$RUNDIR/$name.metrics" --provenance "$RESULTS/pprof_$name.json" --build "$BUILD_DIR/build.json" \
-    --run-id "$CS305_RUN_ID" --command "sudo $COMMAND" --server-args "$(printf '%s' "${p#*=}" | tr ',' ' ')" \
-    --raw-dir "$RUNDIR" >"$RESULTS/pprof_$name.txt"
-  head -20 "$RESULTS/pprof_$name.txt"
-done
+analyze
