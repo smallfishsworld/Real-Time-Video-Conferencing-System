@@ -18,7 +18,7 @@
     "reading packets": 19.93,
     "audio mixers (20 ms ticks)": 8.21,
     "mixed-stream sends": 4.02,
-    "all system calls (Syscall6)": 82.08,
+    "system calls (syscall.Syscall6)": 79.4,
     "Go scheduler and netpoller": 4.86,
     "garbage collector": 0.0
   },
@@ -50,6 +50,11 @@
       "unknown_ssrc": 0.0,
       "write_error": 0.0
     }
+  },
+  "cpu_excluding_core_softirq": {
+    "server_core_softirq_utilisation": 0.08117647058824172,
+    "server_cpu_excluding_core_softirq": 0.44117647058822884,
+    "server_core_minus_process": 0.3164705882352
   },
   "load": {
     "label": "20261119T114714Z-23555/v2-gso",
@@ -129,16 +134,14 @@
       "CONFIG_TICK_CPU_ACCOUNTING": "y",
       "CONFIG_HZ": "250"
     },
-    "loadavg": "4.15 1.54 1.33 6/212 8327",
+    "loadavg": "0.10 0.09 0.02 1/158 26093",
     "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
     "cpus": 4,
     "python": "3.13.18",
     "go": "go version go1.24.7 linux/amd64",
-    "git_commit": "4fe5eca",
-    "git_dirty": true,
-    "git_dirty_files": [
-      "M bench/profile_b3.sh"
-    ],
+    "git_commit": "f4e4f1c",
+    "git_dirty": false,
+    "git_dirty_files": [],
     "build": {
       "git_commit": "4fe5eca",
       "utc": "2026-11-19T11:47:15Z",
@@ -150,6 +153,6 @@
         "loadgen": "f86ef42a67f3f21e73054c800b061b4a2478240969ddde9e8d237935258bc49e"
       }
     },
-    "utc": "2026-11-19T12:13:32Z"
+    "utc": "2026-11-19T17:18:10Z"
   }
 }

@@ -4,6 +4,7 @@ built from 4fe5eca (uncommitted: none) at 2026-11-19T11:47:15Z
 toolchain: go version go1.24.7 linux/amd64
 binaries (SHA-256): confserver 0549a14f96560845, loadgen f86ef42a67f3f21e
 load: 128 participants (v2), delivery 1.0000, p99 4.9 ms, server CPU 0.698 (core 1: busy 0.689, softirq 2.98 s of 11.72 s)
+server CPU without the core's softirq 0.522 (softirq 0.175 of a core; core busier than the server by -0.008)
 File: confserver
 Build ID: 3a5548ca70db4f475c100884189bb8968b94e96f
 Type: cpu
@@ -17,7 +18,7 @@ share of profiled CPU time by code path (cumulative):
     reading packets                           13.4 %
   audio mixers (20 ms ticks)                   5.4 %
     mixed-stream sends                         3.1 %
-  all system calls (Syscall6)                 84.6 %
+  system calls (syscall.Syscall6)             84.6 %
   Go scheduler and netpoller                   1.1 %
   garbage collector                            0.0 %
 
