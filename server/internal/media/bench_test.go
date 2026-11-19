@@ -74,6 +74,15 @@ func BenchmarkMixerTick(b *testing.B) {
 			}
 			m.snap.Store(snap)
 			now := time.Now()
+			// Prime every jitter buffer past its delay, so that each measured tick is
+			// steady state and mixes a frame from every member, even with -benchtime 1x.
+			for range 3 {
+				for i, mm := range snap.members {
+					ups[i].push(b, mm.p.jb)
+				}
+				m.tick(now)
+			}
+			w.n = 0
 			b.ReportAllocs()
 			for b.Loop() {
 				for i, mm := range snap.members {
