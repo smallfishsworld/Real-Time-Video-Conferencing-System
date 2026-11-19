@@ -156,6 +156,7 @@ def main() -> None:
     ap.add_argument("out", type=Path)
     ap.add_argument("--build", type=Path, help="the run's build record")
     args = ap.parse_args()
+    args.rundir = args.rundir.resolve()
     settings = json.loads((args.rundir / "settings.json").read_text())
     run_id = settings["run_id"]
     sweeps: dict[str, list[dict[str, Any]]] = defaultdict(list)

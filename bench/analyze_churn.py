@@ -29,6 +29,7 @@ def main() -> None:
     ap.add_argument("--command", required=True)
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
+    args.rundir = args.rundir.resolve()
 
     files = sorted(args.rundir.glob("run*.jsonl"), key=lambda p: int(p.stem[3:]))
     runs: list[list[dict[str, Any]]] = []

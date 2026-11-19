@@ -82,6 +82,8 @@ def main() -> None:
     ap.add_argument("--server-args", default="")
     ap.add_argument("--raw-dir", type=Path)
     args = ap.parse_args()
+    if args.raw_dir:
+        args.raw_dir = args.raw_dir.resolve()
     load: dict[str, Any] | None = None
     if args.run_id:
         print(f"run {args.run_id}: {args.command}")
