@@ -102,6 +102,9 @@ func TestParseCoreTimes(t *testing.T) {
 	if err != nil || got.busy != 3.58 || got.softirq != 0.4 { // (100+5+200+10+40+3)/100, 40/100
 		t.Fatalf("parseCoreTimes = %+v, %v; want busy 3.58 s and softirq 0.4 s", got, err)
 	}
+	if want := [8]float64{1, 0.05, 2, 10, 0.5, 0.1, 0.4, 0.03}; got.fields != want {
+		t.Fatalf("parseCoreTimes fields = %v, want %v", got.fields, want)
+	}
 	if _, err := parseCoreTimes(stat, 7); err == nil {
 		t.Error("parseCoreTimes found a CPU that is not there")
 	}
@@ -139,7 +142,7 @@ func TestValidateSafetyLimits(t *testing.T) {
 		{"remote participants", func(c *config) { remote(c); c.Participants = 65 }, "more than 64"},
 		{"host names refused", func(c *config) { c.Server = "example.com" }, "IP address"},
 		{"too many participants", func(c *config) { c.Participants = hardMaxParticipants + 1 }, "participants"},
-		{"legacy port scheme", func(c *config) { c.Wire = "legacy"; c.Participants = legacyMaxID + 1 }, "legacy"},
+		{"legacy participant cap", func(c *config) { c.Wire = "legacy"; c.Participants = legacyMaxID + 1 }, "legacy"},
 		{"bitrate cap counts fan-out and headers", func(c *config) { c.Participants = 64; c.MaxMbps = 600 }, "exceeds -max-mbps 600"},
 		{"packet-rate cap", func(c *config) { c.Participants = 64; c.MaxPPS = 50_000 }, "exceeds -max-pps"},
 		{"hard bitrate cap", func(c *config) { c.MaxMbps = hardLoopbackMbps + 1 }, "hard cap"},
@@ -305,8 +308,11 @@ func TestSummarize(t *testing.T) {
 	cfg := config{Wire: "v2", Server: "127.0.0.1", Participants: 6, RoomSize: 4, FPS: 15, Audio: true,
 		FECK: 4, AudioFECK: 2, Duration: 20 * time.Second, ServerCore: 1}
 	m := measurement{
-		serverCPU:   &[2]float64{10, 16}, // 6 CPU-s in the window
-		core:        &[2]coreTimes{{busy: 100, softirq: 5}, {busy: 108, softirq: 7}},
+		serverCPU: &[2]float64{10, 16}, // 6 CPU-s in the window
+		core: &[2]coreTimes{
+			{busy: 100, softirq: 5, fields: [8]float64{60, 0, 35, 500, 0, 0, 5, 0}},
+			{busy: 108, softirq: 7, fields: [8]float64{64, 0, 37, 512, 0, 0, 7, 0}},
+		},
 		loadgenCPU:  [2]float64{1, 3},
 		sendSeconds: 26,
 		controlLost: 1,
@@ -352,7 +358,9 @@ func TestSummarize(t *testing.T) {
 	if *res.ServerCPUSeconds != 6 || math.Abs(*res.ServerCPUPerPartMin-3) > 1e-12 || *res.ServerCPUUtil != 0.3 {
 		t.Fatalf("server CPU %v %v %v", *res.ServerCPUSeconds, *res.ServerCPUPerPartMin, *res.ServerCPUUtil)
 	}
-	if c := res.ServerCore; c == nil || c.CPU != 1 || c.BusySeconds != 8 || c.SoftirqSeconds != 2 || c.Utilisation != 0.4 {
+	if c := res.ServerCore; c == nil || c.CPU != 1 || c.BusySeconds != 8 || c.SoftirqSeconds != 2 || c.Utilisation != 0.4 ||
+		c.FieldsSeconds["user"] != 4 || c.FieldsSeconds["system"] != 2 || c.FieldsSeconds["idle"] != 12 ||
+		c.FieldsSeconds["softirq"] != 2 || len(c.FieldsSeconds) != 8 {
 		t.Fatalf("server core %+v", res.ServerCore)
 	}
 	if res.LoadgenCPUSeconds != 2 || res.LoadgenCPUUtil != 0.1 {
@@ -424,5 +432,15 @@ func TestRunEndToEnd(t *testing.T) {
 	}
 	if res.ServerCPUSeconds == nil || res.LatencyMS["p99"] <= 0 || res.Traffic.SentUpPPS <= 0 {
 		t.Fatalf("cpu %v latency %v traffic %+v", res.ServerCPUSeconds, res.LatencyMS, res.Traffic)
+	}
+}
+
+// The 2024 client's media port is 20000 + 100*ID: IDs up to 455 fit in 16 bits.
+func TestLegacyPortLimit(t *testing.T) {
+	if legacyPortMaxID != 455 || 20000+100*legacyPortMaxID > 65535 || 20000+100*(legacyPortMaxID+1) <= 65535 {
+		t.Fatalf("legacyPortMaxID = %d", legacyPortMaxID)
+	}
+	if legacyMaxID > legacyPortMaxID {
+		t.Fatalf("legacyMaxID %d is above the port limit %d", legacyMaxID, legacyPortMaxID)
 	}
 }

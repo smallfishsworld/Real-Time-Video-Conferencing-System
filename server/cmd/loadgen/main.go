@@ -44,7 +44,10 @@ import (
 const (
 	hardMaxParticipants = 512
 	hardMaxDuration     = 10 * time.Minute
-	legacyMaxID         = 452 // legacy client UDP port 20000 + 100*ID must stay below 65536
+	// Participants in legacy mode. The 2024 client's UDP port is 20000 + 100*ID, which
+	// fits in 16 bits for IDs up to 455 (legacyPortMaxID); this cap is lower, at 452.
+	legacyMaxID     = 452
+	legacyPortMaxID = (65535 - 20000) / 100
 
 	// Total wire traffic (both directions) on loopback, where nothing leaves the host.
 	defaultLoopbackMbps = 2000
@@ -187,7 +190,8 @@ func (c *config) validate(maxFrameBytes int) error {
 		return fmt.Errorf("-participants must be 1..%d", hardMaxParticipants)
 	}
 	if c.Wire == "legacy" && c.Participants > legacyMaxID {
-		return fmt.Errorf("the legacy port scheme supports at most %d participants", legacyMaxID)
+		return fmt.Errorf("legacy mode allows at most %d participants (the port scheme allows IDs up to %d)",
+			legacyMaxID, legacyPortMaxID)
 	}
 	if c.RoomSize < 2 || c.RoomSize > hardMaxParticipants {
 		return fmt.Errorf("-room-size must be 2..%d", hardMaxParticipants)
@@ -504,6 +508,10 @@ type coreReport struct {
 	BusySeconds    float64 `json:"busy_seconds"`    // all but idle and iowait
 	SoftirqSeconds float64 `json:"softirq_seconds"` // softirq time accounted as such (see kernel_config)
 	Utilisation    float64 `json:"utilisation"`
+	// Every column of the CPU's /proc/stat line over the window, so a busy core can be
+	// told apart from a busy server (user and system time charged to other tasks, irq,
+	// steal). Results made before this field existed have only the three totals.
+	FieldsSeconds map[string]float64 `json:"fields_seconds"`
 }
 
 // wireReport is the run's traffic on the wire: the estimate for the average and for
@@ -785,11 +793,16 @@ func summarize(cfg config, m measurement, avg float64, largest int, bound load) 
 	}
 	if m.core != nil {
 		busy := m.core[1].busy - m.core[0].busy
+		fields := make(map[string]float64, len(statFields))
+		for i, name := range statFields {
+			fields[name] = m.core[1].fields[i] - m.core[0].fields[i]
+		}
 		res.ServerCore = &coreReport{
 			CPU:            cfg.ServerCore,
 			BusySeconds:    busy,
 			SoftirqSeconds: m.core[1].softirq - m.core[0].softirq,
 			Utilisation:    busy / window,
+			FieldsSeconds:  fields,
 		}
 	}
 	res.LoadgenCPUSeconds = m.loadgenCPU[1] - m.loadgenCPU[0]
@@ -941,8 +954,15 @@ func selfCPUSeconds() float64 {
 	return v
 }
 
-// coreTimes is one CPU's line of /proc/stat, in seconds.
-type coreTimes struct{ busy, softirq float64 }
+// statFields names the first eight columns of a CPU's /proc/stat line, in order.
+var statFields = [8]string{"user", "nice", "system", "idle", "iowait", "irq", "softirq", "steal"}
+
+// coreTimes is one CPU's line of /proc/stat, in seconds: the busy total, softirq, and
+// every column in the order of statFields.
+type coreTimes struct {
+	busy, softirq float64
+	fields        [8]float64
+}
 
 func readCoreTimes(cpu int) (coreTimes, error) {
 	b, err := os.ReadFile("/proc/stat")
@@ -973,7 +993,11 @@ func parseCoreTimes(stat string, cpu int) (coreTimes, error) {
 			v[i] = x
 		}
 		busy := v[0] + v[1] + v[2] + v[5] + v[6] + v[7] // user nice system irq softirq steal
-		return coreTimes{busy: float64(busy) / clkTck, softirq: float64(v[6]) / clkTck}, nil
+		ct := coreTimes{busy: float64(busy) / clkTck, softirq: float64(v[6]) / clkTck}
+		for i, x := range v {
+			ct.fields[i] = float64(x) / clkTck
+		}
+		return ct, nil
 	}
 	return coreTimes{}, fmt.Errorf("no cpu%d line in /proc/stat", cpu)
 }
