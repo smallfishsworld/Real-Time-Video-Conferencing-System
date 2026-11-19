@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"bytes"
+	"slices"
 	"testing"
 )
 
@@ -162,10 +163,26 @@ func FuzzParseNACK(f *testing.F) {
 		if err := ParseNACK(buf, &m); err != nil || m != n {
 			t.Fatalf("round trip mismatch")
 		}
+		// A NACK from the wire may list sequence numbers in any order and more than
+		// once; SetLost takes them in increasing order, as a receiver produces them.
 		lost := n.AppendLost(nil)
+		if !increasing(lost) {
+			return
+		}
 		var p NACK
-		if p.SetLost(lost) != len(lost) || len(p.AppendLost(nil)) != len(lost) {
+		if p.SetLost(lost) != len(lost) || !slices.Equal(p.AppendLost(nil), lost) {
 			t.Fatalf("SetLost/AppendLost disagree on %v", lost)
 		}
 	})
+}
+
+// increasing reports whether every sequence number in s follows the one before it
+// (modulo 2^16, within half the sequence space).
+func increasing(s []uint16) bool {
+	for i := 1; i < len(s); i++ {
+		if d := s[i] - s[i-1]; d == 0 || d >= 1<<15 {
+			return false
+		}
+	}
+	return true
 }
