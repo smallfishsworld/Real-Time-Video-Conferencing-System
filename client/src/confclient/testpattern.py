@@ -72,6 +72,11 @@ def encode_jpeg(rgb: Image8, quality: int = 85) -> bytes:
     return buf.getvalue()
 
 
-def decode_jpeg(data: bytes) -> Image8:
+def decode_jpeg(data: bytes, fit: tuple[int, int] | None = None) -> Image8:
+    """Decode a JPEG. With `fit` (width, height), the decoder may scale the image down by
+    1/2, 1/4 or 1/8 as long as it stays at least that large (JPEG draft mode), which is
+    far cheaper than decoding at full size and resizing afterwards."""
     with Image.open(io.BytesIO(data)) as im:
+        if fit is not None:
+            im.draft("RGB", fit)
         return np.asarray(im.convert("RGB"))

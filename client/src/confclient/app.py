@@ -447,36 +447,68 @@ class ConferenceApp:
             if pid not in after:
                 self.out(f"* {name} left")
                 self.remote_frames.pop(pid, None)
-                self._decoded.pop(pid, None)
 
     # Window -----------------------------------------------------------------------
 
-    def tiles(self) -> list[Tile]:
-        tiles = [Tile(f"{self.cfg.name} (you)", self.local_preview, "" if self.video_on else "camera off")]
+    def _tile_snapshot(self) -> list[TileInput]:
+        """What each tile shows, taken on the event loop: (name, participant id or None
+        for this client, the latest frame, status text)."""
+        out: list[TileInput] = [(f"{self.cfg.name} (you)", None, None, "" if self.video_on else "camera off")]
         if self.roster is None:
-            return tiles
+            return out
+        me = (self.room or {}).get("participant_id")
         for p in self.roster.get("participants", []):
             pid = int(p["participant_id"])
-            if pid == (self.room or {}).get("participant_id"):
+            if pid == me:
                 continue
+            video = bool(p.get("video", True))
+            frame = self.remote_frames.get(pid) if video else None
+            out.append((str(p["name"]), pid, frame, "waiting for video" if video else "camera off"))
+        return out
+
+    def _tiles_from(self, snapshot: list[TileInput], preview: Image8 | None) -> list[Tile]:
+        """Decode new frames (in the render thread) and build the tiles."""
+        tiles: list[Tile] = []
+        shown: set[int] = set()
+        for name, pid, frame, status in snapshot:
+            if pid is None:
+                tiles.append(Tile(name, preview, status))
+                continue
+            shown.add(pid)
             image = None
-            frame = self.remote_frames.get(pid)
-            if frame is not None and p.get("video", True):
+            if frame is not None:
                 cached = self._decoded.get(pid)
                 if cached is None or cached[0] != frame.frame_id:
-                    with contextlib.suppress(OSError, ValueError):
-                        cached = (frame.frame_id, decode_jpeg(frame.data))
+                    try:
+                        fit = (self._renderer.tile_width, self._renderer.tile_height)
+                        cached = (frame.frame_id, decode_jpeg(frame.data, fit))
                         self._decoded[pid] = cached
+                    except (OSError, ValueError):
+                        cached = None
                 image = cached[1] if cached else None
-            status = "camera off" if not p.get("video", True) else "waiting for video"
-            tiles.append(Tile(str(p["name"]), image, status))
+            tiles.append(Tile(name, image, status))
+        for pid in [p for p in self._decoded if p not in shown]:
+            del self._decoded[pid]
         return tiles
+
+    def tiles(self) -> list[Tile]:
+        """The tiles the window would show now, for headless use: it decodes on the
+        calling thread, so it must not run while the window's render loop does."""
+        return self._tiles_from(self._tile_snapshot(), self.local_preview)
 
     async def _render_loop(self) -> None:
         self._window = OpenCVWindow(f"conference - {self.cfg.name}")
         while True:
             await asyncio.sleep(0.05)
-            self._window.show(self._renderer.compose(self.tiles()))
+            snapshot = self._tile_snapshot()
+            preview = self.local_preview
+            # JPEG decoding and compositing run in a worker thread; only the window
+            # update stays on this (the main) thread, as OpenCV requires on macOS.
+            canvas = await asyncio.to_thread(self._compose, snapshot, preview)
+            self._window.show(canvas)
+
+    def _compose(self, snapshot: list[TileInput], preview: Image8 | None) -> Image8:
+        return self._renderer.compose(self._tiles_from(snapshot, preview))
 
 
 __all__ = ["ChatLine", "ClientConfig", "ConferenceApp", "Devices", "ServerError"]

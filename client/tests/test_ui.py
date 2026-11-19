@@ -47,6 +47,13 @@ def test_test_pattern_is_deterministic_and_distinct() -> None:
     assert decode_jpeg(jpeg).shape == (120, 160, 3)
 
 
+def test_decode_for_a_tile_scales_down_in_the_decoder_but_not_below_the_tile() -> None:
+    jpeg = encode_jpeg(TestPattern(1280, 720).frame(0), quality=85)
+    assert decode_jpeg(jpeg).shape == (720, 1280, 3)
+    assert decode_jpeg(jpeg, (320, 240)).shape == (360, 640, 3)  # 1/2: 1/4 would be 180 high
+    assert decode_jpeg(jpeg, (160, 90)).shape == (90, 160, 3)  # 1/8
+
+
 def test_chat_line_has_sender_and_server_timestamp() -> None:
     line = ChatLine(room_id=1, from_id=2, from_name="Zoë", text="hi 你好", server_time_ms=1_700_000_000_123)
     text = line.format()
