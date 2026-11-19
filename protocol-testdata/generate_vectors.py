@@ -235,6 +235,41 @@ def main() -> None:
     out = Path(__file__).with_name("vectors.json")
     out.write_text(json.dumps(vectors, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out}")
+    write_fuzz_seeds(vectors)
+
+
+def go_bytes(b: bytes) -> str:
+    return '[]byte("' + "".join(f"\\x{x:02x}" for x in b) + '")'
+
+
+def write_fuzz_seeds(vectors: dict[str, list[dict]]) -> None:
+    """Write the vectors as the committed seed corpus of the Go fuzz targets."""
+    rtp_pkts = [bytes.fromhex(v["hex"]) for v in vectors["rtp"]]
+    parities = [bytes.fromhex(v["parity_hex"]) for v in vectors["fec"]]
+    invalid = {k: [bytes.fromhex(v["hex"]) for v in vectors["invalid"] if v["kind"] == k] for k in
+               ("rtp", "video", "fec", "register", "control")}
+    seeds: dict[str, list[tuple[bytes, ...]]] = {
+        "FuzzParseRTP": [(p,) for p in rtp_pkts + parities + invalid["rtp"]],
+        "FuzzParseVideo": [(p[12:],) for p in rtp_pkts[:2]] + [(p,) for p in invalid["video"]],
+        "FuzzParseFEC": [(p[12:],) for p in parities] + [(p,) for p in invalid["fec"]],
+        "FuzzFECRecovery": [
+            (bytes.fromhex(v["parity_hex"]), bytes.fromhex(v["packets_hex"][0])) for v in vectors["fec"]
+        ],
+        "FuzzParseRegister": [(bytes.fromhex(vectors["register"][0]["hex"]),)] + [(p,) for p in invalid["register"]],
+        "FuzzParseRegisterAck": [(bytes.fromhex(v["hex"]),) for v in vectors["register"][1:]],
+        "FuzzControlFrame": [(bytes.fromhex(v["hex"]),) for v in vectors["control"]]
+        + [(p,) for p in invalid["control"]],
+    }
+    root = Path(__file__).resolve().parent.parent / "server" / "internal" / "protocol" / "testdata" / "fuzz"
+    for target, entries in seeds.items():
+        d = root / target
+        d.mkdir(parents=True, exist_ok=True)
+        for old in d.glob("seed-*"):
+            old.unlink()
+        for i, args in enumerate(entries):
+            text = "go test fuzz v1\n" + "".join(go_bytes(a) + "\n" for a in args)
+            (d / f"seed-{i:02d}").write_text(text)
+    print(f"wrote fuzz seed corpus under {root}")
 
 
 if __name__ == "__main__":
