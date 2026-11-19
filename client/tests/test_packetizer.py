@@ -115,8 +115,8 @@ def test_audio_packets_and_parity() -> None:
 
 @pytest.mark.parametrize("k", [0, 1, 2, 4, 7, MAX_FEC_GROUP])
 def test_video_wire_size_is_what_packetize_sends(k: int) -> None:
-    """The send cap is checked with wire_size before a frame is packetized (review
-    finding client-4), so the two must agree for every size and group size."""
+    """The send cap is checked with wire_size before a frame is packetized (so a refused
+    frame uses no sequence numbers), so the two must agree for every size and group size."""
     sizes = [1, 2, 1199, 1200, 1201, 2399, 2400, 2401, 4800, 4801, 6001, 31_000, 57_601]
     sizes += [MAX_FRAGMENT_PAYLOAD * n + r for n in (k - 1, k, k + 1) if n > 0 for r in (-1, 0, 1)]
     for size in sizes:

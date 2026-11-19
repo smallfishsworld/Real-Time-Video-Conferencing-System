@@ -161,8 +161,8 @@ def test_control_stream_of_all_vectors(chunk: int) -> None:
     ids=["deep_nesting", "5000_digit_number", "bad_utf8", "truncated_json"],
 )
 def test_malformed_bodies_raise_protocol_error(body: bytes, cause: type[Exception]) -> None:
-    """Review finding protocol-4: deep nesting raised RecursionError and a huge integer
-    ValueError, which escaped the reader task and broke ControlClient.close()."""
+    """Deep nesting used to raise RecursionError and a huge integer ValueError, which
+    escaped the reader task and broke ControlClient.close()."""
     assert len(body) <= MAX_CONTROL_MESSAGE
     with pytest.raises(ProtocolError) as err:
         asyncio.run(_read_frames(struct.pack("!I", len(body)) + body, 1, chunk=len(body) + 4))

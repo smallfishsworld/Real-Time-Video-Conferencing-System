@@ -51,7 +51,7 @@ def test_wraps_and_skips_huge_jumps() -> None:
 def test_forgotten_parity_is_never_requested_even_when_its_loss_shows_later() -> None:
     """A frame of fragments 10, 11, 13 with parity at 12 and 14 completes when 13
     arrives. Parity 12 is already missing then; 14's loss only shows when the next frame
-    starts at 15. Neither is worth a retransmission (review finding client-12)."""
+    starts at 15. Neither is worth a retransmission."""
     t = NackTracker(delay=0.0)
     for seq in (10, 11, 13):
         t.on_packet(seq, 0.0)

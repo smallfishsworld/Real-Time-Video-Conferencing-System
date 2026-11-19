@@ -361,8 +361,8 @@ where it is used.
   would; the harness pauses 50 ms between the MainServer's 10-byte fields (problem 7).
   The client's videoplayer, auto_mode_switch and debug threads are not started (none
   touches the sockets). auto_mode_switch would choose P2P for a two-member call, so the
-  original would run B1's two-member call P2P; B1 forces relay because the brief compares
-  the relayed path and its topology has no sender-to-receiver route. Both systems then
+  original would run B1's two-member call P2P; B1 forces relay because the benchmark
+  compares the relayed path and its topology has no sender-to-receiver route. Both systems then
   cross the same lossy server -> receiver link, so the loss comparison is unaffected.
 - **Same media load.** Both systems send the same corpus frames. B1 and B2 send one frame
   per 1024-sample audio chunk (15.625 fps), the original client's own rate, because the

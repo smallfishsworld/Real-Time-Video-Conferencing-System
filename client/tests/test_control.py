@@ -54,8 +54,8 @@ def _run(test: Callable[[], Awaitable[None]]) -> None:
 
 
 def test_an_error_without_a_seq_is_an_event() -> None:
-    """Review finding protocol-2: an error the server sends before it has read a seq
-    (a refused or unreadable frame) answered nothing and was dropped."""
+    """An error the server sends before it has read a seq (a refused or unreadable
+    frame) used to answer nothing and be dropped."""
 
     async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         await _welcome(reader, writer)
@@ -123,8 +123,7 @@ def test_a_refused_hello_raises_server_error_and_close_still_works() -> None:
     ids=["deep_nesting", "zero_length", "no_type"],
 )
 def test_a_server_that_sends_garbage_disconnects_cleanly(garbage: bytes) -> None:
-    """Review finding protocol-4: a RecursionError escaped the reader task, and close()
-    then raised it."""
+    """A RecursionError used to escape the reader task, and close() then raised it."""
 
     async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         await _welcome(reader, writer)

@@ -361,9 +361,9 @@ def _roster_entry(c: Client, of: Client) -> dict[str, Any]:
 
 
 def test_camera_and_microphone_toggles_answer_at_once(server: Server) -> None:
-    """Review finding protocol-1: the server answered media_state with a roster event
-    that had no seq, so every toggle (and a join with the camera or microphone off)
-    waited out the 5 s request timeout and reported an error."""
+    """The server used to answer media_state with a roster event that had no seq, so
+    every toggle (and a join with the camera or microphone off) waited out the 5 s
+    request timeout and reported an error."""
 
     async def timed(aw: Any) -> Any:
         start = time.monotonic()
@@ -394,7 +394,7 @@ def test_camera_and_microphone_toggles_answer_at_once(server: Server) -> None:
 
 
 def test_a_refused_chat_is_reported(server: Server) -> None:
-    """Review finding protocol-2: a chat the server refused vanished without a word."""
+    """A chat the server refused used to vanish without a word."""
 
     async def scenario() -> None:
         alice = await _client(server, "alice")
@@ -429,8 +429,8 @@ def _cli(server: Server, *args: str) -> list[str]:
 
 
 def test_command_line_toggles_errors_and_cancel_then_exit(server: Server) -> None:
-    """The CLI half of review findings protocol-1, protocol-2, client-3 and client-10:
-    toggles answer at once, a refused chat is printed, and `cancel; exit` returns."""
+    """From the command line: toggles answer at once (no 5 s request timeout), a refused
+    chat is printed, and `cancel; exit` returns."""
     script = "video off; video on; audio on; audio off; chat " + "x" * 2001 + "; chat ok; cancel; exit"
     start = time.monotonic()
     proc = subprocess.run(

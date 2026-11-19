@@ -16,7 +16,7 @@ person at a terminal:
 * mode: `p2p` is set to False (relay). The original's auto_mode_switch thread would
   pick relay for three or more members but P2P for two, so in a two-member call (B1)
   the original would run P2P unless `chgmode` selected relay. B1 forces relay because
-  the brief compares the server-relayed path and because its topology has no route
+  the benchmark compares the server-relayed path and because its topology has no route
   from the sender's namespace to the receiver's; both systems then cross the same lossy
   server -> receiver link, so the loss comparison is unaffected.
 * threads left out: start_conference also starts videoplayer (shows the local camera

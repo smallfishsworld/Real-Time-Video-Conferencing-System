@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Forwarding latency while the control plane churns (review finding server-1).
+# Forwarding latency while the control plane churns (keepalives, media_state toggles,
+# rebinds, REGISTER floods).
 #
 # Builds the server/internal/media test binary once, then runs TestChurnForwarding RUNS
 # times. Each run takes the bench lock on its own (five configurations of

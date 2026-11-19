@@ -1,4 +1,4 @@
-"""Jitter-buffer simulations in simulated time (review findings server-2 and client-7).
+"""Jitter-buffer simulations in simulated time: clock drift, bursts and delay steps.
 
 `client` runs every scenario of bench/jitter_scenarios.json through the client's
 AudioJitterBuffer, the same way server/internal/media/jitter_sim_test.go runs them

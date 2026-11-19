@@ -49,8 +49,8 @@ def test_long_run_average_matches_rate() -> None:
 
 @pytest.mark.parametrize("rate", [0, -1, math.nan])
 def test_a_rate_of_zero_negative_or_nan_is_rejected(rate: float) -> None:
-    """0 used to mean "no limit", so `--max-send-kbps 0` silently removed the cap
-    (review finding client-1). Only math.inf turns the limit off now."""
+    """0 used to mean "no limit", so `--max-send-kbps 0` silently removed the cap. Only
+    math.inf turns the limit off now."""
     with pytest.raises(ValueError, match="rate must be > 0"):
         TokenBucket(rate=rate, burst=0)
 

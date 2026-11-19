@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Jitter-buffer simulations (review findings server-2 and client-7).
+# Jitter-buffer simulations: clock drift, bursts and delay steps, in simulated time.
 #
 # Runs every scenario of bench/jitter_scenarios.json through the server mixer's jitter
 # buffer (server/internal/media TestJitterSimulation) and the client's

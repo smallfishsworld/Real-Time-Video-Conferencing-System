@@ -343,8 +343,8 @@ def _rtp_of(server: FakeServer, ssrc: int, pt: int | None = None) -> list[RtpHea
 
 
 def test_frames_refused_by_the_cap_use_no_sequence_numbers() -> None:
-    """Review finding client-4: a refused frame used to be packetized first, so the
-    receivers saw a sequence gap and asked for packets that were never sent."""
+    """A refused frame used to be packetized first, so the receivers saw a sequence gap
+    and asked for packets that were never sent."""
 
     async def scenario() -> None:
         async with fake_server() as server:
@@ -370,8 +370,8 @@ def test_frames_refused_by_the_cap_use_no_sequence_numbers() -> None:
 
 
 def test_a_frame_larger_than_the_burst_goes_out_once_the_bucket_refills() -> None:
-    """Review finding client-5: with a fixed 128 KiB burst an HD frame never fit, at any
-    rate. The burst now grows to two such frames; the rate cap stays as it was."""
+    """With a fixed 128 KiB burst an HD frame never fit, at any rate. The burst now grows
+    to two such frames; the rate cap stays as it was."""
 
     async def scenario() -> None:
         async with fake_server() as server:
@@ -391,7 +391,7 @@ def test_a_frame_larger_than_the_burst_goes_out_once_the_bucket_refills() -> Non
 
 
 def test_audio_timestamps_count_frames_and_jump_only_over_pauses() -> None:
-    """Review finding client-8: one late capture callback used to shift every later
+    """One late capture callback used to shift every later
     timestamp. The timestamp now counts frames; only a pause of more than ten frames
     (or a time with nobody to send to) moves it by the capture clock."""
 
@@ -421,7 +421,7 @@ def test_audio_timestamps_count_frames_and_jump_only_over_pauses() -> None:
 
 
 def test_nacks_stay_within_the_feedback_budget_and_registers_are_charged() -> None:
-    """Review finding client-11: NACK and REGISTER packets bypassed every budget. NACKs
+    """NACK and REGISTER packets used to bypass every budget. NACKs
     now have their own (feedback_kbps, feedback_pps); a REGISTER always goes out, and
     the NACKs after it get less."""
 

@@ -135,7 +135,7 @@ async def _within(seconds: float, aw: Any) -> Any:
 
 
 def test_a_missing_camera_and_microphone_do_not_stop_a_join() -> None:
-    """Review finding client-2: a device that could not be opened crashed create/join."""
+    """A device that could not be opened used to crash create/join."""
 
     async def scenario() -> None:
         async with fake_servers() as (control, _media, port):
@@ -175,7 +175,7 @@ def test_devices_that_are_off_are_not_opened() -> None:
             log: list[str] = []
             app = _app(port, Devices(camera, mic, FakeSpeaker), log, video_on=False, audio_on=False)
             await app.start()
-            await _within(3, app.create("t"))  # with video_on=False: no 5 s wait (protocol-1)
+            await _within(3, app.create("t"))  # with video_on=False: no 5 s request timeout
             assert opened == []
             assert control.media_states() == [(False, False)]
             assert not any(line.startswith("!") for line in log), log
@@ -240,8 +240,8 @@ class FlakyCamera(VideoSource):
 
 
 def test_a_failing_camera_is_reported_once_and_turned_off() -> None:
-    """Review finding client-3: one exception stopped the capture loop silently, and
-    leave()/close() then raised it."""
+    """One exception used to stop the capture loop silently, and leave()/close() then
+    raised it."""
 
     async def scenario() -> None:
         async with fake_servers() as (control, _media, port):
@@ -289,8 +289,7 @@ class SlowCamera(VideoSource):
 
 
 def test_the_camera_is_not_closed_while_a_capture_is_running() -> None:
-    """Review finding client-9: camera.close() ran while the capture thread was still in
-    the device."""
+    """camera.close() used to run while the capture thread was still in the device."""
 
     async def scenario() -> None:
         async with fake_servers() as (_control, _media, port):
@@ -312,8 +311,8 @@ def test_the_camera_is_not_closed_while_a_capture_is_running() -> None:
 
 
 def test_close_right_after_a_cancelled_command_returns() -> None:
-    """Review finding client-3: close() swallowed the caller's own cancellation, so
-    `cancel` followed by an immediate exit could hang."""
+    """close() used to swallow the caller's own cancellation, so `cancel` followed by an
+    immediate exit could hang."""
 
     async def scenario() -> None:
         async with fake_servers() as (_control, _media, port):
