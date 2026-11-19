@@ -23,6 +23,7 @@ Usage: analyze_b1.py RUNDIR OUT.json [--build BUILD.json] [--command CMD]
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import math
 import sys
@@ -71,6 +72,29 @@ def model_ratio(system: str, p: float, sizes: list[int]) -> float:
     return total / len(frags)
 
 
+def match_arrivals(
+    sent: list[tuple[int, float]], received: list[tuple[int, float]]
+) -> dict[tuple[int, float], float]:
+    """First arrival of each sent frame: (corpus index, send time) -> arrival time.
+
+    Frames are identified by their corpus index, and the corpus repeats (1000 frames,
+    64 s at 15.625 fps), so a run longer than that sends an index more than once. An
+    arrival belongs to the latest send of its index at or before it.
+    """
+    sends_of: dict[int, list[float]] = defaultdict(list)
+    for i, t in sent:
+        sends_of[i].append(t)
+    for times in sends_of.values():
+        times.sort()
+    arrivals: dict[tuple[int, float], float] = {}
+    for i, t in sorted(received, key=lambda e: e[1]):
+        times = sends_of.get(i, [])
+        j = bisect.bisect_right(times, t) - 1
+        if j >= 0:
+            arrivals.setdefault((i, times[j]), t)
+    return arrivals
+
+
 def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
     send = json.loads((d / f"{tag}.send.json").read_text())
     recv = json.loads((d / f"{tag}.recv.json").read_text())
@@ -81,19 +105,18 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
     t_first, t_last = sent[0][1], sent[-1][1]
     lo, hi = t_first + EDGE_START, t_last - EDGE_END
     window = [(i, t) for i, t in sent if lo <= t <= hi]
-    send_time = dict(window)
-    arrivals: dict[int, float] = {}
-    for e in recv["recv_video"]:
-        idx, t = int(e[1]), float(e[2])
-        if idx in send_time and idx not in arrivals:
-            arrivals[idx] = t
-    latencies = [arrivals[i] - send_time[i] for i in arrivals]
+    arrived = match_arrivals(sent, [(int(e[1]), float(e[2])) for e in recv["recv_video"]])
+    # Frames of the counted window that arrived complete: (index, send time) -> arrival.
+    arrivals = {k: arrived[k] for k in window if k in arrived}
+    latencies = [a - k[1] for k, a in arrivals.items()]
     on_time = sum(1 for x in latencies if x <= DEADLINE)
     mid = (lo + hi) / 2
 
+    def on_time_in(part: list[tuple[int, float]]) -> int:
+        return sum(1 for k in part if k in arrivals and arrivals[k] - k[1] <= DEADLINE)
+
     def ratio(part: list[tuple[int, float]]) -> float | None:
-        ok = sum(1 for i, t in part if i in arrivals and arrivals[i] - t <= DEADLINE)
-        return ok / len(part) if part else None
+        return on_time_in(part) / len(part) if part else None
 
     audio_sent = {int(s): float(t) for s, t in send["sent_audio"] if lo <= float(t) <= hi}
     audio_got = {int(e[1]) for e in recv["played"] if int(e[1]) in audio_sent}
@@ -135,10 +158,10 @@ def analyze_run(tag: str, d: Path, sizes: list[int]) -> dict[str, Any]:
 
     # Delivery in 30 s bins of send time, for the dynamics of long runs.
     bins: dict[int, list[int]] = defaultdict(lambda: [0, 0])
-    for i, t in window:
-        b = bins[int((t - lo) // 30)]
+    for k in window:
+        b = bins[int((k[1] - lo) // 30)]
         b[0] += 1
-        b[1] += int(i in arrivals and arrivals[i] - t <= DEADLINE)
+        b[1] += on_time_in([k])
     by_30s = [{"from_s": 30 * k, "frames": n, "on_time": ok} for k, (n, ok) in sorted(bins.items())]
 
     nft = net["nft"]

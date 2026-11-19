@@ -47,6 +47,17 @@ def test_b1_model_of_independent_loss() -> None:
     assert analyze_b1.model_ratio("legacy", 0.01, [31000]) == pytest.approx(0.99**21)
 
 
+def test_b1_matches_an_arrival_to_the_latest_send_of_its_index() -> None:
+    # The corpus repeats, so a long run sends index 7 at 0 s and again at 64 s.
+    sent = [(7, 0.0), (8, 0.064), (7, 64.0), (8, 64.064)]
+    received = [(7, 0.01), (7, 64.02), (8, 64.2), (7, 64.5), (9, 1.0)]
+    assert analyze_b1.match_arrivals(sent, received) == {
+        (7, 0.0): 0.01,
+        (7, 64.0): 64.02,  # its later duplicate at 64.5 s is not a new arrival
+        (8, 64.064): 64.2,  # the first send of index 8 never arrived
+    }
+
+
 def _b1_run(rep: int, sent: int, on_time: int, audio_lost: int) -> dict[str, Any]:
     return {
         "tag": f"downlink-v2-fec-nack-50-r{rep}",
