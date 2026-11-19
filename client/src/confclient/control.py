@@ -7,6 +7,7 @@ import contextlib
 import itertools
 from typing import Any
 
+from .aio import cancel_and_wait
 from .protocol import CONTROL_VERSION, ProtocolError, encode_frame, read_frame
 
 EVENT_TYPES = frozenset({"roster", "mode", "chat", "room_closed"})
@@ -24,7 +25,11 @@ class ServerError(Exception):
 class ControlClient:
     """One control connection. Requests carry a `seq` and `request()` waits for the
     reply with the same `seq`; events (roster, mode, chat, room_closed) are put on
-    `events`."""
+    `events`. A reply can be an event too: the answer to `chat` is the sender's own
+    copy of the message and the answer to `media_state` the updated roster, and both
+    also go to `events`. An `error` that answers no pending request (a frame the
+    server refused before reading its seq, or a reply after its request timed out)
+    goes to `events` as well, so that it is not lost."""
 
     def __init__(self, host: str, port: int, ping_interval: float = 15.0) -> None:
         self.host = host
@@ -38,11 +43,14 @@ class ControlClient:
         self._seq = itertools.count(1)
         self._tasks: list[asyncio.Task[None]] = []
         self.closed = asyncio.Event()
+        self.peer_host: str | None = None  # the server address the connection reached
 
     async def connect(self, name: str, timeout: float = 5.0) -> dict[str, Any]:
-        self._reader, self._writer = await asyncio.wait_for(
-            asyncio.open_connection(self.host, self.port), timeout
-        )
+        self._reader, writer = await asyncio.wait_for(asyncio.open_connection(self.host, self.port), timeout)
+        self._writer = writer
+        peer = writer.get_extra_info("peername")
+        if isinstance(peer, tuple) and peer:
+            self.peer_host = str(peer[0])
         self._tasks.append(asyncio.create_task(self._read_loop(), name="control-reader"))
         self.welcome = await self.request(
             {"type": "hello", "name": name, "version": CONTROL_VERSION}, timeout
@@ -71,18 +79,17 @@ class ControlClient:
         return reply
 
     async def close(self) -> None:
-        for task in self._tasks:
-            task.cancel()
-        for task in self._tasks:
-            with contextlib.suppress(asyncio.CancelledError, ConnectionError, OSError):
-                await task
-        self._tasks.clear()
-        if self._writer is not None:
-            self._writer.close()
-            with contextlib.suppress(ConnectionError, OSError):
-                await self._writer.wait_closed()
-        self._fail_pending()
-        self.closed.set()
+        tasks, self._tasks = self._tasks, []
+        writer, self._writer = self._writer, None
+        try:
+            await cancel_and_wait(tasks)
+        finally:
+            if writer is not None:
+                writer.close()
+                with contextlib.suppress(ConnectionError, OSError):
+                    await writer.wait_closed()
+            self._fail_pending()
+            self.closed.set()
 
     def _fail_pending(self) -> None:
         for fut in self._pending.values():
@@ -95,9 +102,12 @@ class ControlClient:
             while True:
                 msg = await read_frame(self._reader)
                 seq = msg.get("seq")
+                answered = False
                 if isinstance(seq, int) and seq in self._pending and not self._pending[seq].done():
                     self._pending[seq].set_result(msg)
-                if msg.get("type") in EVENT_TYPES:
+                    answered = True
+                kind = msg.get("type")
+                if kind in EVENT_TYPES or (kind == "error" and not answered):
                     self.events.put_nowait(msg)
         except (asyncio.IncompleteReadError, ConnectionError, OSError, ProtocolError):
             pass
