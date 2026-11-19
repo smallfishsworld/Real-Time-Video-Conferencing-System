@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 import pytest
 
@@ -101,6 +103,97 @@ def test_misaligned_timestamp_resynchronises() -> None:
     jb.push(_ts(5) + 7, _frame(2))  # not a multiple of 320 samples from the cursor
     out = [jb.pop() for _ in range(2)]
     assert _values(out) == [None, 2]
+
+
+def _simulate(
+    period_us: int,
+    frames: int,
+    extra_delay: Callable[[int], int] = lambda k: 0,
+    burst: int = 0,
+    delay_frames: int = 3,
+) -> tuple[int, list[float], AudioJitterBuffer]:
+    """Frame k is sent at k * period_us and arrives 30 ms (plus extra_delay(k)) later; the
+    first `burst` frames arrive together. Every 20 ms, 7 ms after the send grid, the
+    arrived frames are pushed and one frame is popped. Returns the longest run of
+    unplayed ticks while the sender is active (ms), each played frame's latency from
+    send to playout (ms) and the buffer."""
+    send = [k * period_us for k in range(frames)]
+    arrive = [send[k] + 30_000 + extra_delay(k) for k in range(frames)]
+    for k in range(burst - 1):
+        arrive[k] = arrive[burst - 1]
+    order = sorted(range(frames), key=lambda k: arrive[k])
+    jb = AudioJitterBuffer(delay_frames)
+    latencies: list[float] = []
+    longest = run = 0
+    started = False
+    ai = 0
+    t = 7000
+    while t <= send[-1]:
+        while ai < frames and arrive[order[ai]] <= t:
+            k = order[ai]
+            jb.push((k * N) & 0xFFFFFFFF, encode_l16(np.full(N, k % 30000, dtype=np.int16)))
+            ai += 1
+        frame, status = jb.pop()
+        if status is PlayStatus.PLAYED:
+            assert frame is not None
+            started = True
+            latencies.append((t - send[int(frame[0])]) / 1000)
+            run = 0
+        elif started:
+            run += 1
+            longest = max(longest, run * 20)
+        t += 20_000
+    return longest, latencies, jb
+
+
+# The default 3-frame buffer at a 30 ms one-way delay plays each frame 107 ms after it
+# was sent: 30 ms, plus 60 ms of buffer, plus 17 ms until the next tick.
+TARGET_MS = 107.0
+
+
+@pytest.mark.parametrize("period_us", [20_020, 19_980])
+def test_sender_clock_drift_causes_neither_gaps_nor_latency_growth(period_us: int) -> None:
+    # 1000 ppm for five minutes is 15 frames of drift. Before, a slow sender lost
+    # 560 ms of audio about once a minute and a fast one ended at 200 ms.
+    longest, lat, jb = _simulate(period_us, 15_000)
+    assert longest <= 20
+    assert jb.stats.late == 0
+    tail = lat[-500:]
+    assert min(tail) >= TARGET_MS - 20
+    assert max(tail) <= TARGET_MS + 20
+    assert jb.stats.stretched + jb.stats.drained == 15
+
+
+def test_start_up_burst_drains_back_to_the_target() -> None:
+    longest, lat, jb = _simulate(20_000, 3000, burst=50)
+    assert longest == 0
+    assert lat[-500:] == [TARGET_MS] * 500  # before: 207 ms for the rest of the call
+    assert jb.stats.drained > 0
+
+
+@pytest.mark.parametrize(("step_ms", "max_gap_ms"), [(60, 60), (100, 120), (-100, 0)])
+def test_delay_steps_are_followed_without_long_gaps(step_ms: int, max_gap_ms: int) -> None:
+    if step_ms > 0:
+        longest, lat, _ = _simulate(20_000, 3000, lambda k: step_ms * 1000 if k >= 1000 else 0)
+    else:
+        longest, lat, _ = _simulate(20_000, 3000, lambda k: -step_ms * 1000 if k < 1000 else 0)
+    # Before, a +100 ms step left 28 ticks (560 ms) unplayed until the idle resync.
+    assert longest <= max_gap_ms
+    assert lat[-500:] == [TARGET_MS + max(step_ms, 0)] * 500
+
+
+def test_a_run_of_late_packets_reanchors_and_keeps_them() -> None:
+    jb = AudioJitterBuffer(delay_frames=1)
+    jb.push(_ts(0), _frame(1))
+    for _ in range(5):  # frame 0 plays at the second pop; the cursor is now at frame 4
+        jb.pop()
+    # Frames 1..3 arrive after their playout time: the third re-anchors the buffer
+    # one frame behind it, and the one before it is kept.
+    assert not jb.push(_ts(1), _frame(2))
+    assert not jb.push(_ts(2), _frame(3))
+    assert jb.push(_ts(3), _frame(4))
+    assert jb.stats.reanchored == 1
+    assert _values([jb.pop(), jb.pop()]) == [3, 4]
 
 
 def test_rejects_wrong_frame_size() -> None:
