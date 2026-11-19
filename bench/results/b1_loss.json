@@ -1,0 +1,619 @@
+{
+  "benchmark": "B1 loss resilience",
+  "command": "sudo bench/run_b1.sh",
+  "deadline_ms": 200.0,
+  "link": "veth pairs, MTU 1500; loss: nftables numgen random drop of UDP packets at the receiver's prerouting hook, priority -500 (before defragmentation), server -> receiver only",
+  "media": "corpus frames 480x480 JPEG q85 at 15.625 fps (one per 1024-sample audio chunk, the legacy rate); 16 kHz mono PCM audio",
+  "runs": [
+    {
+      "system": "legacy",
+      "loss_percent": 0.0,
+      "measured_udp_packet_loss": 0.0,
+      "video": {
+        "frames_sent": 579,
+        "frames_complete": 579,
+        "frames_on_time": 579,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 1.0,
+        "latency_ms": {
+          "n": 579,
+          "mean": 0.7311814818654614,
+          "p50": 0.7223629995678493,
+          "p95": 0.8540367997738942,
+          "p99": 1.175093439860576,
+          "max": 2.678111000022909
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 579,
+        "frame_ms": 64,
+        "residual_loss": 0.0,
+        "gap_fraction_after_concealment": 0.0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 14592,
+        "ip_reasm_oks": 1238,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 1238,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "legacy",
+      "loss_percent": 1.0,
+      "measured_udp_packet_loss": 0.009852216748768473,
+      "video": {
+        "frames_sent": 580,
+        "frames_complete": 400,
+        "frames_on_time": 400,
+        "delivery_ratio": 0.6896551724137931,
+        "complete_ratio": 0.6896551724137931,
+        "delivery_ratio_first_half": 0.8068965517241379,
+        "delivery_ratio_second_half": 0.5724137931034483,
+        "model_ratio_independent_loss": 0.8051610030444905,
+        "latency_ms": {
+          "n": 400,
+          "mean": 0.7008432800046194,
+          "p50": 0.6895280000662751,
+          "p95": 0.8255655998937071,
+          "p99": 1.0625050199769248,
+          "max": 1.8138310001631908
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 580,
+        "frame_ms": 64,
+        "residual_loss": 0.1448275862068965,
+        "gap_fraction_after_concealment": 0.1448275862068965
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 14472,
+        "ip_reasm_oks": 970,
+        "ip_reasm_fails": 1821,
+        "ip_reasm_timeout": 26,
+        "udp_in_datagrams": 970,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "legacy",
+      "loss_percent": 2.0,
+      "measured_udp_packet_loss": 0.022609289617486338,
+      "video": {
+        "frames_sent": 581,
+        "frames_complete": 189,
+        "frames_on_time": 189,
+        "delivery_ratio": 0.3253012048192771,
+        "complete_ratio": 0.3253012048192771,
+        "delivery_ratio_first_half": 0.4570446735395189,
+        "delivery_ratio_second_half": 0.19310344827586207,
+        "model_ratio_independent_loss": 0.6468758067570228,
+        "latency_ms": {
+          "n": 189,
+          "mean": 0.724033576711653,
+          "p50": 0.721505999990768,
+          "p95": 0.8312883999678888,
+          "p99": 0.9220970401111119,
+          "max": 1.2284529998396465
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 581,
+        "frame_ms": 64,
+        "residual_loss": 0.48364888123924266,
+        "gap_fraction_after_concealment": 0.48364888123924266
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 14309,
+        "ip_reasm_oks": 521,
+        "ip_reasm_fails": 6729,
+        "ip_reasm_timeout": 61,
+        "udp_in_datagrams": 521,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "legacy",
+      "loss_percent": 5.0,
+      "measured_udp_packet_loss": 0.052545155993431854,
+      "video": {
+        "frames_sent": 580,
+        "frames_complete": 62,
+        "frames_on_time": 62,
+        "delivery_ratio": 0.10689655172413794,
+        "complete_ratio": 0.10689655172413794,
+        "delivery_ratio_first_half": 0.1310344827586207,
+        "delivery_ratio_second_half": 0.08275862068965517,
+        "model_ratio_independent_loss": 0.3309577884267899,
+        "latency_ms": {
+          "n": 62,
+          "mean": 0.692338112927363,
+          "p50": 0.6790535001073295,
+          "p95": 0.8010007501297878,
+          "p99": 0.8470431700243353,
+          "max": 0.8945029999267717
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 580,
+        "frame_ms": 64,
+        "residual_loss": 0.6775862068965517,
+        "gap_fraction_after_concealment": 0.6775862068965517
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 13848,
+        "ip_reasm_oks": 279,
+        "ip_reasm_fails": 8573,
+        "ip_reasm_timeout": 103,
+        "udp_in_datagrams": 279,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "legacy",
+      "loss_percent": 10.0,
+      "measured_udp_packet_loss": 0.10214833059660645,
+      "video": {
+        "frames_sent": 580,
+        "frames_complete": 25,
+        "frames_on_time": 25,
+        "delivery_ratio": 0.04310344827586207,
+        "complete_ratio": 0.04310344827586207,
+        "delivery_ratio_first_half": 0.027586206896551724,
+        "delivery_ratio_second_half": 0.05862068965517241,
+        "model_ratio_independent_loss": 0.10324775814449512,
+        "latency_ms": {
+          "n": 25,
+          "mean": 0.6706761600071331,
+          "p50": 0.6739970003764029,
+          "p95": 0.8295846000692108,
+          "p99": 0.8407449198239192,
+          "max": 0.8411149997300527
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 580,
+        "frame_ms": 64,
+        "residual_loss": 0.7396551724137931,
+        "gap_fraction_after_concealment": 0.7396551724137931
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 13123,
+        "ip_reasm_oks": 202,
+        "ip_reasm_fails": 8645,
+        "ip_reasm_timeout": 115,
+        "udp_in_datagrams": 202,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-nofec",
+      "loss_percent": 0.0,
+      "measured_udp_packet_loss": 0.0,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 583,
+        "frames_on_time": 583,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 1.0,
+        "latency_ms": {
+          "n": 583,
+          "mean": 0.8551538747825029,
+          "p50": 0.8097650002127921,
+          "p95": 1.1164813999585022,
+          "p99": 1.814939720052279,
+          "max": 5.621449000045686
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.0,
+        "ticks": 1855,
+        "concealed_fraction": 0.0,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18494,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-nofec",
+      "loss_percent": 1.0,
+      "measured_udp_packet_loss": 0.00984102952308857,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 450,
+        "frames_on_time": 450,
+        "delivery_ratio": 0.7718696397941681,
+        "complete_ratio": 0.7718696397941681,
+        "delivery_ratio_first_half": 0.797945205479452,
+        "delivery_ratio_second_half": 0.7457044673539519,
+        "model_ratio_independent_loss": 0.7664494555604591,
+        "latency_ms": {
+          "n": 450,
+          "mean": 0.8039935555573012,
+          "p50": 0.7862894999561831,
+          "p95": 1.0223819999282568,
+          "p99": 1.2260280501868683,
+          "max": 1.4309470002444868
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.008038585209003246,
+        "ticks": 1856,
+        "concealed_fraction": 0.008081896551724138,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18312,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-nofec",
+      "loss_percent": 2.0,
+      "measured_udp_packet_loss": 0.019952417000108143,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 340,
+        "frames_on_time": 340,
+        "delivery_ratio": 0.5831903945111492,
+        "complete_ratio": 0.5831903945111492,
+        "delivery_ratio_first_half": 0.541095890410959,
+        "delivery_ratio_second_half": 0.6254295532646048,
+        "model_ratio_independent_loss": 0.5858792847813558,
+        "latency_ms": {
+          "n": 340,
+          "mean": 0.8214016705885703,
+          "p50": 0.8081989999482175,
+          "p95": 1.0111590999258624,
+          "p99": 1.1024723000991798,
+          "max": 1.319832000262977
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.025723472668810254,
+        "ticks": 1856,
+        "concealed_fraction": 0.02586206896551724,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 18125,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-nofec",
+      "loss_percent": 5.0,
+      "measured_udp_packet_loss": 0.04953225544800735,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 136,
+        "frames_on_time": 136,
+        "delivery_ratio": 0.2332761578044597,
+        "complete_ratio": 0.2332761578044597,
+        "delivery_ratio_first_half": 0.23972602739726026,
+        "delivery_ratio_second_half": 0.2268041237113402,
+        "model_ratio_independent_loss": 0.2573883979518839,
+        "latency_ms": {
+          "n": 136,
+          "mean": 0.8353704705708718,
+          "p50": 0.8232580000822054,
+          "p95": 1.0495557501144503,
+          "p99": 1.1499056499133078,
+          "max": 1.367608999771619
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.051982851018220755,
+        "ticks": 1855,
+        "concealed_fraction": 0.0522911051212938,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 17577,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-nofec",
+      "loss_percent": 10.0,
+      "measured_udp_packet_loss": 0.10280121133463119,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 34,
+        "frames_on_time": 34,
+        "delivery_ratio": 0.058319039451114926,
+        "complete_ratio": 0.058319039451114926,
+        "delivery_ratio_first_half": 0.05136986301369863,
+        "delivery_ratio_second_half": 0.06529209621993128,
+        "model_ratio_independent_loss": 0.06161574848761636,
+        "latency_ms": {
+          "n": 34,
+          "mean": 0.8773774412234429,
+          "p50": 0.7958774999679008,
+          "p95": 0.9368618003009033,
+          "p99": 2.6149418600698526,
+          "max": 3.4368589999758115
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.11521972132904612,
+        "ticks": 1855,
+        "concealed_fraction": 0.11536388140161725,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 16591,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-fec",
+      "loss_percent": 0.0,
+      "measured_udp_packet_loss": 0.0,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 583,
+        "frames_on_time": 583,
+        "delivery_ratio": 1.0,
+        "complete_ratio": 1.0,
+        "delivery_ratio_first_half": 1.0,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 1.0,
+        "latency_ms": {
+          "n": 583,
+          "mean": 1.2036880034398287,
+          "p50": 1.1354520001987112,
+          "p95": 1.703159700173273,
+          "p99": 2.2351012599756355,
+          "max": 9.035865999976522
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.0,
+        "ticks": 1856,
+        "concealed_fraction": 0.0,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 0
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 23848,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-fec",
+      "loss_percent": 1.0,
+      "measured_udp_packet_loss": 0.010440689337079123,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 577,
+        "frames_on_time": 577,
+        "delivery_ratio": 0.9897084048027445,
+        "complete_ratio": 0.9897084048027445,
+        "delivery_ratio_first_half": 0.9794520547945206,
+        "delivery_ratio_second_half": 1.0,
+        "model_ratio_independent_loss": 0.9936977762646543,
+        "latency_ms": {
+          "n": 577,
+          "mean": 1.1203055078152218,
+          "p50": 1.089831999706803,
+          "p95": 1.3972416001706731,
+          "p99": 2.0970575995670515,
+          "max": 4.119012999581173
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.0,
+        "ticks": 1856,
+        "concealed_fraction": 0.0,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 184
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 23600,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-fec",
+      "loss_percent": 2.0,
+      "measured_udp_packet_loss": 0.02028389047539056,
+      "video": {
+        "frames_sent": 582,
+        "frames_complete": 572,
+        "frames_on_time": 572,
+        "delivery_ratio": 0.9828178694158075,
+        "complete_ratio": 0.9828178694158075,
+        "delivery_ratio_first_half": 0.9828178694158075,
+        "delivery_ratio_second_half": 0.9828178694158075,
+        "model_ratio_independent_loss": 0.9754719592633059,
+        "latency_ms": {
+          "n": 572,
+          "mean": 1.1511045332217118,
+          "p50": 1.1133869998047885,
+          "p95": 1.4314655001271592,
+          "p99": 1.7202919493865882,
+          "max": 4.595564000737795
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1863,
+        "frame_ms": 20,
+        "residual_loss": 0.0021470746108427363,
+        "ticks": 1853,
+        "concealed_fraction": 0.0021586616297895305,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 353
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 23329,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-fec",
+      "loss_percent": 5.0,
+      "measured_udp_packet_loss": 0.04968970144246897,
+      "video": {
+        "frames_sent": 583,
+        "frames_complete": 502,
+        "frames_on_time": 502,
+        "delivery_ratio": 0.8610634648370498,
+        "complete_ratio": 0.8610634648370498,
+        "delivery_ratio_first_half": 0.8801369863013698,
+        "delivery_ratio_second_half": 0.8419243986254296,
+        "model_ratio_independent_loss": 0.8627429004119195,
+        "latency_ms": {
+          "n": 502,
+          "mean": 1.2811808326794025,
+          "p50": 1.195538000047236,
+          "p95": 1.6501908997724968,
+          "p99": 2.526655710189521,
+          "max": 7.844716999898083
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1866,
+        "frame_ms": 20,
+        "residual_loss": 0.004823151125401881,
+        "ticks": 1856,
+        "concealed_fraction": 0.004849137931034483,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 753
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 22663,
+        "udp_rcvbuf_errors": 0
+      }
+    },
+    {
+      "system": "v2-fec",
+      "loss_percent": 10.0,
+      "measured_udp_packet_loss": 0.10063421395270696,
+      "video": {
+        "frames_sent": 582,
+        "frames_complete": 326,
+        "frames_on_time": 326,
+        "delivery_ratio": 0.5601374570446735,
+        "complete_ratio": 0.5601374570446735,
+        "delivery_ratio_first_half": 0.5601374570446735,
+        "delivery_ratio_second_half": 0.5601374570446735,
+        "model_ratio_independent_loss": 0.5768543684752366,
+        "latency_ms": {
+          "n": 326,
+          "mean": 1.4297850613668301,
+          "p50": 1.2986890001229767,
+          "p95": 2.081073499766717,
+          "p99": 3.921817249420201,
+          "max": 5.938176999734424
+        },
+        "sender_frames_rate_limited": 0
+      },
+      "audio": {
+        "frames_sent": 1863,
+        "frame_ms": 20,
+        "residual_loss": 0.024154589371980673,
+        "ticks": 1852,
+        "concealed_fraction": 0.02429805615550756,
+        "gap_fraction_after_concealment": 0.0,
+        "fec_recovered_packets": 1241
+      },
+      "receiver_kernel": {
+        "ip_reasm_reqds": 0,
+        "ip_reasm_oks": 0,
+        "ip_reasm_fails": 0,
+        "ip_reasm_timeout": 0,
+        "udp_in_datagrams": 21413,
+        "udp_rcvbuf_errors": 0
+      }
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "b81293a",
+    "git_dirty": true,
+    "utc": "2026-11-19T01:57:40Z"
+  }
+}

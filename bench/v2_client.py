@@ -173,10 +173,21 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                 await asyncio.sleep(0.1)
     sent_video: list[tuple[int, float, bool]] = []
     task = asyncio.create_task(video_loop(app, frames, args.fps, sent_video)) if args.send_video else None
+    rx_series: list[tuple[float, dict[str, int], dict[str, int]]] = []
+
+    async def sample_counters() -> None:
+        while True:
+            if app.session is not None:
+                st = app.session.stats
+                rx_series.append((time.monotonic(), dict(st.packets_in), dict(st.bytes_in)))
+            await asyncio.sleep(1.0)
+
+    sampler = asyncio.create_task(sample_counters())
     with contextlib.suppress(TimeoutError):
         await asyncio.wait_for(app.room_closed.wait(), max(0.0, args.end_at - time.monotonic()))
     if task is not None:
         task.cancel()
+    sampler.cancel()
     session = app.session
     stats = session.stats if session is not None else None
     result: dict[str, Any] = {
@@ -190,6 +201,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         "ticks": speakers[0].ticks if speakers else [],
         "rx_packets": stats.packets_in if stats else {},
         "rx_bytes": stats.bytes_in if stats else {},
+        "rx_series": rx_series,
         "fec_recovered": stats.fec_recovered if stats else 0,
         "video_frames_rate_limited": stats.video_frames_rate_limited if stats else 0,
         "audio_frames_rate_limited": stats.audio_frames_rate_limited if stats else 0,
