@@ -36,7 +36,7 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path as MplPath
-from matplotlib.ticker import FuncFormatter, LogLocator, MultipleLocator, NullFormatter
+from matplotlib.ticker import FuncFormatter, LogLocator, MultipleLocator, NullFormatter, NullLocator
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "bench" / "results"
@@ -353,14 +353,20 @@ def ci(w: dict[str, Any], digits: int = 1) -> str:
     return f"{100 * w['p']:.{digits}f} % [{lo:.{digits}f}, {hi:.{digits}f}]"
 
 
+def _num(x: float, digits: int) -> str:
+    """x rounded to digits, without the sign of a value that rounds to zero ('-0')."""
+    s = f"{x:.{digits}f}"
+    return s[1:] if s.startswith("-") and float(s) == 0 else s
+
+
 def rng(s: dict[str, Any], digits: int = 1, scale: float = 1.0, unit: str = "") -> str:
-    """The median of repeated runs and their range: '0.52 (0.51-0.54)'."""
+    """The median of repeated runs and their range: '0.52 (0.51-0.54)', '3 (-7 to 5)'."""
     if s.get("median") is None:
         return "n/a"
-    med, lo, hi = (scale * s[k] for k in ("median", "min", "max"))
-    if s.get("n", 0) <= 1 or f"{lo:.{digits}f}" == f"{hi:.{digits}f}":
-        return f"{med:.{digits}f}{unit}"
-    return f"{med:.{digits}f}{unit} ({lo:.{digits}f}-{hi:.{digits}f})"
+    med, lo, hi = (_num(scale * s[k], digits) for k in ("median", "min", "max"))
+    if s.get("n", 0) <= 1 or lo == hi:
+        return f"{med}{unit}"
+    return f"{med}{unit} ({lo}{' to ' if lo.startswith('-') else '-'}{hi})"
 
 
 def rng_pct(s: dict[str, Any], digits: int = 1) -> str:
@@ -829,6 +835,7 @@ def plot_b3(b3: dict[str, Any], theme: Theme, name: str, label: str) -> None:
             ax.axhline(0.99, color=theme.muted, linewidth=px(1), linestyle=(0, (4, 3)), zorder=2)
         if field == "p99_latency_ms":
             ax.yaxis.set_major_locator(LogLocator(base=10))
+            ax.yaxis.set_minor_locator(NullLocator())
             ax.yaxis.set_minor_formatter(NullFormatter())
             ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g} ms"))
             ax.axhline(100, color=theme.muted, linewidth=px(1), linestyle=(0, (4, 3)), zorder=2)
@@ -839,6 +846,9 @@ def plot_b3(b3: dict[str, Any], theme: Theme, name: str, label: str) -> None:
 
 def _capacity(s: dict[str, Any]) -> str:
     caps = "/".join(str(c) for c in s["capacity_by_repeat"])
+    if all(f is None for f in s["first_failing_by_repeat"]):
+        sizes = {p["participants"] for p in s["sweep"]}
+        return f"{caps} ({'the only size run' if len(sizes) == 1 else 'no size run failed'})"
     fails = "/".join("none" if f is None else str(f) for f in s["first_failing_by_repeat"])
     return f"{caps} (first failing: {fails})"
 
