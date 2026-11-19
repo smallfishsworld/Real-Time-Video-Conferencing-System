@@ -34,6 +34,12 @@ setup_ns() {
   ip link add b1r0 netns "$RCV" type veth peer name b1r1 netns "$SRV"
   ip -n "$SND" link set b1s0 mtu 1500 up; ip -n "$SRV" link set b1s1 mtu 1500 up
   ip -n "$RCV" link set b1r0 mtu 1500 up; ip -n "$SRV" link set b1r1 mtu 1500 up
+  # The v2 server sends forwarded video as UDP GSO messages, which a real NIC (or the
+  # kernel, just before the driver) splits into datagrams before they reach the wire.
+  # veth would carry them whole into the receiver namespace, where the loss rule would
+  # then drop a whole message at a time; one segment per packet on the server's side
+  # makes the kernel split them as it transmits, so the rule sees single datagrams.
+  ip -n "$SRV" link set b1r1 gso_max_segs 1
   ip -n "$SND" addr add "$SND_IP/24" dev b1s0; ip -n "$SRV" addr add 10.77.1.1/24 dev b1s1
   ip -n "$RCV" addr add "$RCV_IP/24" dev b1r0; ip -n "$SRV" addr add 10.77.2.1/24 dev b1r1
   ip -n "$SND" route add 10.77.0.0/24 via 10.77.1.1

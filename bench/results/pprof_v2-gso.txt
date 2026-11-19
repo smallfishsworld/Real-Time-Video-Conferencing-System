@@ -1,0 +1,41 @@
+load: 128 participants (v2), delivery 1.0000, p99 1.2 ms, server CPU 0.48
+Duration: 15.16s, Total samples = 5.58s (36.81%)
+Showing nodes accounting for 5.22s, 93.55% of 5.58s total
+
+share of profiled CPU time by code path (cumulative):
+  receive loop (read + route + forward)       74.2 %
+    forwarding video (sending the copies)     50.0 %
+    reading packets                           19.4 %
+  audio mixers (20 ms ticks)                  21.3 %
+    mixed-stream sends                        13.4 %
+  all system calls (Syscall6)                 80.5 %
+  Go scheduler and netpoller                   3.9 %
+  garbage collector                            0.0 %
+
+server counters for the whole run:
+  datagrams accepted 1697709, read system calls 88459 (19.2 datagrams per call)
+  video copies sent 4430643, send system calls 54142 (81.8 per call)
+  messages 439596 (10.08 datagrams per message)
+
+top functions by own time:
+      flat  flat%   sum%        cum   cum%
+     4.49s 80.47% 80.47%      4.49s 80.47%  internal/runtime/syscall.Syscall6
+     0.08s  1.43% 81.90%      0.08s  1.43%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.accumulate (inline)
+     0.06s  1.08% 82.97%      0.14s  2.51%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).push
+     0.05s   0.9% 83.87%      0.05s   0.9%  crypto/internal/fips140/subtle.xorBytes
+     0.05s   0.9% 84.77%      0.08s  1.43%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).insert
+     0.05s   0.9% 85.66%      0.86s 15.41%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).send
+     0.05s   0.9% 86.56%      0.05s   0.9%  internal/sync.(*Mutex).Unlock (inline)
+     0.04s  0.72% 87.28%      0.04s  0.72%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.mixMinus (inline)
+     0.04s  0.72% 87.99%      0.04s  0.72%  runtime.futex
+     0.03s  0.54% 88.53%      0.03s  0.54%  encoding/binary.bigEndian.Uint16 (inline)
+     0.03s  0.54% 89.07%      0.10s  1.79%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).pop
+     0.03s  0.54% 89.61%      2.72s 48.75%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/udpio.(*Writer).flushMmsg
+     0.03s  0.54% 90.14%      0.03s  0.54%  runtime.duffcopy
+     0.02s  0.36% 90.50%      0.25s  4.48%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).handleRTP
+     0.02s  0.36% 90.86%      0.03s  0.54%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*jitterBuffer).pushParity
+     0.02s  0.36% 91.22%      0.05s   0.9%  runtime.selectgo
+     0.01s  0.18% 91.40%      4.14s 74.19%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).Serve
+     0.01s  0.18% 91.58%      0.26s  4.66%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*Router).handle
+     0.01s  0.18% 91.76%      1.12s 20.07%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).mix
+     0.01s  0.18% 91.94%      1.19s 21.33%  github.com/smallfishsworld/Real-Time-Video-Conferencing-System/server/internal/media.(*mixRoom).run

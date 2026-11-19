@@ -1,0 +1,12 @@
+confserver_media_packets_received_total{kind="audio"} 147174
+confserver_media_packets_received_total{kind="audio_fec"} 73574
+confserver_media_packets_received_total{kind="register"} 128
+confserver_media_packets_received_total{kind="video"} 1.168048e+06
+confserver_media_packets_received_total{kind="video_fec"} 309064
+confserver_media_packets_sent_total{kind="audio"} 146974
+confserver_media_packets_sent_total{kind="audio_fec"} 73463
+confserver_media_packets_sent_total{kind="register_ack"} 128
+confserver_media_packets_sent_total{kind="video"} 4.431336e+06
+confserver_media_read_syscalls_total 74814
+confserver_video_send_messages_total 4.431336e+06
+confserver_video_send_syscalls_total 49071

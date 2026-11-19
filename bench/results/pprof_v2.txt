@@ -4,8 +4,8 @@ Showing nodes accounting for 9.01s, 95.75% of 9.41s total
 
 share of profiled CPU time by code path (cumulative):
   receive loop (read + route + forward)       93.1 %
-    forwarding video (sendto per copy)        77.7 %
-    reading packets (recvfrom)                10.9 %
+    forwarding video (sending the copies)     77.7 %
+    reading packets                           10.9 %
   audio mixers (20 ms ticks)                   5.5 %
     mixed-stream sends                         3.6 %
   all system calls (Syscall6)                 87.6 %

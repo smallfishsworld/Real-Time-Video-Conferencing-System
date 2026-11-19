@@ -2,7 +2,8 @@
 # CPU profile of the v2 server under the B3 load: the same namespace, pinning and load
 # generator as bench/run_b3.sh, at one participant count, with the server's pprof
 # endpoint enabled. Writes bench/results/pprof_<label>.pb.gz (the raw profile) and
-# bench/results/pprof_<label>.txt (top functions and a breakdown by code path).
+# bench/results/pprof_<label>.txt (top functions, a breakdown by code path, and the
+# server's system-call counters, scraped from /metrics when the load ends).
 #
 # Usage: sudo bench/profile_b3.sh                      (128 participants, label "v2")
 #        PARTICIPANTS=96 LABEL=v2-unbatched SERVER_ARGS="-udp-batch 1" bench/profile_b3.sh
@@ -39,6 +40,9 @@ if [ "${1:-}" = --locked ]; then
   ip netns exec "$NS" curl -fsS --noproxy '*' -o "$RESULTS/pprof_$LABEL.pb.gz" \
     "http://127.0.0.1:6101/debug/pprof/profile?seconds=$SECONDS_PROFILED"
   wait "$lg"
+  ip netns exec "$NS" curl -fsS --noproxy '*' http://127.0.0.1:6101/metrics |
+    grep -E '^confserver_(media_read_syscalls|video_send_(syscalls|messages)|media_packets_(sent|received))_total' \
+      >"$RESULTS/pprof_$LABEL.metrics" || true
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
   exit 0
@@ -50,5 +54,5 @@ mkdir -p "$OUT_DIR"
 log "waiting for the bench lock ($LOCK)"
 flock "$LOCK" "$0" --locked
 "$PY" "$BENCH/analyze_pprof.py" "$RESULTS/pprof_$LABEL.pb.gz" "$CONFSERVER" "$OUT_DIR/loadgen-$LABEL.json" \
-  >"$RESULTS/pprof_$LABEL.txt"
+  "$RESULTS/pprof_$LABEL.metrics" >"$RESULTS/pprof_$LABEL.txt"
 cat "$RESULTS/pprof_$LABEL.txt" | head -40
