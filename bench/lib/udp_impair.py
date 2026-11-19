@@ -12,7 +12,9 @@ so ordering is kept and the round trip grows by 2d. The relay works on whole UDP
 datagrams, after IP reassembly, so it suits v2 (datagrams of at most 1232 bytes), not
 the original's 31 kB datagrams. At --end-at (time.monotonic()) plus --linger seconds
 it writes its counters as JSON to --stats and exits. Its sockets have 4 MiB receive
-buffers; overflows would show in the namespace's UDP RcvbufErrors.
+buffers; overflows would show in the namespace's UDP RcvbufErrors. With --log FILE it
+also writes one JSON line per datagram (for diagnosis; off in the benchmark runs):
+[time, direction ("up" or "down"), length, dropped, first 40 bytes in hex].
 
 Usage: udp_impair.py --listen 10.77.2.1:7000 --upstream 10.77.0.1:6100 --delay-ms 25
            --loss 0.05 --seed 1 --end-at T --stats out.json
@@ -66,13 +68,22 @@ def udp_socket() -> socket.socket:
 
 
 class Relay:
-    def __init__(self, listen: tuple[str, int], upstream: tuple[str, int], delay: float, loss: float, seed: int):
+    def __init__(
+        self,
+        listen: tuple[str, int],
+        upstream: tuple[str, int],
+        delay: float,
+        loss: float,
+        seed: int,
+        log: list[tuple[float, str, int, bool, str]] | None = None,
+    ) -> None:
         self.loop = asyncio.get_running_loop()
         self.upstream = upstream
         self.delay = delay
         self.loss = loss
         self.rng = random.Random(seed)
         self.counters = Counters()
+        self.log = log
         self.flows: dict[tuple[str, int], socket.socket] = {}
         self.listener = udp_socket()
         self.listener.bind(listen)
@@ -81,7 +92,11 @@ class Relay:
     def _pass(self, d: Direction, data: bytes) -> bool:
         d.received += 1
         d.bytes_received += len(data)
-        if self.rng.random() < self.loss:
+        drop = self.rng.random() < self.loss
+        if self.log is not None:
+            direction = "up" if d is self.counters.upstream else "down"
+            self.log.append((time.monotonic(), direction, len(data), drop, data[:40].hex()))
+        if drop:
             d.dropped += 1
             return False
         d.sent += 1
@@ -134,9 +149,13 @@ class Relay:
 
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
-    relay = Relay(parse_addr(args.listen), parse_addr(args.upstream), args.delay_ms / 1000, args.loss, args.seed)
+    listen, upstream = parse_addr(args.listen), parse_addr(args.upstream)
+    log: list[tuple[float, str, int, bool, str]] | None = [] if args.log else None
+    relay = Relay(listen, upstream, args.delay_ms / 1000, args.loss, args.seed, log)
     await asyncio.sleep(max(0.0, args.end_at + args.linger - time.monotonic()))
     relay.close()
+    if args.log and log is not None:
+        args.log.write_text("".join(json.dumps(entry) + "\n" for entry in log))
     return {
         "method": "userspace UDP relay (bench/lib/udp_impair.py): independent drops per datagram and "
         "direction, fixed one-way delay, order kept",
@@ -159,6 +178,7 @@ def main() -> None:
     ap.add_argument("--end-at", type=float, required=True)
     ap.add_argument("--linger", type=float, default=2.0)
     ap.add_argument("--stats", type=Path, required=True)
+    ap.add_argument("--log", type=Path, help="write one JSON line per datagram here")
     args = ap.parse_args()
     if not 0 <= args.loss <= 1 or not args.delay_ms >= 0:
         ap.error("--loss must be in [0, 1] and --delay-ms >= 0")

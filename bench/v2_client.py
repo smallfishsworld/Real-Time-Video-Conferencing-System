@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import dataclasses
 import json
 import sys
 import threading
@@ -217,6 +218,9 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         "rx_series": rx_series,
         "fec_recovered": stats.fec_recovered if stats else 0,
         "nack": nack_report(session),
+        # Frames abandoned incomplete: past the deadline (expired) or because a newer
+        # frame was shown first (superseded; the assembler is newest-wins).
+        "assembler": dataclasses.asdict(session.assembler_stats()) if session is not None else {},
         "video_frames_rate_limited": stats.video_frames_rate_limited if stats else 0,
         "audio_frames_rate_limited": stats.audio_frames_rate_limited if stats else 0,
         "mode": session.mode if session else None,
