@@ -45,52 +45,62 @@ from the network.
 
 **Problem, measured.** B1 sends the same 480x480 JPEG corpus (mean 31 090 bytes) through
 a 1500-byte-MTU veth link with random UDP drops. At 1 % loss the original transport
-delivered 65.5 % of frames within 200 ms; at 5 % loss, 11.9 %.
+delivered 67.1 % of frames within 200 ms (three 41 s runs pooled; Wilson 95 % interval
+64.8-69.2 %); at 5 % loss, 13.2 %.
 
 **Fix.** Senders split each frame into fragments of at most 1200 bytes (1232-byte UDP
 payload at most, so no IP fragmentation on any 1500-byte path, IPv4 or IPv6) and add one
 XOR parity packet per group of k = 4 fragments; groups never span frames, so a frame can
 be rebuilt as soon as its own packets are in. Audio uses k = 2 in both directions.
 
-**Measured.** Frames delivered within 200 ms (B1):
+**Measured.** Frames delivered within 200 ms (B1, loss on the server-to-receiver link;
+frames of three runs pooled, intervals in [`BENCHMARKS.md`](BENCHMARKS.md#b1-loss-resilience)):
 
 | Loss | legacy | v2 without FEC | v2 with FEC |
 |---|---|---|---|
-| 1 % | 65.5 % | 78.0 % | 99.5 % |
-| 2 % | 36.0 % | 58.8 % | 97.3 % |
-| 5 % | 11.9 % | 29.7 % | 88.7 % |
-| 10 % | 3.6 % | 5.5 % | 57.8 % |
+| 1 % | 67.1 % | 75.6 % | 99.1 % |
+| 2 % | 39.0 % | 59.2 % | 97.8 % |
+| 5 % | 13.2 % | 24.1 % | 86.4 % |
+| 10 % | 2.7 % | 6.1 % | 57.3 % |
 
 Fragmentation alone helps less than one might expect, because a frame of about 26
 fragments is lost if any of them is lost, just as a datagram of 21-22 IP fragments is; the measured v2-without-FEC
-numbers match the independent-loss model (78.0 % against 76.6 % at 1 %). What makes the
+numbers match the independent-loss model (75.6 % against 76.6 % at 1 %, 6.1 % against
+6.2 % at 10 %). What makes the
 difference is that application-level fragments can be protected and repaired, which IP
 fragments cannot.
 
 **Trade-off.** FEC costs 25 % more video bandwidth (one parity per four fragments) and
 50 % more audio bandwidth; together with per-fragment RTP headers, v2 video uses about
-32 % more downstream bandwidth than the original in B2 (20 587-20 590 kbit/s against
-15 564-15 569 kbit/s for four senders). XOR parity repairs only one loss per group; at
-10 % loss groups with two losses are common, which is why delivery falls to 58 %.
+32 % more downstream bandwidth than the original in B2 (20 580-20 590 kbit/s against
+15 565-15 576 kbit/s per receiver with five parties, three runs each). XOR parity repairs
+only one loss per group; at 10 % loss groups with two losses are common, which is why
+delivery falls to 57 %.
 Retransmission (section 2.11) repairs the rest; a stronger code (Reed-Solomon) would be
 the alternative where round trips are long.
 
 ### 2.3 A surprise: the original is worse than the independent-loss model
 
-At 1 % loss the independent-loss model predicts 80.5 % delivery for 22-fragment
-datagrams, but the original delivered 65.5 %, and 80.7 % in the first half of the run
-against 50.3 % in the second half. The receiver's kernel counted 2 444 IP reassembly
-failures. The explanation that fits these counters: every incomplete datagram leaves
-its fragments in the reassembly queue until `ipfrag_time` (30 s) expires; at 1 % loss
-about one frame in five is incomplete, so the queue memory grows during the run until
-it reaches `ipfrag_high_thresh` (4 MiB), after which the kernel drops new fragments,
-including those of datagrams that would have been complete. Audio suffers too: 20.0 % of
-the original's 2-fragment audio datagrams were lost at 1 % packet loss, where independent
-loss would lose 1 - 0.99^2 = 2 %. v2 never sends fragmented datagrams, so its reassembly counters stay at zero.
-`bench/run_b1.sh` samples the receiver namespace's reassembly memory
+At 1 % loss the independent-loss model predicts 80.5 % delivery for the original's
+21-22-fragment datagrams, but it delivered 67.1 % over three 41 s runs, with runs from
+57.1 % to 78.3 % and every run worse in its second half (38.6-68.3 %) than in its first
+(75.5-88.3 %); the receiver's kernel counted 975-3 396 IP reassembly failures per run.
+A 300 s run at 1 % loss shows what happens next: 78 % of frames on time in the first
+30 s, then 61-73 % in every later 30 s bin, 68.0 % over the whole run. The explanation
+that fits these counters: every incomplete datagram leaves its fragments in the
+reassembly queue until `ipfrag_time` (30 s) expires; at 1 % loss about one frame in five
+is incomplete, so the queue memory grows until it reaches `ipfrag_high_thresh` (4 MiB),
+after 26.7 s in the 300 s run. From then on the kernel drops new fragments, including
+those of datagrams that would have been complete, until expiring ones free memory: the
+memory stayed between 3.06 and 4.00 MiB for the rest of that run, and delivery settled at
+a lower level rather than collapsing. Audio suffers too: 17.1 % of the original's
+2-fragment audio datagrams were lost over the 300 s run (5 % in its first 30 s, 13-25 %
+in each later 30 s bin) and 17.4 % over the three 41 s runs, where independent loss would
+lose 1 - 0.99^2 = 2 %. v2 never sends fragmented datagrams, so its reassembly counters
+stay at zero. `bench/run_b1.sh` samples the receiver namespace's reassembly memory
 (`/proc/net/sockstat`, `FRAG:` line): it peaked at 4.00 MiB, the threshold, in every
-lossy run of the original and stayed at zero for v2 (`receiver_frag_memory` in
-`bench/results/b1_loss.json`).
+lossy run of the original and stayed at zero for v2 (`receiver_frag_memory`,
+`delivery_by_30s` and `audio.lost_by_30s` in `bench/results/b1_loss.json`).
 
 ### 2.4 Server-side mix-minus audio (fixes 4)
 
@@ -273,38 +283,52 @@ bytes are charged to a per-requester token bucket, so NACK cannot be used to mak
 server amplify traffic. The client waits 5 ms before asking (so FEC and reordering get
 the first chance), retries every 30 ms, at most three times and for 250 ms.
 
-**Measured.** In B1 (`bench/results/b1_loss.json`, all five systems built from one
-commit) FEC plus NACK delivered 100.0 % of frames complete within 200 ms at 1, 2 and 5 %
-random loss and 99.7 % at 10 %, against 99.5, 97.3, 88.7 and 57.8 % with FEC alone. At
-10 % loss the receiver sent 485 NACKs for 1 061 packets (counting repeats), 1 004 of them
-then arrived or were rebuilt from parity, and one was given up. Repaired frames arrive
-later: at 10 % loss the p99 frame latency rose from 2.6 to 17.0 ms, the median stayed at
-1.3 ms. The testbed's round trip is under a millisecond, so this is mostly the client's
-5 ms wait and 10 ms request interval; on a real path every repaired frame arrives one
-round trip later still.
+**Measured.** In B1 (`bench/results/b1_loss.json`, run 20261119T112236Z-10546; three
+41 s runs per point, frames pooled), with loss on the server-to-receiver link only and a
+sub-millisecond round trip, FEC plus NACK delivered every frame within 200 ms at 1 and
+2 % random loss (1 745 of 1 745 and 1 746 of 1 746), 99.9 % at 5 % and 99.3 % at 10 %,
+against 99.1, 97.8, 86.4 and 57.3 % with FEC alone. At 10 % loss the receivers sent 794
+NACK packets asking for 2 318 packets (counting repeats); 1 865 of them then arrived or
+were rebuilt from parity, and none was given up. Repaired frames arrive later: at 10 %
+loss the p99 frame latency was 39.4 ms against 3.0 ms with FEC alone (medians 1.6 and
+1.5 ms). With loss in both directions and a 50 ms round trip (a userspace relay, so
+NACKs and retransmissions can be lost too), FEC plus NACK delivered 99.1 % at 2 % loss
+in each direction, 95.4 % at 5 % and 88.7 % at 10 %; NACK alone 90.0, 90.9 and 93.9 %;
+FEC alone 97.9, 85.1 and 57.4 %.
 
-**A finding: NACK alone misses lost tails.** Without FEC, NACK delivered only
-98.5-99.1 % at every loss rate, although its model (four tries per packet) predicts
-99.7 % or more. A receiver notices a loss when a later packet arrives; for the last
-fragments of a frame that is the next frame, one frame interval (64 ms) later. The
-receiver's frame assembler is newest-wins (JPEG frames are independent, so a frame that
-completes after a newer one is useless), and when the next frame arrives complete before
-the retransmission, the older frame is dropped. All 31 frames that NACK alone lost were
-followed by a complete frame, 28 of them complete within 0.6 ms of their first fragment
-(`bench/results/b1_lost_frames.txt`), and the NACK-only p99 latency at 5 and 10 % loss,
-79.5-79.7 ms, is that one-frame wait plus the request delay. With FEC the parity packet
-that closes every frame reveals a lost tail at once and usually repairs it, which is one
-more reason the client uses both by default. Every fragment carries its frame's fragment
-count, so a receiver could also request a missing tail after a short timeout instead of
-waiting for the next frame; that is not implemented.
+**A finding: the newest-wins assembler drops frames whose repair is on its way.** The
+receiver's frame assembler is newest-wins (JPEG frames are independent, so a frame shown
+after a newer one is useless): it gives up an incomplete frame as soon as a newer one is
+complete. On the sub-millisecond path that matters for a loss at the end of a frame,
+which the receiver notices only when the next frame's first packet arrives, one frame
+interval (64 ms) later. NACK without FEC delivered only 98.1-99.1 % at every loss rate,
+although its model (four tries per packet) predicts 99.7 % or more, and for 72 of the 92
+frames it lost the next frame was complete within 1.5 ms of its first fragment, too soon
+for any retransmission (`bench/results/b1_lost_frames.txt`); its p99 latency at 5 and
+10 % loss, 77.6-79.7 ms, matches that one-frame wait plus the request delay. With FEC, the
+parity packet that closes every frame reveals a lost tail at once and usually repairs
+it. With a 50 ms round trip every repair arrives about one frame interval after its
+frame began, whatever packet was lost: in the relay-logged runs at 5 % loss the first
+repair of each lost fragment passed the relay a median of 66 ms after its frame's first
+fragment, and the next frame's first fragment 64 ms after it
+(`bench/results/b1_rtt50_relay_diag.txt`). In the main runs the frame after a lost one
+was complete within 1.5 ms of its first fragment for 371 of the 437 frames lost with
+NACK alone and for 286 of the 292 lost with FEC and NACK. That also explains why NACK
+alone did better at 10 % loss than at 2 % (a next frame that needs no repair gets rarer
+as loss rises) and better than FEC with NACK at 10 % (FEC makes such next frames
+common). Two changes would address it; neither is implemented or measured: keep a frame
+whose repair is due until its deadline instead of dropping it when a newer frame
+completes (a hold of about one round trip, at the cost of showing the newer frame
+later), and request a missing tail after a short timeout, which the frame-count field in
+every fragment allows, instead of waiting for the next frame.
 
-**Costs.** One 1.2 kB copy per received video packet into the ring (146 ns per packet in
-`BenchmarkForwardVideo`: 1 155 ns with the buffer against 1 009 ns without, for a packet
-forwarded to three receivers in batches of 64 with GSO, `bench/results/micro.json`), up
-to 315 kB of memory per sender once it sends video, and upstream NACK traffic. Audio is
-not retransmitted: the mixer's output is one stream per receiver, and FEC plus
-concealment is cheaper at 20 ms frames. Peers in P2P mode keep no buffer, so a P2P room
-has FEC only.
+**Costs.** One 1.2 kB copy per received video packet into the ring (`BenchmarkForwardVideo`,
+a packet forwarded to three receivers in batches of 64 with GSO: a median of 1 059 ns
+with the buffer against 1 038 ns without, a difference within the run-to-run ranges;
+`bench/results/micro.json`), up to 315 kB of memory per sender once it sends video, and
+upstream NACK traffic. Audio is not retransmitted: the mixer's output is one stream per
+receiver, and FEC plus concealment is cheaper at 20 ms frames. Peers in P2P mode keep no
+buffer, so a P2P room has FEC only.
 
 ## 3. Decisions the specification left open
 

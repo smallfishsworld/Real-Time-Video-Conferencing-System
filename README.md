@@ -20,32 +20,50 @@ has the methodology and full results.
 ## Results at a glance
 
 All numbers were measured on one shared 4-vCPU Linux virtual machine, on loopback or
-in network namespaces, with three runs per point: tables give the median and, in
-brackets, the range of the three runs. [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) has
-the methodology, the result file and run ID behind every number, and the caveats.
+in network namespaces, with three runs per point: tables give the median and, in round
+brackets, the range of the three runs, except B1's, which pool the frames of the three
+runs and give a Wilson 95 % interval in square brackets.
+[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) has the methodology, the result file and run
+ID behind every number, and the caveats.
 
 **Loss resilience (B1).** Video frames delivered complete within 200 ms over a link
-with random packet loss (1500-byte MTU, same 480x480 JPEG frames for all systems):
+with random packet loss from the server to the receiver (1500-byte MTU, sub-millisecond
+round trip, same 480x480 JPEG frames for all systems, 1 740-1 748 frames per cell):
 
 <!-- BEGIN GENERATED summary_b1 -->
 | Random packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
 |---|---|---|---|---|---|
-| 1 % | 65.5 % | 78.0 % | 99.5 % | 99.1 % | 100.0 % |
-| 2 % | 36.0 % | 58.8 % | 97.3 % | 98.5 % | 100.0 % |
-| 5 % | 11.9 % | 29.7 % | 88.7 % | 98.5 % | 100.0 % |
-| 10 % | 3.6 % | 5.5 % | 57.8 % | 98.6 % | 99.7 % |
+| 1 % | 67.1 % [64.8, 69.2] | 75.6 % [73.5, 77.6] | 99.1 % [98.6, 99.5] | 99.1 % [98.5, 99.4] | 100.0 % [99.8, 100.0] |
+| 2 % | 39.0 % [36.8, 41.3] | 59.2 % [56.9, 61.5] | 97.8 % [97.0, 98.4] | 98.9 % [98.3, 99.3] | 100.0 % [99.8, 100.0] |
+| 5 % | 13.2 % [11.7, 14.8] | 24.1 % [22.2, 26.2] | 86.4 % [84.7, 87.9] | 98.7 % [98.0, 99.1] | 99.9 % [99.6, 100.0] |
+| 10 % | 2.7 % [2.0, 3.6] | 6.1 % [5.0, 7.3] | 57.3 % [55.0, 59.6] | 98.1 % [97.3, 98.6] | 99.3 % [98.7, 99.6] |
 <!-- END GENERATED summary_b1 -->
 
+The same for v2 with loss in both directions and a 50 ms round trip (a userspace relay
+drops datagrams independently each way, so NACKs and retransmissions can be lost too),
+pooled frames with the Wilson 95 % interval:
+
+<!-- BEGIN GENERATED summary_b1_hard -->
+| Loss in each direction, +50 ms round trip | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|
+| 2 % | 97.9 % [97.1, 98.4] | 90.0 % [88.4, 91.3] | 99.1 % [98.5, 99.4] |
+| 5 % | 85.1 % [83.4, 86.7] | 90.9 % [89.5, 92.2] | 95.4 % [94.3, 96.3] |
+| 10 % | 57.4 % [55.1, 59.7] | 93.9 % [92.7, 94.9] | 88.7 % [87.1, 90.1] |
+<!-- END GENERATED summary_b1_hard -->
+
 The original sends each 31 kB frame as one UDP datagram, which the network splits into
-21 or 22 IP fragments; losing any fragment loses the frame, and the kernel's reassembly queue
-fills up under sustained loss, so it does worse than independent loss would predict.
-v2 sends fragments of at most 1200 bytes and one XOR parity packet per four fragments,
-and a receiver that still misses a packet asks for it again with an RTCP generic NACK;
-the server resends it from a buffer of each sender's last 256 video packets. FEC and
-NACK together, the client's default, cost repaired frames a few milliseconds (p99 frame
-latency 17.0 ms at 10 % loss against 2.6 ms with FEC alone, on a sub-millisecond round
-trip). NACK alone misses losses at the end of a frame, which show only when the next
-frame arrives ([`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md#211-nack-retransmission-for-video-b1)).
+21 or 22 IP fragments; losing any fragment loses the frame, and under sustained loss the
+receiver's IP reassembly queue fills to its limit, so it does worse than independent
+loss would predict (68.0 % of frames over a 300 s run at 1 % loss, where the model gives
+80.5 %). v2 sends fragments of at most 1200 bytes and one XOR parity packet per four
+fragments, and a receiver that still misses a packet asks for it again with an RTCP
+generic NACK; the server resends it from a buffer of each sender's last 256 video
+packets. FEC and NACK together, the client's default, cost repaired frames time: p99
+frame latency 39.4 ms at 10 % loss against 3.0 ms with FEC alone on the sub-millisecond
+path. With a 50 ms round trip a repair arrives about when the next frame does, and the
+receiver's newest-wins frame assembler then often drops the repaired frame, which is
+why retransmission does much worse there and NACK alone even improves with more loss
+([`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md#211-nack-retransmission-for-video-b1)).
 
 **Multi-talker audio (B2).** Everybody talks and sends video:
 
@@ -358,7 +376,11 @@ configured IP address before importing it.
 - Loss repair is XOR parity (one loss per group of four fragments) plus NACK
   retransmission of video in relay mode only; audio is not retransmitted, P2P rooms have
   FEC only, the retry interval is fixed (30 ms) rather than derived from the round trip,
-  and there is no congestion control or adaptive bitrate.
+  and there is no congestion control or adaptive bitrate. The receiver's newest-wins
+  frame assembler gives up a frame whose repair is still on its way once a newer frame
+  completes, so retransmission helps little when the round trip approaches the frame
+  interval: with a 50 ms round trip and 10 % loss in each direction, FEC and NACK
+  delivered 88.7 % of frames (B1).
 - The host role is not transferred when the host leaves; such a room closes when it
   becomes empty.
 - Benchmarks ran on one shared 4-CPU virtual machine over loopback and veth links, with

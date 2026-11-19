@@ -12,7 +12,7 @@ to it.
 |---|---|---|---|
 | B1 loss resilience | `sudo bench/run_b1.sh` | `b1_loss.json` | 111 runs of 41 s (75 in one condition, 36 in the other) and one of 300 s |
 | B1 lost frames (after B1) | `python3 bench/b1_lost_frames.py bench/tmp/b1/<run ID>` | `b1_lost_frames.txt` | post-processing |
-| B1 relay diagnosis | `sudo RELAY_LOG=1 CONDITIONS=both-rtt50 HARD_SYSTEMS="v2-fec-nack v2-nack" HARD_LOSSES=50 REPEATS=1 bench/run_b1.sh`, then `python3 bench/b1_relay_diag.py bench/tmp/b1/<run ID>` | `b1_rtt50_relay_diag.txt` | 2 runs of 41 s |
+| B1 relay diagnosis | `sudo RELAY_LOG=1 CONDITIONS=both-rtt50 HARD_SYSTEMS="v2-fec-nack v2-nack" HARD_LOSSES=50 REPEATS=1 OUT=bench/results/b1_rtt50_diag.json bench/run_b1.sh`, then `python3 bench/b1_relay_diag.py bench/tmp/b1/<run ID>` | `b1_rtt50_diag.json`, `b1_rtt50_relay_diag.txt` | 2 runs of 41 s |
 | B2 multi-talker audio | `sudo bench/run_b2.sh` | `b2_audio.json` | 12 runs of 60 s |
 | B3 relay capacity | `sudo bench/run_b3.sh` | `b3_capacity.json` | 80 sweep points of 20 s and 12 fixed-load runs of 60 s |
 | CPU profiles under the B3 load | `sudo bench/profile_b3.sh` | `pprof_<variant>.{json,txt,pb.gz,metrics}` | 3 profiles of 15 s |
@@ -75,7 +75,10 @@ original client's settings (480x480, Pillow JPEG quality 85) into `bench/data/fr
 every system sends exactly these bytes. Sizes (`bench/results/frames.json`): mean
 31 090 bytes, minimum 29 752, median 31 197, maximum 32 327. In v2 that is 26 fragments
 of at most 1200 bytes at the median (27 at most). Each frame carries a tag in a JPEG
-comment segment (frame index, sender, send time) that the receivers read back.
+comment segment (frame index, sender, send time) that the receivers read back. Senders
+loop over the corpus, so a run longer than 64 s (1000 frames at 15.625 fps) sends each
+index more than once; the analyses match each arrival to the latest send of its index
+at or before it.
 
 Audio is a tone per talker. Each talker also writes a tag (talker, sequence number, send
 time) into four reserved samples of every frame, at a position that only that talker
@@ -85,41 +88,58 @@ frame it is playing and how old it is.
 ## B1: loss resilience
 
 **Setup.** Three network namespaces (sender, server, receiver) connected by two veth
-pairs with MTU 1500. In the receiver's namespace an nftables rule drops UDP packets at
-random, `numgen random mod 1000 < N`, in a prerouting chain at priority -500, which is
-before IPv4 defragmentation (-400), so individual IP fragments are lost as on a lossy
-link. Only the server -> receiver direction is impaired; TCP is not. The v2 server sends
-forwarded video as UDP GSO messages of up to 64 datagrams, which veth would carry into
-the receiver's namespace whole, so that the rule would drop a whole message at a time;
-the server's end of the veth pair is set to `gso_max_segs 1`, which makes the kernel
-split each message into its datagrams as it transmits them, as a real NIC would. In the
-loss-free v2-with-FEC run the rule matched 23 848 datagrams, exactly the receiver's UDP
-`InDatagrams`, while the server's namespace counted 4 649 UDP sends
-(`bench/results/b1_v2-fec-0.net.json`, copied from that run's raw files). The receiver creates
-a meeting, the sender joins and sends the corpus at 15.625 fps (one frame per 1024-sample
-audio chunk, the original client's loop rate) plus audio, for 41 s per run.
+pairs with MTU 1500. The receiver creates a meeting, the sender joins and sends the
+corpus at 15.625 fps (one frame per 1024-sample audio chunk, the original client's loop
+rate) plus audio, for 41 s per run; every point runs three times. P2P is disabled on
+the v2 server so that every system relays through the server, as the original does in
+its relay mode. Systems: the original relay and the original client's media threads;
+v2 without any repair (client `--video-fec-k 0 --audio-fec-k 0`, server
+`-audio-fec-k 0`); v2 with FEC (video k = 4, audio k = 2); and both v2 settings again
+with NACK retransmission of video (client `--nack`; the server keeps each sender's last
+256 video packets). FEC with NACK is the client's default.
 
-Systems: the original relay and the original client media threads; v2 without FEC
-(client `--video-fec-k 0 --audio-fec-k 0`, server `-audio-fec-k 0`); v2 with FEC (video
-k = 4, audio k = 2); and both v2 settings again with NACK retransmission of video (client
-`--nack`; the server keeps each sender's last 256 video packets, its default). P2P is
-disabled on the v2 server so every system relays. Because only the server -> receiver
-direction loses packets, NACKs always reach the server while retransmissions can be lost
-again, and the round trip between the namespaces is well under a millisecond: these runs
-show NACK on a short path. On a longer one every repaired frame arrives one round trip
-later, and the client's fixed 30 ms retry interval assumes a round trip shorter than
-that.
+Three loss conditions:
+
+- **downlink**, the best case for repair. In the receiver's namespace an nftables rule
+  drops UDP packets at random, `numgen random mod 1000 < N`, in a prerouting chain at
+  priority -500, which is before IPv4 defragmentation (-400), so individual IP fragments
+  are lost as on a lossy link. Only the server -> receiver direction loses packets, so
+  the receiver's NACKs and REGISTERs always arrive, and the round trip is well under a
+  millisecond. The v2 server sends forwarded video as UDP GSO messages; the server's
+  end of the veth pair has `gso_max_segs 1`, so the kernel splits each message into its
+  datagrams before they reach the rule, as a NIC would, and the rule drops datagrams,
+  not whole messages.
+- **both-rtt50**, harder, v2 only. The receiver's media goes through a userspace relay
+  in the server's namespace (`bench/lib/udp_impair.py`, reached through a DNAT rule in
+  the receiver's namespace). The relay delays each datagram by 25 ms in each direction
+  (+50 ms round trip) and drops each one independently with the configured probability
+  in both directions, so NACKs, retransmissions, parity packets, REGISTERs and their
+  acknowledgements can all be lost. The relay counts what it received and dropped in
+  each direction (`relay` in each run's JSON). This kernel has no `netem` qdisc, hence a
+  relay in user space; it works on whole datagrams, so the original, whose 31 kB
+  datagrams travel as IP fragments, is not run in this condition. The control
+  connection (TCP) is not delayed.
+- **downlink-long**, the downlink condition for the original only, at 1 % loss for
+  300 s, to show how its delivery changes over time as the receiver's IP reassembly
+  queue fills and drains.
 
 **Metrics.** A video frame is delivered when the receiver had the complete frame within
 200 ms of the sender handing it to the socket; frames sent in the first second and the
-last 1.5 s are not counted. Audio lost is the share of the talker's frames whose tag
-never reached the receiver's speaker (the original's frames are 64 ms chunks, v2's are
-20 ms frames). The "model" value is the delivery that independent packet loss at the
-configured rate would give for the same frame sizes (`model_ratio` in
-`bench/analyze_b1.py`); for the NACK systems it gives every packet four independent
-tries (the original and three retransmissions), ignores FEC and assumes every loss is
-noticed in time. "Measured UDP loss" is the nftables drop counter divided by its match
-counter.
+last 1.5 s of a run are not counted. Audio lost is the share of the talker's frames
+whose tag never reached the receiver's speaker (the original's frames are 64 ms chunks,
+v2's are 20 ms frames). For each group (condition, system, loss rate) the frames of the
+three runs are pooled into one ratio with a Wilson 95 % interval, next to the median
+and range of the three per-run ratios. The "model" value is the delivery that
+independent packet loss at the configured rate would give for the same frame sizes
+(`model_ratio` in `bench/analyze_b1.py`); for the NACK systems it gives every packet four
+independent tries (the original and three retransmissions), ignores FEC and assumes
+every loss is noticed in time. "Measured UDP loss" is the nftables drop counter divided
+by its match counter (downlink) or the relay's drop counts (both-rtt50). For v2 the
+receiver also counts the frames its assembler gave up on: "superseded" (a newer frame
+completed first; the assembler shows only the newest frame) and "expired" (still
+incomplete 300 ms after its first fragment). For the dynamics of a run, each run's
+JSON also has its video delivery and audio loss per 30 s of send time
+(`delivery_by_30s`, `audio.lost_by_30s`).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b1_video_delivery_dark.png">
@@ -127,115 +147,246 @@ counter.
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b1_audio_loss_dark.png">
-  <img alt="Line chart of audio frames lost against packet loss for the three systems" src="../bench/results/plots/b1_audio_loss.png" width="800">
+  <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b1_video_delivery_rtt50_dark.png">
+  <img alt="Line chart of video frames delivered within 200 ms against the loss rate in each direction, with a 50 ms round trip, for v2 with FEC, with NACK and with both" src="../bench/results/plots/b1_video_delivery_rtt50.png" width="800">
 </picture>
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../bench/results/plots/b1_audio_loss_dark.png">
+  <img alt="Line chart of audio frames lost against packet loss for every system, downlink condition" src="../bench/results/plots/b1_audio_loss.png" width="800">
+</picture>
+
+**Downlink loss** (best case for repair):
+
 <!-- BEGIN GENERATED b1 -->
-| Packet loss | legacy (original): video frames on time (model) | v2 without FEC: video frames on time (model) | v2 with FEC: video frames on time (model) | v2 with NACK: video frames on time (model) | v2 with FEC and NACK: video frames on time (model) |
-|---|---|---|---|---|---|
-| 0 % | 100.0 % (100.0 %) | 100.0 % (100.0 %) | 100.0 % (100.0 %) | 100.0 % (100.0 %) | 100.0 % (100.0 %) |
-| 1 % | 65.5 % (80.5 %) | 78.0 % (76.6 %) | 99.5 % (99.4 %) | 99.1 % (100.0 %) | 100.0 % (100.0 %) |
-| 2 % | 36.0 % (64.7 %) | 58.8 % (58.6 %) | 97.3 % (97.5 %) | 98.5 % (100.0 %) | 100.0 % (100.0 %) |
-| 5 % | 11.9 % (33.1 %) | 29.7 % (25.7 %) | 88.7 % (86.3 %) | 98.5 % (100.0 %) | 100.0 % (100.0 %) |
-| 10 % | 3.6 % (10.3 %) | 5.5 % (6.2 %) | 57.8 % (57.7 %) | 98.6 % (99.7 %) | 99.7 % (99.7 %) |
+Video frames on time, pooled over 3 runs per cell (1740-1748 frames), with the Wilson 95 % interval:
 
-| Packet loss | legacy (original): audio lost | v2 without FEC: audio lost | v2 with FEC: audio lost | v2 with NACK: audio lost | v2 with FEC and NACK: audio lost | measured UDP loss |
+| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|---|---|
+| 0 % | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] |
+| 1 % | 67.1 % [64.8, 69.2] | 75.6 % [73.5, 77.6] | 99.1 % [98.6, 99.5] | 99.1 % [98.5, 99.4] | 100.0 % [99.8, 100.0] |
+| 2 % | 39.0 % [36.8, 41.3] | 59.2 % [56.9, 61.5] | 97.8 % [97.0, 98.4] | 98.9 % [98.3, 99.3] | 100.0 % [99.8, 100.0] |
+| 5 % | 13.2 % [11.7, 14.8] | 24.1 % [22.2, 26.2] | 86.4 % [84.7, 87.9] | 98.7 % [98.0, 99.1] | 99.9 % [99.6, 100.0] |
+| 10 % | 2.7 % [2.0, 3.6] | 6.1 % [5.0, 7.3] | 57.3 % [55.0, 59.6] | 98.1 % [97.3, 98.6] | 99.3 % [98.7, 99.6] |
+
+The same per run: median (range), and the independent-loss model:
+
+| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|---|---|
+| 0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % | 100.0 %; model 100.0 % |
+| 1 % | 65.9 % (57.1-78.3); model 80.5 % | 75.4 % (73.8-77.7); model 76.6 % | 99.1 % (98.8-99.5); model 99.4 % | 99.3 % (98.3-99.7); model 100.0 % | 100.0 %; model 100.0 % |
+| 2 % | 38.6 % (37.2-41.2); model 64.7 % | 59.6 % (56.9-61.2); model 58.6 % | 97.9 % (96.9-98.5); model 97.5 % | 99.1 % (98.5-99.1); model 100.0 % | 100.0 %; model 100.0 % |
+| 5 % | 13.0 % (12.1-14.5); model 33.1 % | 24.1 % (21.5-26.8); model 25.7 % | 86.6 % (85.6-86.9); model 86.3 % | 98.6 % (98.5-99.0); model 100.0 % | 99.8 % (99.8-100.0); model 100.0 % |
+| 10 % | 2.8 % (2.1-3.3); model 10.3 % | 6.2 % (5.7-6.4); model 6.2 % | 57.6 % (56.8-57.6); model 57.7 % | 97.9 % (97.9-98.3); model 99.7 % | 99.5 % (98.8-99.5); model 99.7 % |
+
+Audio frames lost, pooled, with the Wilson 95 % interval:
+
+| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|---|---|
+| 0 % | 0.00 % [0.00, 0.22] | 0.00 % [0.00, 0.07] | 0.00 % [0.00, 0.07] | 0.00 % [0.00, 0.07] | 0.00 % [0.00, 0.07] |
+| 1 % | 17.41 % [15.70, 19.27] | 0.88 % [0.66, 1.16] | 0.05 % [0.02, 0.16] | 1.04 % [0.80, 1.34] | 0.00 % [0.00, 0.07] |
+| 2 % | 45.00 % [42.68, 47.35] | 1.88 % [1.55, 2.27] | 0.04 % [0.01, 0.13] | 2.31 % [1.95, 2.74] | 0.09 % [0.04, 0.21] |
+| 5 % | 67.41 % [65.18, 69.58] | 5.17 % [4.62, 5.78] | 0.29 % [0.18, 0.46] | 4.28 % [3.78, 4.84] | 0.48 % [0.33, 0.70] |
+| 10 % | 74.71 % [72.62, 76.70] | 9.32 % [8.59, 10.11] | 1.81 % [1.49, 2.19] | 9.72 % [8.97, 10.52] | 1.86 % [1.54, 2.25] |
+
+Measured UDP packet loss (nftables drops / matches), median (range) of the runs:
+
+| Packet loss | legacy (original) | v2 without FEC | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|---|---|
+| 0 % | 0.00 % | 0.00 % | 0.00 % | 0.00 % | 0.00 % |
+| 1 % | 1.07 % (0.92-1.17) | 1.06 % (0.94-1.12) | 1.03 % (1.01-1.10) | 1.09 % (0.95-1.09) | 1.08 % (0.96-1.11) |
+| 2 % | 1.99 % (1.94-2.07) | 1.94 % (1.90-2.10) | 1.92 % (1.87-2.05) | 1.99 % (1.95-2.01) | 2.00 % (1.90-2.04) |
+| 5 % | 4.82 % (4.73-5.10) | 5.17 % (4.85-5.28) | 4.95 % (4.88-4.95) | 4.94 % (4.78-5.02) | 5.05 % (4.84-5.11) |
+| 10 % | 10.20 % (9.47-10.31) | 10.14 % (9.87-10.33) | 9.95 % (9.88-10.20) | 9.99 % (9.97-10.06) | 9.92 % (9.84-10.20) |
+
+| System | Packet loss | Run | Video on time, first half | second half | IP reassembly failures | Peak reassembly memory |
 |---|---|---|---|---|---|---|
-| 0 % | 0.00 % | 0.00 % | 0.00 % | 0.00 % | 0.00 % | 0.00 % / 0.00 % / 0.00 % / 0.00 % / 0.00 % |
-| 1 % | 20.00 % | 0.70 % | 0.00 % | 0.64 % | 0.05 % | 1.03 % / 0.98 % / 0.91 % / 0.90 % / 1.03 % |
-| 2 % | 46.90 % | 1.77 % | 0.05 % | 2.20 % | 0.05 % | 1.79 % / 1.94 % / 2.01 % / 2.12 % / 1.91 % |
-| 5 % | 69.14 % | 4.18 % | 0.64 % | 4.78 % | 0.48 % | 4.95 % / 4.79 % / 4.95 % / 5.02 % / 4.75 % |
-| 10 % | 74.35 % | 10.18 % | 1.93 % | 10.02 % | 2.36 % | 9.69 % / 10.81 % / 9.93 % / 10.34 % / 10.02 % |
+| legacy (original) | 0 % | 1 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
+| legacy (original) | 0 % | 2 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
+| legacy (original) | 0 % | 3 | 100.0 % | 100.0 % | 0 | 0.00 MiB |
+| legacy (original) | 1 % | 1 | 79.0 % | 52.8 % | 2266 | 4.00 MiB |
+| legacy (original) | 1 % | 2 | 88.3 % | 68.3 % | 975 | 4.00 MiB |
+| legacy (original) | 1 % | 3 | 75.5 % | 38.6 % | 3396 | 4.00 MiB |
+| legacy (original) | 2 % | 1 | 63.4 % | 13.8 % | 5828 | 4.00 MiB |
+| legacy (original) | 2 % | 2 | 54.1 % | 20.3 % | 5767 | 4.00 MiB |
+| legacy (original) | 2 % | 3 | 68.6 % | 13.8 % | 5465 | 4.00 MiB |
+| legacy (original) | 5 % | 1 | 17.9 % | 11.0 % | 8129 | 4.00 MiB |
+| legacy (original) | 5 % | 2 | 10.3 % | 15.6 % | 8435 | 4.00 MiB |
+| legacy (original) | 5 % | 3 | 17.2 % | 6.9 % | 8394 | 4.00 MiB |
+| legacy (original) | 10 % | 1 | 2.7 % | 1.4 % | 8929 | 4.00 MiB |
+| legacy (original) | 10 % | 2 | 4.8 % | 1.7 % | 8755 | 4.00 MiB |
+| legacy (original) | 10 % | 3 | 3.1 % | 2.4 % | 8958 | 4.00 MiB |
 
-| System | Packet loss | Video frames on time, first half | second half | IP reassembly failures | peak reassembly memory |
-|---|---|---|---|---|---|
-| legacy (original) | 0 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| legacy (original) | 1 % | 80.7 % | 50.3 % | 2444 | 4.00 MiB |
-| legacy (original) | 2 % | 58.6 % | 13.4 % | 5982 | 4.00 MiB |
-| legacy (original) | 5 % | 13.8 % | 10.0 % | 8429 | 4.00 MiB |
-| legacy (original) | 10 % | 3.1 % | 4.1 % | 8824 | 4.00 MiB |
-| v2 without FEC | 0 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| v2 without FEC | 1 % | 78.1 % | 78.0 % | 0 | 0.00 MiB |
-| v2 without FEC | 2 % | 60.3 % | 57.4 % | 0 | 0.00 MiB |
-| v2 without FEC | 5 % | 27.1 % | 32.3 % | 0 | 0.00 MiB |
-| v2 without FEC | 10 % | 6.2 % | 4.8 % | 0 | 0.00 MiB |
-| v2 with FEC | 0 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| v2 with FEC | 1 % | 99.7 % | 99.3 % | 0 | 0.00 MiB |
-| v2 with FEC | 2 % | 97.6 % | 96.9 % | 0 | 0.00 MiB |
-| v2 with FEC | 5 % | 87.0 % | 90.4 % | 0 | 0.00 MiB |
-| v2 with FEC | 10 % | 59.9 % | 55.7 % | 0 | 0.00 MiB |
-| v2 with NACK | 0 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| v2 with NACK | 1 % | 99.3 % | 99.0 % | 0 | 0.00 MiB |
-| v2 with NACK | 2 % | 99.0 % | 97.9 % | 0 | 0.00 MiB |
-| v2 with NACK | 5 % | 97.6 % | 99.3 % | 0 | 0.00 MiB |
-| v2 with NACK | 10 % | 98.3 % | 99.0 % | 0 | 0.00 MiB |
-| v2 with FEC and NACK | 0 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| v2 with FEC and NACK | 1 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| v2 with FEC and NACK | 2 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| v2 with FEC and NACK | 5 % | 100.0 % | 100.0 % | 0 | 0.00 MiB |
-| v2 with FEC and NACK | 10 % | 99.7 % | 99.7 % | 0 | 0.00 MiB |
-
-| System | Packet loss | NACK packets sent | Packets requested (with repeats) | Received or rebuilt after a request | Given up | Video frames on time | p99 frame latency |
-|---|---|---|---|---|---|---|---|
-| v2 without FEC | 0 % | 0 | 0 | 0 | 0 | 100.0 % | 1.8 ms |
-| v2 without FEC | 1 % | 0 | 0 | 0 | 0 | 78.0 % | 1.2 ms |
-| v2 without FEC | 2 % | 0 | 0 | 0 | 0 | 58.8 % | 1.6 ms |
-| v2 without FEC | 5 % | 0 | 0 | 0 | 0 | 29.7 % | 1.6 ms |
-| v2 without FEC | 10 % | 0 | 0 | 0 | 0 | 5.5 % | 2.8 ms |
-| v2 with FEC | 0 % | 0 | 0 | 0 | 0 | 100.0 % | 2.3 ms |
-| v2 with FEC | 1 % | 0 | 0 | 0 | 0 | 99.5 % | 2.0 ms |
-| v2 with FEC | 2 % | 0 | 0 | 0 | 0 | 97.3 % | 1.6 ms |
-| v2 with FEC | 5 % | 0 | 0 | 0 | 0 | 88.7 % | 2.1 ms |
-| v2 with FEC | 10 % | 0 | 0 | 0 | 0 | 57.8 % | 2.6 ms |
-| v2 with NACK | 0 % | 0 | 0 | 0 | 0 | 100.0 % | 1.7 ms |
-| v2 with NACK | 1 % | 144 | 155 | 153 | 0 | 99.1 % | 16.5 ms |
-| v2 with NACK | 2 % | 283 | 357 | 350 | 0 | 98.5 % | 43.5 ms |
-| v2 with NACK | 5 % | 494 | 873 | 832 | 0 | 98.5 % | 79.5 ms |
-| v2 with NACK | 10 % | 747 | 1911 | 1713 | 1 | 98.6 % | 79.7 ms |
-| v2 with FEC and NACK | 0 % | 0 | 0 | 0 | 0 | 100.0 % | 1.7 ms |
-| v2 with FEC and NACK | 1 % | 44 | 53 | 53 | 0 | 100.0 % | 3.1 ms |
-| v2 with FEC and NACK | 2 % | 102 | 125 | 125 | 0 | 100.0 % | 11.0 ms |
-| v2 with FEC and NACK | 5 % | 212 | 335 | 323 | 0 | 100.0 % | 16.0 ms |
-| v2 with FEC and NACK | 10 % | 485 | 1061 | 1004 | 1 | 99.7 % | 17.0 ms |
+| System | Packet loss | NACKs sent | Packets requested (with repeats) | Received or rebuilt after a request | Given up | Frames superseded | Frames expired | p99 frame latency, median (range) |
+|---|---|---|---|---|---|---|---|---|
+| v2 without FEC | 1 % | 0 | 0 | 0 | 0 | 456 | 0 | 1.8 ms (1.5-2.0) |
+| v2 without FEC | 2 % | 0 | 0 | 0 | 0 | 748 | 15 | 2.3 ms (1.8-2.5) |
+| v2 without FEC | 5 % | 0 | 0 | 0 | 0 | 1044 | 375 | 1.4 ms (1.2-3.0) |
+| v2 without FEC | 10 % | 0 | 0 | 0 | 0 | 473 | 1263 | 1.6 ms (1.0-1.6) |
+| v2 with FEC | 1 % | 0 | 0 | 0 | 0 | 15 | 0 | 2.5 ms (1.8-2.7) |
+| v2 with FEC | 2 % | 0 | 0 | 0 | 0 | 42 | 0 | 2.5 ms (2.3-3.2) |
+| v2 with FEC | 5 % | 0 | 0 | 0 | 0 | 252 | 0 | 2.4 ms (2.2-3.3) |
+| v2 with FEC | 10 % | 0 | 0 | 0 | 0 | 783 | 6 | 3.0 ms (2.1-5.0) |
+| v2 with NACK | 1 % | 469 | 520 | 519 | 0 | 17 | 0 | 16.7 ms (16.5-16.9) |
+| v2 with NACK | 2 % | 773 | 980 | 958 | 0 | 21 | 0 | 45.1 ms (44.8-47.6) |
+| v2 with NACK | 5 % | 1506 | 2595 | 2475 | 0 | 25 | 0 | 77.6 ms (77.3-78.6) |
+| v2 with NACK | 10 % | 2190 | 5495 | 4948 | 5 | 40 | 0 | 79.7 ms (79.3-79.8) |
+| v2 with FEC and NACK | 1 % | 14 | 28 | 21 | 0 | 0 | 0 | 6.9 ms (2.7-7.5) |
+| v2 with FEC and NACK | 2 % | 46 | 99 | 76 | 0 | 0 | 0 | 12.2 ms (8.8-14.1) |
+| v2 with FEC and NACK | 5 % | 245 | 579 | 453 | 0 | 2 | 0 | 16.0 ms (15.5-16.2) |
+| v2 with FEC and NACK | 10 % | 794 | 2318 | 1865 | 0 | 14 | 0 | 39.4 ms (17.0-40.7) |
 <!-- END GENERATED b1 -->
 
-**Reading the results.**
+**Loss in both directions with a 50 ms round trip** (v2 only):
 
-- v2 without FEC follows the independent-loss model closely (78.0 % of frames at 1 %
-  loss against a model 76.6 %, 5.5 % at 10 % against 6.2 %): fragmenting at the
-  application layer does not by itself make a frame of 26 packets more likely to arrive
-  than a datagram of 22 IP fragments.
-- FEC changes the picture: with one parity packet per four fragments, 99.5 % of frames
-  arrive at 1 % loss and 88.7 % at 5 %. XOR parity repairs one loss per group, so at
-  10 % loss (57.8 %) two losses in a group become common.
-- NACK on top of FEC repairs what parity cannot: 100.0 % of frames at 1, 2 and 5 % loss
-  and 99.7 % at 10 %. At 10 % loss the receiver sent 485 NACK packets asking for 1 061
-  packets (counting repeated requests); 1 004 of those were then received or rebuilt from
-  parity, and one packet was given up. The price is latency for the frames that needed a retransmission: p99 17.0 ms
-  at 10 % loss against 2.6 ms with FEC alone (medians 1.3 ms for both), mostly the
-  client's 5 ms wait and 10 ms request interval on this sub-millisecond round trip.
-- NACK without FEC reaches only 98.5-99.1 % at every loss rate, where its model predicts
-  99.7 % or more, and its p99 latency is 79.5-79.7 ms at 5 and 10 % loss. A loss at the
-  end of a frame shows only when the next frame's first packet arrives, one frame
-  interval (64 ms) later; if that frame is complete before the retransmission arrives,
-  the receiver's newest-wins assembler discards the older one. In all 31 frames that
-  NACK alone lost the next frame arrived complete, in 28 cases within 0.6 ms of its first
-  fragment, so without needing any retransmission
-  ([`bench/results/b1_lost_frames.txt`](../bench/results/b1_lost_frames.txt), from
-  `bench/b1_lost_frames.py`). With FEC, the parity packet after a frame's last fragment
-  both reveals and repairs a lost tail.
-- The original does worse than its own independent-loss model, and worse in the second
-  half of each run than in the first (80.7 % against 50.3 % at 1 % loss). The receiver
-  counted IP reassembly failures in every lossy run. Incomplete datagrams keep their
-  fragments in the kernel's reassembly queue for `ipfrag_time` (30 s); once the queue
-  memory reaches `ipfrag_high_thresh` (4 MiB per namespace; the peak sampled in every
-  lossy run was 4.00 MiB), new fragments are dropped, including fragments of audio
-  datagrams (2 IP fragments each), which is why 20.0 % of the original's audio was lost
-  at 1 % packet loss. The peak-memory column comes from sampling `/proc/net/sockstat` in
-  the receiver's namespace during the run.
-- Frames that arrived without needing a retransmission took about 1 ms for every system
-  (the `latency_ms` fields in the JSON); without NACK, loss, not delay, is what differs.
+<!-- BEGIN GENERATED b1_hard -->
+Video frames on time, pooled, with the Wilson 95 % interval:
+
+| Loss per direction | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|
+| 0 % | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] | 100.0 % [99.8, 100.0] |
+| 2 % | 97.9 % [97.1, 98.4] | 90.0 % [88.4, 91.3] | 99.1 % [98.5, 99.4] |
+| 5 % | 85.1 % [83.4, 86.7] | 90.9 % [89.5, 92.2] | 95.4 % [94.3, 96.3] |
+| 10 % | 57.4 % [55.1, 59.7] | 93.9 % [92.7, 94.9] | 88.7 % [87.1, 90.1] |
+
+Per run, median (range):
+
+| Loss per direction | v2 with FEC | v2 with NACK | v2 with FEC and NACK |
+|---|---|---|---|
+| 0 % | 100.0 % | 100.0 % | 100.0 % |
+| 2 % | 98.1 % (97.2-98.3) | 89.9 % (89.6-90.3) | 99.1 % (98.8-99.3) |
+| 5 % | 86.0 % (83.0-86.3) | 91.2 % (90.3-91.3) | 95.8 % (94.1-96.2) |
+| 10 % | 57.6 % (54.5-60.1) | 94.6 % (91.5-95.5) | 88.4 % (88.4-89.3) |
+
+| System | Loss per direction | Runs | Frames | Measured loss, receiver to server / server to receiver | p50 / p99 frame latency (median of runs) | Frames superseded / expired | Audio lost |
+|---|---|---|---|---|---|---|---|
+| v2 with FEC | 0 % | 3 | 1731 | 0.00 % / 0.00 % | 27.2 / 28.8 ms | 0 / 0 | 0.00 % [0.00, 0.07] |
+| v2 with FEC | 2 % | 3 | 1733 | 0.00 % / 2.04 % (2.00-2.06) | 27.3 / 29.4 ms | 40 / 0 | 0.04 % [0.01, 0.13] |
+| v2 with FEC | 5 % | 3 | 1734 | 0.00 % / 5.03 % (4.86-5.15) | 27.3 / 29.1 ms | 273 / 0 | 0.54 % [0.38, 0.77] |
+| v2 with FEC | 10 % | 3 | 1733 | 0.00 % (0.00-25.00) / 10.21 % (9.78-10.29) | 27.5 / 30.3 ms | 774 / 9 | 1.84 % [1.52, 2.23] |
+| v2 with NACK | 0 % | 3 | 1732 | 0.00 % / 0.00 % | 27.1 / 29.0 ms | 0 / 0 | 0.02 % [0.00, 0.10] |
+| v2 with NACK | 2 % | 3 | 1732 | 2.21 % (2.10-2.32) / 2.03 % (1.97-2.05) | 27.2 / 120.7 ms | 190 / 0 | 2.27 % [1.91, 2.70] |
+| v2 with NACK | 5 % | 3 | 1733 | 4.88 % (4.81-5.78) / 4.95 % (4.91-5.18) | 87.4 / 155.4 ms | 167 / 0 | 4.96 % [4.42, 5.56] |
+| v2 with NACK | 10 % | 3 | 1734 | 10.88 % (9.44-11.76) / 10.16 % (9.80-10.20) | 91.9 / 157.8 ms | 114 / 0 | 10.18 % [9.41, 11.00] |
+| v2 with FEC and NACK | 0 % | 3 | 1731 | 0.00 % / 0.00 % | 27.1 / 28.8 ms | 0 / 0 | 0.00 % [0.00, 0.07] |
+| v2 with FEC and NACK | 2 % | 3 | 1732 | 0.00 % (0.00-2.50) / 2.03 % (2.00-2.06) | 27.2 / 84.7 ms | 19 / 0 | 0.11 % [0.05, 0.24] |
+| v2 with FEC and NACK | 5 % | 3 | 1732 | 4.04 % (4.00-6.90) / 5.00 % (4.83-5.13) | 27.3 / 91.0 ms | 87 / 0 | 0.38 % [0.25, 0.58] |
+| v2 with FEC and NACK | 10 % | 3 | 1732 | 11.40 % (9.72-13.78) / 10.12 % (9.86-10.23) | 27.5 / 122.9 ms | 209 / 0 | 1.57 % [1.27, 1.93] |
+<!-- END GENERATED b1_hard -->
+
+**The original over 300 s at 1 % loss** (downlink condition):
+
+<!-- BEGIN GENERATED b1_long -->
+legacy (original) at 1 % loss, 300 s run (repeat 1): 3147/4627 (68.0 %) of video frames on time and 17.1 % of audio lost over the whole run; reassembly memory first reached 90 % of its 4 MiB limit after 26.7 s.
+
+| Send time | 0-30 s | 30-60 s | 60-90 s | 90-120 s | 120-150 s | 150-180 s | 180-210 s | 210-240 s | 240-270 s | 270-300 s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Video frames on time | 78 % | 61 % | 67 % | 63 % | 67 % | 67 % | 68 % | 73 % | 66 % | 69 % |
+| Audio frames lost | 5 % | 22 % | 16 % | 25 % | 17 % | 18 % | 18 % | 13 % | 19 % | 18 % |
+<!-- END GENERATED b1_long -->
+
+**Reading the results.** Numbers from `b1_loss.json` (run 20261119T112236Z-10546,
+binaries built at b06dd9e): the frames of the three runs pooled, with the Wilson 95 %
+interval in brackets, unless a range of runs is given. The counts of lost frames and
+what followed them come from `b1_lost_frames.txt` (its summary lines) and
+`b1_rtt50_relay_diag.txt`.
+
+*Downlink loss, the best case for repair:*
+
+- v2 without FEC follows the independent-loss model: 75.6 % [73.5, 77.6] of frames at
+  1 % loss against a model 76.6 %, and 6.1 % [5.0, 7.3] at 10 % against 6.2 %. Splitting
+  a frame into about 26 packets does not by itself make it more likely to arrive than a
+  datagram of 21-22 IP fragments.
+- One XOR parity packet per four fragments: 99.1 % [98.6, 99.5] at 1 % loss, 86.4 %
+  [84.7, 87.9] at 5 % and 57.3 % [55.0, 59.6] at 10 %, again as the model predicts (99.4,
+  86.3 and 57.7 %). Parity repairs one loss per group, and at 10 % loss groups with two
+  losses are common.
+- NACK on top of FEC, the client's default: every frame at 1 and 2 % loss (1 745 of
+  1 745 and 1 746 of 1 746; the interval's lower end is 99.8 %), 99.9 % [99.6, 100.0] at
+  5 % and 99.3 % [98.7, 99.6] at 10 %, so 15 frames lost in 6 982 over the four loss
+  rates. At 10 % loss the receivers sent 794 NACK packets asking for 2 318 packets
+  (repeated requests included); 1 865 of them were then received or rebuilt from parity,
+  and none was given up. Repaired frames wait for their repair: the p99 frame latency
+  at 10 % loss was 39.4 ms (17.0-40.7 over the runs) against 3.0 ms (2.1-5.0) with FEC
+  alone, with medians of 1.6 and 1.5 ms. The client waits 5 ms before it asks, checks
+  every 10 ms, and asks again after 30 ms when a repair has not arrived.
+- NACK without FEC stays at 98.1-99.1 % at every loss rate, where its model predicts
+  99.7 % or more, with a p99 latency of 77.6 ms at 5 % loss and 79.7 ms at 10 %. The
+  frames it loses are the ones a newer frame overtakes: the receiver's assembler is
+  newest-wins and gives up an incomplete frame as soon as a newer one is complete. A
+  loss at the end of a frame shows only when the next frame's first packet arrives, one
+  frame interval (64 ms) later; for 72 of the 92 frames that NACK alone lost, the next
+  frame was complete within 1.5 ms of its first fragment, too soon for any
+  retransmission. With FEC, the parity packet after a frame's last fragment both reveals
+  and repairs a lost tail.
+- Audio: without FEC v2 loses about the packet loss rate (0.88 % [0.66, 1.16] at 1 %
+  loss, 9.32 % [8.59, 10.11] at 10 %), and FEC with k = 2 brings that to 0.05 %
+  [0.02, 0.16] and 1.81 % [1.49, 2.19]. NACK covers video only, so the NACK systems'
+  audio follows their FEC setting. The original lost 17.41 % [15.70, 19.27] of its audio
+  at 1 % loss and 74.71 % [72.62, 76.70] at 10 % (see the last part).
+- Without NACK, frames took about a millisecond whatever the loss (median latency
+  0.7-1.5 ms for the original and for v2 with and without FEC); loss, not delay, is what
+  differs.
+
+*Loss in both directions with a 50 ms round trip:*
+
+- FEC alone does as well as with downlink loss (97.9 % [97.1, 98.4] at 2 % loss in each
+  direction, 85.1 % [83.4, 86.7] at 5 %, 57.4 % [55.1, 59.7] at 10 %), since it needs
+  neither a return path nor a round trip.
+- Retransmission does much worse than on the sub-millisecond path. FEC with NACK
+  delivered 99.1 % [98.5, 99.4] at 2 % loss, 95.4 % [94.3, 96.3] at 5 % and 88.7 %
+  [87.1, 90.1] at 10 %; NACK alone 90.0 % [88.4, 91.3], 90.9 % [89.5, 92.2] and 93.9 %
+  [92.7, 94.9]. At 10 % loss NACK alone did better than FEC with NACK, and NACK alone
+  did better at 10 % loss than at 2 %.
+- Both oddities come from the same newest-wins rule. A repair now takes a round trip
+  more, so it arrives about when the next frame does. In the relay-logged runs at 5 %
+  loss (run 20261119T134226Z-8769), the first repair of each lost fragment of the frames
+  never completed passed the relay a median of 66 ms after its frame's first fragment,
+  and the next frame's first fragment 64 ms after it; for 61 of the 65 such frames with
+  NACK alone, and for all 31 with FEC and NACK, the next frame needed no repair at all,
+  against 26.9 % and 86.6 % of all frames. The main runs agree: the frame after a lost
+  one was complete within 1.5 ms of its first fragment for 371 of the 437 frames lost
+  with NACK alone and for 286 of the 292 lost with FEC and NACK. With NACK alone a frame
+  needs no repair only when none of its packets is lost, which gets rarer as loss rises,
+  so fewer frames are overtaken (190, 167 and 114 frames superseded at 2, 5 and 10 %
+  loss); with FEC most frames need no NACK repair, and more frames that do are overtaken
+  as loss rises (19, 87 and 209). Hypothesis, not built or measured: an assembler that
+  keeps a frame whose repair is due until the frame's deadline, instead of giving it up
+  when a newer frame completes, would recover most of these frames.
+- Frames that needed no repair took about 27 ms, the relay's 25 ms plus about 2 ms (the
+  median latency of every run with FEC, and of NACK alone at 0 and 2 % loss, was
+  27.0-27.6 ms). With NACK alone most frames needed a repair at 5 and 10 % loss, and the
+  median rose to 87.4 and 91.9 ms; the highest p99 of any run was 174.4 ms (NACK alone,
+  10 % loss).
+- The receiver sends little upstream: REGISTER keepalives, plus NACKs where they are on
+  (10-12 datagrams per lossy run with FEC alone, 40-617 with FEC and NACK, 518-1 222 with
+  NACK alone). A run's measured upstream loss rests on that many datagrams, so it is
+  coarse where they are few (0-25 % for FEC alone at 10 %; 25 % is 3 of 12 datagrams).
+
+*The original under sustained loss:*
+
+- In the three 41 s runs at 1 % loss the original delivered 67.1 % [64.8, 69.2] of
+  frames against a model 80.5 % (39.0 % against 64.7 % at 2 %). The runs ranged from
+  57.1 % to 78.3 %, and every one did worse in its second half (38.6-68.3 %) than in its
+  first (75.5-88.3 %). The receiver's kernel counted IP reassembly failures in every
+  lossy run (975-3 396 per run at 1 % loss).
+- The 300 s run shows where that leads: 78 % of frames on time in the first 30 s, then
+  61-73 % in every later 30 s bin, 68.0 % [66.7, 69.3] over the run; and 17.1 % of audio
+  lost (5 % in the first 30 s, then 13-25 % per bin), where independent loss of its
+  2-fragment audio datagrams would lose 2 %. The kernel counted 16 808 reassembly
+  failures.
+- The explanation that fits these counters: an incomplete datagram keeps its fragments
+  in the kernel's reassembly queue for `ipfrag_time` (30 s). In the 300 s run the
+  queue's memory first reached 90 % of `ipfrag_high_thresh` (4 MiB per namespace) after
+  26.7 s and stayed between 3.06 and 4.00 MiB for the rest of the run
+  (`receiver_frag_memory`, sampled from `/proc/net/sockstat` in the receiver's
+  namespace). At the threshold the kernel drops new fragments, including those of
+  datagrams that would have been complete, until expiring ones free memory, so delivery
+  settles at a lower level rather than collapsing. v2 sends no fragmented datagrams, and
+  its reassembly counters stayed at zero.
+- Because the queue fills at a different moment in each run, the original's frames are
+  not lost independently, and the Wilson interval of its 41 s runs at 1 % loss
+  (64.8-69.2 %) is much narrower than their spread (57.1-78.3 %).
 
 ## B2: multi-talker audio
 
@@ -717,8 +868,9 @@ the benchmarks without I/O are not affected by this.
 
 Every benchmark allocates nothing per operation. On loopback, sending the three copies
 of a forwarded packet took a median of 6 285 ns with one `sendto` each, 4 914 ns with
-`sendmmsg` in batches of 64 and 1 038 ns with GSO in batches of 64; the retransmission
-buffer adds 21 ns (1 059 ns). Sending one frame (24 datagrams) to one receiver took
+`sendmmsg` in batches of 64 and 1 038 ns with GSO in batches of 64. With the
+retransmission buffer as well the median was 1 059 ns, 21 ns more but within the
+run-to-run ranges (1 003-1 058 ns without it, 1 042-1 160 ns with it). Sending one frame (24 datagrams) to one receiver took
 31 682 ns with `sendto`, 30 648 ns with `sendmmsg` and 7 917 ns with `sendmmsg` and
 GSO. Against `sendmmsg` alone, GSO took 4.7 times less time per forwarded packet and
 3.9 times less per frame, far more than the 19 % less CPU that B3 measured for the
