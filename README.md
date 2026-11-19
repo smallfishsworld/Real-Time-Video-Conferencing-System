@@ -52,18 +52,25 @@ pooled frames with the Wilson 95 % interval:
 | 10 % | 57.4 % [55.1, 59.7] | 93.9 % [92.7, 94.9] | 88.7 % [87.1, 90.1] |
 <!-- END GENERATED summary_b1_hard -->
 
-The original sends each 31 kB frame as one UDP datagram, which the network splits into
-21 or 22 IP fragments; losing any fragment loses the frame, and under sustained loss the
-receiver's IP reassembly queue fills to its limit, so it does worse than independent
-loss would predict (68.0 % of frames over a 300 s run at 1 % loss, where the model gives
-80.5 %). v2 sends fragments of at most 1200 bytes and one XOR parity packet per four
-fragments, and a receiver that still misses a packet asks for it again with an RTCP
-generic NACK; the server resends it from a buffer of each sender's last 256 video
-packets. FEC and NACK together, the client's default, cost repaired frames time: p99
-frame latency 39.4 ms at 10 % loss against 3.0 ms with FEC alone on the sub-millisecond
-path. With a 50 ms round trip a repair arrives about when the next frame does, and the
-receiver's newest-wins frame assembler then often drops the repaired frame, which is
-why retransmission does much worse there and NACK alone even improves with more loss
+The 2024 version (run unchanged from `legacy/` through a harness with stub audio
+devices and relay mode forced) sends each 31 kB frame as one UDP datagram, which the
+network splits into 21 or 22 IP fragments; losing any fragment loses the frame. In one
+300 s run at 1 % loss it delivered 68.0 % of frames (78 % in the first 30 s, then 61-73 %
+per 30 s bin; the independent-loss model gives 80.5 %), and the drop is consistent with
+the receiver's IP reassembly memory, which reached its 4 MiB limit after 30 s. v2 splits
+each frame into fragments of at most 1200 bytes of JPEG (every UDP payload, parity
+included, is at most 1232 bytes) with one XOR parity packet per four fragments, and a
+receiver that still misses a packet asks for it again with an RTCP generic NACK; the
+server resends it from a buffer of each sender's last 256 video packets. FEC and NACK
+together are the client's default. Latency percentiles cover completed frames only, so
+FEC alone (331-335 frames completed per run at 10 % loss) and FEC with NACK (574-580)
+are compared over different frames, and their p99s (3.0 and 39.4 ms) are not the cost
+of NACK: with FEC and NACK the frames assembled within 1.5 ms of their first fragment
+(332-345 per run) have a p99 of 2.06-2.39 ms, and the 235-243 per run that waited for a
+retransmission a p50 of 11.7-12.3 ms and a p99 of 44.7-49.5 ms, inside the 200 ms
+deadline. With a 50 ms round trip a repair arrives about when the next frame does, and
+the receiver's newest-wins frame assembler then often drops the repaired frame, which
+is why retransmission does much worse there and NACK alone even improves with more loss
 ([`docs/ENGINEERING_NOTES.md`](docs/ENGINEERING_NOTES.md#211-nack-retransmission-for-video-b1)).
 
 **Multi-talker audio (B2).** Everybody talks and sends video:
@@ -77,13 +84,17 @@ why retransmission does much worse there and NACK alone even improves with more 
 | Video frames processed | 25.0 % | 100.0 % (99.9-100.0) | 8.2 % (7.8-8.8) | 100.0 % |
 <!-- END GENERATED summary_b2 -->
 
-The original plays every talker's chunks one after another on a blocking audio stream,
-so with two or more talkers playback falls behind real time and the same thread stops
-reading video. Both ends are simulated (synthetic tones as microphones, stand-in
-speakers; no audio hardware was available), and the original's numbers assume a sound
-card whose `write()` blocks while the previous chunk plays (see
+The 2024 version plays every talker's chunks one after another on a blocking audio
+stream, so with two or more talkers playback falls behind real time and the same thread
+stops reading video. Both ends are simulated (synthetic tones as microphones, stand-in
+speakers; no audio hardware was available), and the 2024 version's numbers assume a
+sound card whose `write()` blocks while the previous chunk plays (see
 [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b2-multi-talker-audio)). v2 mixes on the
-server (mix-minus) and sends each receiver one stream.
+server (mix-minus) and sends each receiver one stream. Its 119 ms is the buffering it is
+configured for (40 ms in the server's jitter buffer, up to 20 ms to the next mixer tick,
+60 ms of client playout delay, up to 20 ms to the next playout tick); mixing does not
+make audio faster, it adds the server's 40 ms. What keeps v2's latency flat is a
+receive path that never waits for playback and playout paced by a clock.
 
 **Relay capacity (B3).** Rooms of four, 15 fps per participant, the server pinned to
 one CPU, on loopback:
@@ -98,16 +109,22 @@ one CPU, on loopback:
 <!-- END GENERATED summary_b3 -->
 
 This comparison does not favour v2: for the same media it sends about 19 times as many
-packets as the original (26 MTU-sized fragments and 7 parity packets per frame and 75
-audio packets per second, against one datagram per frame or audio chunk, because
-loopback's 64 KiB MTU never fragments the original's 31 kB datagrams), and the kernel's
-per-packet work is what costs CPU. The original passed at 448 participants, the only
-size it was run at; v2 is CPU-bound well before that. On one v2 binary, at 128
-participants, `recvmmsg`/`sendmmsg` batching (18.6 times fewer system calls in the CPU
-profiles) cut the server's CPU by 7.6 %, and sending each sender's datagrams for one
-receiver as UDP GSO messages (7 times fewer messages down the send path) by a further
-19.1 %; the size that every repeat passed rose from 160 to 272 participants. These are
-loopback numbers, in which the receivers' receive path is charged to the server;
+packets as the 2024 version (26 fragments and 7 parity packets per frame and 75 audio
+packets per second, against one datagram per frame or audio chunk, because loopback's
+64 KiB MTU never fragments the 2024 version's 31 kB datagrams), and the kernel's
+per-packet work is what costs CPU. The 2024 version passed at 448 participants, the only
+size it was run at (the load generator's legacy mode allows at most 452), so its
+capacity was not reached; v2 is CPU-bound well before that, and on loopback the 2024
+version handles more participants per core. On one v2 binary, at 128 participants,
+`recvmmsg`/`sendmmsg` batching (18.6 times fewer system calls in the CPU profiles) cut
+the server's CPU by 7.6 % (0.680 to 0.628 of a core; the three repeats of one setting
+spread by up to 8 %), and sending each sender's datagrams for one receiver as UDP GSO
+messages (7 times fewer messages down the send path) by a further 19.1 % (to 0.508);
+the size that every repeat passed rose from 160 to 272 participants. About half of
+that saving (49 %) is not the relay's own work: it is softirq on the server's core, the
+receivers' loopback receive path, which the kernel charges to the server because it
+has no IRQ time accounting. Without the core's softirq the server's CPU fell from 0.491
+to 0.481 and 0.417 of a core, 15 % in all.
 [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#b3-relay-capacity) explains the setup (lo
 splits each GSO message before the receive path, as in front of a NIC without
 segmentation offload), the profiles and an earlier result at Ethernet MTU. v2 trades
@@ -148,8 +165,10 @@ flowchart LR
   and several clients can share one host. Packets use the RTP header (Wireshark can
   decode them with "Decode As... RTP").
 - **Video** is JPEG, one independent image per frame, split into fragments of at most
-  1200 bytes (no IP fragmentation on a 1500-byte path), with one XOR parity packet per
-  four fragments. The server forwards fragments unchanged to the other members (SFU)
+  1200 bytes of JPEG (every UDP payload, parity included, is at most 1232 bytes, so
+  nothing is IP-fragmented on a 1500-byte path), with one XOR parity packet per four
+  fragments. The server forwards fragments unchanged to the other members (SFU-style:
+  no simulcast, SVC or congestion control)
   and keeps each sender's last 256 video packets; in relay mode a receiver that is still
   missing a packet at least 5 ms after the gap sends an RTCP generic NACK (RFC 4585) and gets that
   packet again, to itself only.
@@ -334,14 +353,16 @@ for Python 3.11, the oldest version the client supports.
   media session against a fake server, and end-to-end tests (`pytest -m e2e`) that build
   and start the Go server and run three headless clients with synthetic media.
 - CI: a GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml);
-  verified locally, not yet run on GitHub) with lint, the Go race tests, short fuzzing,
-  every benchmark run once, the client's tests on Python 3.11 and 3.13 on Linux
-  (end-to-end tests included) and unit tests on macOS and Windows, the Go tests on macOS
-  and Windows, and a build and smoke test of the container image. Every step of its
-  Linux jobs passed with `make ci` in a fresh clone of this branch; the macOS and
-  Windows jobs have not run anywhere. The first local run of the Python 3.11 job found a
-  bug that had made the client unusable on 3.11 (the media session never registered;
-  fixed in `fix(client): register media on Python 3.11`).
+  not yet run on GitHub) with lint, the Go race tests, short fuzzing, every benchmark
+  run once, the client's tests on Python 3.11 and 3.13 on Linux (end-to-end tests
+  included) and unit tests on macOS and Windows, the Go tests on macOS and Windows, and
+  a build and smoke test of the container image. The workflow itself has not run; the
+  make targets behind its Linux jobs passed locally in a fresh clone (`make ci-lint
+  ci-go ci-python`, last at the final commit; `make ci-docker` at 8259b9b, see
+  [`bench/results/ci/`](bench/results/ci/)), and the macOS and Windows jobs have not run
+  anywhere. The first local run of the Python 3.11 job failed 26 of 222 tests: a bug had
+  made the client unusable on 3.11 (the media session never registered; fixed in
+  `fix(client): register media on Python 3.11`).
 
 ## Benchmarks
 
@@ -357,8 +378,8 @@ it. `docs/BENCHMARKS.md` has the method and every result.
 ```sh
 sudo bench/run_b1.sh      # B1 loss resilience: 3 repeats per point, two loss conditions, one long run
 sudo bench/run_b2.sh      # B2 multi-talker audio: 3 and 5 parties, 3 repeats
-sudo bench/run_b3.sh      # B3 relay capacity: v2 with and without GSO / batching, and the original
-sudo MTU=1500 bench/run_b3.sh                  # the same at Ethernet MTU
+sudo bench/run_b3.sh      # B3 relay capacity: v2 with and without GSO / batching, and the 2024 version
+sudo MTU=1500 bench/run_b3.sh                  # the same at Ethernet MTU (published: round 2 only, one run per point)
 sudo bench/profile_b3.sh                       # CPU profiles of the v2 variants at 128 participants
 bench/run_micro.sh                             # Go microbenchmarks (the send ones use loopback receivers)
 LABEL=after bench/run_churn.sh                 # forwarding latency while the control plane churns
@@ -367,9 +388,9 @@ python3 bench/b1_lost_frames.py bench/tmp/b1/<run ID>   # which NACK frames were
 (cd client && uv run --group bench python ../bench/render.py)   # tables and plots
 ```
 
-The original code runs unmodified in these benchmarks: `bench/legacy_harness/` installs
-stand-ins for its device libraries (camera, PyAudio, pyautogui) and overrides its
-configured IP address before importing it.
+The 2024 code runs unmodified in these benchmarks: `bench/legacy_harness/` installs
+stand-ins for its device libraries (camera, PyAudio, pyautogui), overrides its
+configured IP address before importing it, and forces relay mode.
 
 ## Limitations
 
@@ -408,7 +429,7 @@ client/            Python package confclient (uv project) and its tests
 protocol-testdata/ golden vectors shared by the Go and Python tests
 bench/             benchmark scripts, the legacy harness, results and plots
 docs/              PROTOCOL.md, ENGINEERING_NOTES.md, BENCHMARKS.md
-legacy/            the original course implementation, unchanged
+legacy/            the 2024 course version, unchanged (as on main)
 ```
 
 ## License
