@@ -38,6 +38,7 @@ from .ratelimit import TokenBucket
 
 Addr = tuple[str, int]
 _WIRE_OVERHEAD = 28  # IPv4 + UDP header bytes charged to the send budget per packet
+_KINDS = ("video", "video_fec", "audio", "audio_fec")
 
 
 @dataclass
@@ -57,8 +58,8 @@ class MediaConfig:
 
 @dataclass
 class SessionStats:
-    packets_in: dict[str, int] = field(default_factory=lambda: {"video": 0, "audio": 0, "fec": 0})
-    bytes_in: dict[str, int] = field(default_factory=lambda: {"video": 0, "audio": 0, "fec": 0})
+    packets_in: dict[str, int] = field(default_factory=lambda: dict.fromkeys(_KINDS, 0))
+    bytes_in: dict[str, int] = field(default_factory=lambda: dict.fromkeys(_KINDS, 0))
     packets_out: int = 0
     bytes_out: int = 0
     video_frames_sent: int = 0
@@ -361,7 +362,7 @@ class MediaSession(asyncio.DatagramProtocol):
 
     def _on_video(self, v: _VideoIn, pt: int, seq: int, data: bytes, now: float) -> None:
         if pt == PT_FEC:
-            self._count("fec", len(data))
+            self._count("video_fec", len(data))
             repaired = v.fec.on_parity(data)
             packets = []
         elif pt == PT_VIDEO:
@@ -382,7 +383,7 @@ class MediaSession(asyncio.DatagramProtocol):
     def _on_audio(self, ssrc: int, pt: int, seq: int, data: bytes) -> None:
         fec = self._audio_fec.setdefault(ssrc, FecDecoder(history=64))
         if pt == PT_FEC:
-            self._count("fec", len(data))
+            self._count("audio_fec", len(data))
             packets = fec.on_parity(data)
             self.stats.fec_recovered += len(packets)
         elif pt == PT_AUDIO:

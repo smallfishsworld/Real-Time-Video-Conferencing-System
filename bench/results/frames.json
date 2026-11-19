@@ -1,0 +1,41 @@
+{
+  "description": "frame corpus used by every benchmark (synthetic test pattern, Pillow JPEG)",
+  "width": 480,
+  "height": 480,
+  "quality": 85,
+  "count": 1000,
+  "bytes": {
+    "n": 1000,
+    "mean": 31089.9,
+    "p50": 31196.5,
+    "p95": 32000.2,
+    "p99": 32153.08,
+    "max": 32327,
+    "min": 29752,
+    "p05": 30065
+  },
+  "histogram_kb": {
+    "29k": 30,
+    "30k": 380,
+    "31k": 539,
+    "32k": 51
+  },
+  "fragments_v2_1200B": {
+    "n": 1000,
+    "mean": 26.467,
+    "p50": 26.0,
+    "p95": 27.0,
+    "p99": 27.0,
+    "max": 27
+  },
+  "environment": {
+    "kernel": "6.18.44-fc-v653",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": 4,
+    "python": "3.13.18",
+    "go": "go version go1.24.7 linux/amd64",
+    "git_commit": "2c6cc13",
+    "git_dirty": true,
+    "utc": "2026-11-19T01:38:26Z"
+  }
+}
