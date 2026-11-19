@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "bench"))
 import analyze_b1
 import analyze_b3
 import analyze_micro
+import b1_relay_diag
 from common import spread, wilson
 
 
@@ -76,6 +77,19 @@ def test_b1_pools_the_repeats_of_a_group() -> None:
     assert g["video"]["assembler_totals"] == {"completed": 1163, "superseded": 2}
     assert g["audio"]["residual_loss"] == wilson(2, 3700)
     assert g["tags"] == ["downlink-v2-fec-nack-50-r1", "downlink-v2-fec-nack-50-r2"]
+
+
+def test_relay_diag_needs_no_nack_when_fec_can_rebuild_the_frame() -> None:
+    frame_of = dict.fromkeys(range(10, 14), 1) | dict.fromkeys(range(15, 19), 2)
+    frame_of |= dict.fromkeys(range(20, 24), 3) | {30: 4, 31: 4, 40: 5}
+    parity = [(14, 10, 4), (19, 15, 4), (24, 20, 4)]
+    first_drop = dict.fromkeys(frame_of, False) | {14: False, 19: True, 24: False}
+    first_drop[11] = True  # frame 1: one loss and its parity arrived, FEC rebuilds it
+    first_drop[16] = True  # frame 2: one loss, but the parity packet was lost too
+    first_drop[21] = first_drop[22] = True  # frame 3: two losses in one group
+    first_drop[31] = True  # frame 4: a loss that no parity group covers (FEC off)
+    need = b1_relay_diag.needs_nack(first_drop, frame_of, parity)
+    assert need == {1: False, 2: True, 3: True, 4: True, 5: False}
 
 
 def test_b3_point_needs_delivery_and_p99() -> None:

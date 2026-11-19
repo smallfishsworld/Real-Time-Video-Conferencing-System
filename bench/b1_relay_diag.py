@@ -12,9 +12,12 @@ passed the relay (ms after the frame's first fragment) and whether it was droppe
 again, whether every fragment got through in the end, and when the next frame's first
 fragment passed. A frame whose repairs completed it only after the next frame's first
 fragment had passed was usually superseded: the next frame needed no repair and completed first, and the
-receiver's assembler is newest-wins. It also counts the retransmissions and how many of
-them repeated one already sent (a NACK retry sent before the first repair could return).
-FEC rebuilds at the receiver are not visible here.
+receiver's assembler is newest-wins. To test that, it also says for how many of the
+frames never completed the next frame needed no NACK at all: it lost nothing on the
+first transmission, or every loss was in an FEC group whose other packets, parity
+included, got through, so the receiver could rebuild it on arrival. It also counts the
+retransmissions and how many of them repeated one already sent (a NACK retry sent before
+the first repair could return). FEC rebuilds at the receiver are not visible here.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 PT_VIDEO = 96
+PT_FEC = 127
 
 
 @dataclass
@@ -34,6 +38,33 @@ class Frame:
     got: set[int] = field(default_factory=set)
     lost: list[int] = field(default_factory=list)
     repairs: list[tuple[float, int, bool]] = field(default_factory=list)
+
+
+def needs_nack(
+    first_drop: dict[int, bool], frame_of: dict[int, int], parity: list[tuple[int, int, int]]
+) -> dict[int, bool]:
+    """Frame id -> whether the receiver needed a NACK repair to complete the frame.
+
+    first_drop: sequence number -> dropped on its first transmission (video and parity);
+    frame_of: video sequence number -> frame id; parity: (parity seq, SN base, k) of each
+    FEC packet. A frame needs a NACK when one of its FEC groups lost two or more video
+    packets, or one and its parity packet, or when it lost a packet that no group covers.
+    """
+    need = dict.fromkeys(frame_of.values(), False)
+    covered: set[int] = set()
+    for pseq, base, k in parity:
+        data = [(base + i) & 0xFFFF for i in range(k)]
+        fids = {frame_of[s] for s in data if s in frame_of}
+        if len(fids) != 1:
+            continue
+        covered.update(data)
+        lost = sum(first_drop.get(s, True) for s in data)
+        if lost >= 2 or (lost == 1 and first_drop.get(pseq, True)):
+            need[fids.pop()] = True
+    for s, fid in frame_of.items():
+        if s not in covered and first_drop.get(s, False):
+            need[fid] = True
+    return need
 
 
 def diagnose(d: Path, tag: str) -> list[str]:
@@ -46,6 +77,9 @@ def diagnose(d: Path, tag: str) -> list[str]:
     frames: dict[int, Frame] = {}
     order: list[int] = []
     seen: dict[int, int] = {}
+    first_drop: dict[int, bool] = {}
+    frame_of: dict[int, int] = {}
+    parity: list[tuple[int, int, int]] = []
     rtx = duplicates = 0
     nacks = nacks_dropped = 0
     for t, direction, _length, dropped, head in log:
@@ -55,10 +89,18 @@ def diagnose(d: Path, tag: str) -> list[str]:
                 nacks += 1
                 nacks_dropped += int(dropped)
             continue
+        if len(b) >= 16 and b[1] & 0x7F == PT_FEC:
+            pseq = int.from_bytes(b[2:4], "big")
+            if pseq not in first_drop:
+                first_drop[pseq] = bool(dropped)
+                parity.append((pseq, int.from_bytes(b[12:14], "big"), b[14]))
+            continue
         if len(b) < 20 or b[1] & 0x7F != PT_VIDEO:
             continue
         seq = int.from_bytes(b[2:4], "big")
         fid = int.from_bytes(b[12:16], "big")
+        first_drop.setdefault(seq, bool(dropped))
+        frame_of[seq] = fid
         idx = int.from_bytes(b[16:18], "big")
         f = frames.get(fid)
         if f is None:
@@ -114,6 +156,15 @@ def diagnose(d: Path, tag: str) -> list[str]:
         out.append(
             f"  frame {pos} ({f.count} fragments): lost {f.lost}; repairs [{repairs}]; {verdict}{timing}"
         )
+    need = needs_nack(first_drop, frame_of, parity)
+    missing = [pos for pos, idx in enumerate(sent_order) if idx not in completed and pos + 1 < len(order)]
+    clean_next = sum(not need[order[pos + 1]] for pos in missing)
+    clean_all = sum(not need[fid] for fid in order)
+    share = 100 * clean_all / len(order)
+    out.append(
+        f"  of the {len(missing)} frames never completed (next frame seen), the next frame needed no "
+        f"NACK for {clean_next}; of all {len(order)} frames, {clean_all} ({share:.1f} %) needed none"
+    )
     return out
 
 
