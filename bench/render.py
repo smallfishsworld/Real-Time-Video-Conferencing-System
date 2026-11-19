@@ -54,7 +54,9 @@ LABELS = {
     "v2-fec-nack": "v2 with FEC and NACK",
     "v2-unbatched": "v2 before batching existed",
     "v2-nogso": "v2, recvmmsg/sendmmsg without GSO",
+    "v2-nogso-repeat": "v2, recvmmsg/sendmmsg without GSO (repeat)",
     "v2-nobatch": "v2, one system call per datagram",
+    "v2-nobatch-repeat": "v2, one system call per datagram (repeat)",
 }
 
 
@@ -444,15 +446,16 @@ def table_b1(b1: dict[str, Any]) -> str:
     if nack_runs:
         lines += [
             "",
-            "| System | Packet loss | NACK packets sent | Video packets requested | Recovered by"
-            " retransmission | Given up | Video frames on time |",
-            "|---|---|---|---|---|---|---|",
+            "| System | Packet loss | NACK packets sent | Packets requested (with repeats) | Received"
+            " or rebuilt after a request | Given up | Video frames on time | p99 frame latency |",
+            "|---|---|---|---|---|---|---|---|",
         ]
         for r in nack_runs:
             n = r["video"]["nack"]
             lines.append(
                 f"| {LABELS[r['system']]} | {r['loss_percent']:g} % | {n['nacks_sent']} | {n['requested']} | "
-                f"{n['recovered']} | {n['abandoned']} | {pct(r['video']['delivery_ratio'])} |"
+                f"{n['recovered']} | {n['abandoned']} | {pct(r['video']['delivery_ratio'])} | "
+                f"{_num(r['video']['latency_ms'].get('p99'), 1)} ms |"
             )
     return "\n".join(lines)
 
@@ -553,7 +556,7 @@ def table_b2(b2: dict[str, Any]) -> str:
 
 # Tables: the original, v2, then v2 with GSO and with all batching switched off on the
 # same binary, and v2 at the commit before batching existed (a cross-check).
-B3_ORDER = ["legacy", "v2", "v2-nogso", "v2-nobatch", "v2-unbatched"]
+B3_ORDER = ["legacy", "v2", "v2-nogso", "v2-nogso-repeat", "v2-nobatch", "v2-nobatch-repeat", "v2-unbatched"]
 # Charts and the README summary: the original, v2 and the same binary with one system
 # call per datagram, so that nothing but the batching differs.
 B3_CHART = ["legacy", "v2", "v2-nobatch"]
@@ -848,7 +851,12 @@ def main() -> None:
             and main_b3["environment"]["git_commit"] != unbatched["environment"]["git_commit"]
         ):
             main_b3["systems"]["v2-unbatched"] = unbatched["systems"]["v2"]
-        for key, name in (("v2-nogso", "b3_capacity_nogso.json"), ("v2-nobatch", "b3_capacity_nobatch.json")):
+        for key, name in (
+            ("v2-nogso", "b3_capacity_nogso.json"),
+            ("v2-nogso-repeat", "b3_capacity_nogso_repeat.json"),
+            ("v2-nobatch", "b3_capacity_nobatch.json"),
+            ("v2-nobatch-repeat", "b3_capacity_nobatch_repeat.json"),
+        ):
             ablation = tag_commit(load(name))
             if ablation is not None and "v2" in ablation["systems"]:
                 main_b3["systems"][key] = ablation["systems"]["v2"]

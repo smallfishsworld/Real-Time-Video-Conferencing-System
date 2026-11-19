@@ -31,7 +31,8 @@ def main() -> None:
     build = json.loads((ROOT / "bench" / "results" / "b1_loss.json").read_text())["environment"].get("build")
     times = sorted(p.stat().st_mtime for p in raw.glob("*.recv.json"))
     stamp = [datetime.fromtimestamp(t, UTC).strftime("%Y-%m-%dT%H:%M:%SZ") for t in (times[0], times[-1])]
-    print(f"raw records: {raw}, written {stamp[0]} to {stamp[1]}")
+    shown = raw.resolve().relative_to(ROOT) if raw.resolve().is_relative_to(ROOT) else raw
+    print(f"raw records: {shown}, written {stamp[0]} to {stamp[1]}")
     print(f"bench/results/b1_loss.json binaries: {build}")
     print("system loss counted lost | per lost frame: next frame latency ms / assembly ms")
     runs = [p.name.removesuffix(".send.json").rsplit("-", 1) for p in raw.glob("*nack-*.send.json")]
