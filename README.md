@@ -357,16 +357,27 @@ for Python 3.11, the oldest version the client supports.
   command-line parser's range checks, the media session against a fake server, and
   end-to-end tests (`pytest -m e2e`) that build
   and start the Go server and run three headless clients with synthetic media.
-- CI: a GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml);
-  not yet run on GitHub) with lint, the Go race tests, short fuzzing, every benchmark
-  run once, the client's tests on Python 3.11 and 3.13 on Linux (end-to-end tests
-  included) and unit tests on macOS and Windows, the Go tests on macOS and Windows, and
-  a build and smoke test of the container image. The workflow itself has not run; the
-  make targets behind its Linux jobs passed locally in a fresh clone (`make ci-lint
-  ci-go ci-python`, last at the final commit; `make ci-docker` at 8259b9b, see
-  [`bench/results/ci/`](bench/results/ci/)), and the macOS and Windows jobs have not run
-  anywhere. The first local run of the Python 3.11 job failed 26 of 222 tests: a bug had
-  made the client unusable on 3.11 (the media session never registered; fixed in
+- CI: a GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
+  with lint, the Go race tests, short fuzzing, every benchmark run once, the client's
+  tests on Python 3.11 and 3.13 on Linux (end-to-end tests included) and unit tests on
+  macOS and Windows, the Go tests on macOS and Windows, and a build and smoke test of
+  the container image. Before the first push, the make targets behind its Linux jobs
+  passed locally in a fresh clone (`make ci-lint ci-go ci-python` at 6d1213b; `make
+  ci-docker` at 8259b9b, see [`bench/results/ci/`](bench/results/ci/)). The first runs
+  on GitHub failed three ways, all fixed:
+  - the Go tests on Windows, which had not run anywhere before: the load generator
+    could not send or receive (golang.org/x/net implements neither sendmsg nor recvmsg
+    there), and a datagram longer than the read buffer came back as an error that made
+    the media router back off (`fix(server): make the Go tests pass on macOS and
+    Windows`);
+  - the Go tests on macOS and Windows: the load generator's end-to-end test expected
+    `/proc` (same commit);
+  - the Go race tests on Linux, once: a router test needed a 250-datagram burst to fit
+    in a default socket buffer (`test(media): read the burst while it arrives in
+    TestRouterForwardsBurstsInOrder`).
+
+  The first local run of the Python 3.11 job failed 26 of 222 tests: a bug had made the
+  client unusable on 3.11 (the media session never registered; fixed in
   `fix(client): register media on Python 3.11`).
 
 ## Benchmarks
