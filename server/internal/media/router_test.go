@@ -50,6 +50,9 @@ func newTestServer(t *testing.T, roomCfg func(*room.Config), mediaCfg func(*Conf
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The buffer request app.Start makes with its default SocketBuffer.
+	_ = conn.SetReadBuffer(4 << 20)
+	_ = conn.SetWriteBuffer(4 << 20)
 	rc := room.DefaultConfig()
 	rc.RelayGrace = 0
 	if roomCfg != nil {
@@ -96,6 +99,8 @@ func (s *testServer) peer(name string, roomID uint32) *peer {
 		s.t.Fatal(err)
 	}
 	s.t.Cleanup(func() { _ = conn.Close() })
+	// A burst can wait here until recv reads it (the load generator asks for the same).
+	_ = conn.SetReadBuffer(4 << 20)
 	capt.mu.Lock()
 	p := &peer{t: s.t, client: c, joined: capt.joined, conn: conn}
 	capt.mu.Unlock()
@@ -191,6 +196,27 @@ func (p *peer) recv(d time.Duration) [][]byte {
 	}
 }
 
+// collect reads p's datagrams in the background, so that a burst does not have to fit
+// in the socket buffer, until none has arrived for quiet. The returned function waits
+// for that and returns them.
+func (p *peer) collect(quiet time.Duration) func() [][]byte {
+	done := make(chan [][]byte, 1)
+	go func() {
+		var out [][]byte
+		for {
+			_ = p.conn.SetReadDeadline(time.Now().Add(quiet))
+			buf := make([]byte, 2048)
+			n, err := p.conn.Read(buf)
+			if err != nil {
+				done <- out
+				return
+			}
+			out = append(out, buf[:n])
+		}
+	}()
+	return func() [][]byte { return <-done }
+}
+
 func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
@@ -261,6 +287,9 @@ func TestRouterForwardsBurstsInOrder(t *testing.T) {
 		for _, p := range []*peer{a1, a2, a3} {
 			p.register(s.addr)
 		}
+		// 250 small datagrams nearly fill a default 208 KiB receive buffer (Linux charges
+		// each one 832 bytes or more), so read them while they arrive.
+		received := map[*peer]func() [][]byte{a2: a2.collect(time.Second), a3: a3.collect(time.Second)}
 		const frags = 200
 		var sentFrags, sentParity [][]byte
 		var enc protocol.FECEncoder
@@ -284,7 +313,7 @@ func TestRouterForwardsBurstsInOrder(t *testing.T) {
 		}
 		total := len(sentFrags) + len(sentParity)
 		for _, p := range []*peer{a2, a3} {
-			got := p.recv(500 * time.Millisecond)
+			got := received[p]()
 			if len(got) != total {
 				t.Fatalf("%s got %d of %d packets", p.client.Name, len(got), total)
 			}
