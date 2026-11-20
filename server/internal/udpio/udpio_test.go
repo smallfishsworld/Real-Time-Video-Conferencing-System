@@ -91,19 +91,40 @@ func TestReadBatch(t *testing.T) {
 	})
 }
 
+// A datagram longer than the buffer is truncated to it on Linux and macOS. Windows
+// reports it as an error without its source address, so there ReadBatch drops it and
+// returns the next datagram.
 func TestReadBatchTruncates(t *testing.T) {
 	modes(t, func(t *testing.T, opt Options) {
 		rx := listen(t, "udp4", "127.0.0.1:0")
 		tx := listen(t, "udp4", "127.0.0.1:0")
 		c := New(rx, opt)
-		if _, err := tx.WriteToUDPAddrPort(bytes.Repeat([]byte{7}, 3000), addrOf(rx)); err != nil {
-			t.Fatal(err)
+		for _, n := range []int{3000, 100} {
+			if _, err := tx.WriteToUDPAddrPort(bytes.Repeat([]byte{7}, n), addrOf(rx)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want := []int{2048, 100}
+		if runtime.GOOS == "windows" {
+			want = want[1:]
 		}
 		ms := slots(4, 2048)
 		_ = rx.SetReadDeadline(time.Now().Add(5 * time.Second))
-		n, err := c.ReadBatch(ms)
-		if err != nil || n != 1 || ms[0].N != 2048 {
-			t.Fatalf("ReadBatch = %d, %v; length %d, want 1 datagram truncated to 2048", n, err, ms[0].N)
+		var got []int
+		for len(got) < len(want) {
+			n, err := c.ReadBatch(ms)
+			if err != nil {
+				t.Fatalf("ReadBatch after datagrams of %v: %v", got, err)
+			}
+			for _, m := range ms[:n] {
+				if m.Addr != addrOf(tx) {
+					t.Fatalf("source %v, want %v", m.Addr, addrOf(tx))
+				}
+				got = append(got, m.N)
+			}
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("datagram lengths %v, want %v", got, want)
 		}
 	})
 }

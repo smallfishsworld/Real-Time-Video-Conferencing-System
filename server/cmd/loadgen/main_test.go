@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -430,8 +431,12 @@ func TestRunEndToEnd(t *testing.T) {
 	if res.AudioDeliveryRatio < 0.8 || res.ControlLost != 0 || res.SendErrors != 0 {
 		t.Fatalf("audio %.3f, control lost %d, send errors %d", res.AudioDeliveryRatio, res.ControlLost, res.SendErrors)
 	}
-	if res.ServerCPUSeconds == nil || res.LatencyMS["p99"] <= 0 || res.Traffic.SentUpPPS <= 0 {
-		t.Fatalf("cpu %v latency %v traffic %+v", res.ServerCPUSeconds, res.LatencyMS, res.Traffic)
+	// -server-pid reads /proc, which only Linux has; elsewhere the CPU time is left out.
+	if runtime.GOOS == "linux" && res.ServerCPUSeconds == nil {
+		t.Fatal("no server CPU time")
+	}
+	if res.LatencyMS["p99"] <= 0 || res.Traffic.SentUpPPS <= 0 {
+		t.Fatalf("latency %v traffic %+v", res.LatencyMS, res.Traffic)
 	}
 }
 
@@ -442,5 +447,41 @@ func TestLegacyPortLimit(t *testing.T) {
 	}
 	if legacyMaxID > legacyPortMaxID {
 		t.Fatalf("legacyMaxID %d is above the port limit %d", legacyMaxID, legacyPortMaxID)
+	}
+}
+
+// The per-datagram path that Windows uses, exercised on every platform.
+func TestPerDatagramFallback(t *testing.T) {
+	listen := func() (*net.UDPConn, *ipv4.PacketConn) {
+		conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = conn.Close() })
+		return conn, ipv4.NewPacketConn(conn)
+	}
+	txConn, tx := listen()
+	rxConn, rx := listen()
+	sizes := []int{1, 1200, 9000}
+	out := make([]ipv4.Message, len(sizes))
+	for i, n := range sizes {
+		out[i] = ipv4.Message{Buffers: [][]byte{make([]byte, n)}, Addr: rxConn.LocalAddr()}
+	}
+	if n, err := writeEach(tx, out); n != len(sizes) || err != nil {
+		t.Fatalf("writeEach = %d, %v", n, err)
+	}
+	in := []ipv4.Message{{Buffers: [][]byte{make([]byte, 65536)}}}
+	_ = rxConn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	for _, want := range sizes {
+		n, err := readOne(rx, in)
+		if n != 1 || err != nil || in[0].N != want || in[0].Addr.String() != txConn.LocalAddr().String() {
+			t.Fatalf("readOne = %d, %v: %d bytes from %v, want %d from %v", n, err, in[0].N, in[0].Addr,
+				want, txConn.LocalAddr())
+		}
+	}
+	// A write to no address fails at the first message.
+	out[1].Addr = nil
+	if n, err := writeEach(tx, out); n != 1 || err == nil {
+		t.Fatalf("writeEach with a missing address = %d, %v", n, err)
 	}
 }

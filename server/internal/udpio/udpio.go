@@ -44,7 +44,7 @@ type Options struct {
 // Message is one datagram slot for ReadBatch.
 type Message struct {
 	Buf  []byte         // receive buffer, used up to its capacity
-	N    int            // datagram length, truncated to cap(Buf)
+	N    int            // datagram length, truncated to cap(Buf) (Windows drops a longer datagram)
 	Addr netip.AddrPort // source; IPv4-mapped IPv6 addresses are unmapped
 }
 
@@ -87,12 +87,21 @@ func (c *Conn) ReadBatch(ms []Message) (int, error) {
 		return c.readMmsg(ms)
 	}
 	m := &ms[0]
-	n, src, err := c.uc.ReadFromUDPAddrPort(m.Buf[:cap(m.Buf)])
-	if err != nil {
-		return 0, err
+	for {
+		n, src, err := c.uc.ReadFromUDPAddrPort(m.Buf[:cap(m.Buf)])
+		if err != nil {
+			if tooLong(err) {
+				// Windows: the datagram was longer than the buffer and comes without its
+				// source, so it cannot be returned truncated. Skip it rather than return
+				// an error, so that a sender of oversized datagrams cannot make the
+				// caller treat the socket as failing.
+				continue
+			}
+			return 0, err
+		}
+		m.N, m.Addr = n, netip.AddrPortFrom(src.Addr().Unmap(), src.Port())
+		return 1, nil
 	}
-	m.N, m.Addr = n, netip.AddrPortFrom(src.Addr().Unmap(), src.Port())
-	return 1, nil
 }
 
 // Dest is a destination address converted once to the socket's own address format,

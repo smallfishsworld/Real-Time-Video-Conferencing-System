@@ -132,7 +132,7 @@ func (p *v2Participant) write(n int) error {
 	}
 	sent := 0
 	for sent < n {
-		k, err := p.pc.WriteBatch(p.msgs[sent:n], 0)
+		k, err := writeBatch(p.pc, p.msgs[sent:n])
 		if err != nil {
 			return err
 		}
@@ -210,7 +210,7 @@ func (p *v2Participant) receive(ctx context.Context, rec *recorder) {
 	frames := make(map[uint32]*frameState)
 	mixer := p.joined.MixerSSRC
 	for {
-		n, err := p.pc.ReadBatch(ms, 0)
+		n, err := readBatch(p.pc, ms)
 		if err != nil {
 			if ctx.Err() != nil || errors.Is(err, os.ErrDeadlineExceeded) {
 				return

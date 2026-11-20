@@ -269,7 +269,7 @@ func (p *legacyParticipant) receive(ctx context.Context, rec *recorder) {
 	stop := context.AfterFunc(ctx, func() { _ = p.conn.SetReadDeadline(time.Now()) })
 	defer stop()
 	for {
-		n, err := p.pc.ReadBatch(ms, 0)
+		n, err := readBatch(p.pc, ms)
 		if err != nil {
 			if ctx.Err() != nil || errors.Is(err, os.ErrDeadlineExceeded) {
 				return
