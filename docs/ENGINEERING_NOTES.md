@@ -1,9 +1,9 @@
 # Engineering notes
 
-This file explains each significant change from the 2024 course version (kept
-unchanged in [`legacy/`](../legacy/) and on the `main` branch; "the 2024 version"
-below) to the v2 rebuild, and every decision that the specification left open. Each
-entry gives the problem, what was measured, the fix and its trade-offs. Numbers come
+My notes on each significant change from the 2024 course version (kept unchanged in
+[`legacy/`](../legacy/) and on the `main` branch; "the 2024 version" below) to the v2
+rebuild, and on every decision the specification left open. Each entry gives the
+problem, what I measured, the fix and its trade-offs. Numbers come
 from the JSON files in [`bench/results/`](../bench/results/);
 [`BENCHMARKS.md`](BENCHMARKS.md) has the methodology and full tables.
 
